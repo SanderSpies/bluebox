@@ -1,5 +1,23 @@
-
+Bluebox
 ===
+An experimental component library
+
+Take as a given:
+- ES6
+- "pure" functions only
+
+Goals
+---
+- start application
+- create several workers to distribute work
+  -> let workers do work before it's actually needed
+  -> 
+
+
+- enabling fast 60fps rendering
+
+// how do I render from any position?!
+
 
 
 
