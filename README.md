@@ -1,5 +1,21 @@
 Bluebox
 ===
+This is a prototype for combining a VDom diff algorithm with style information. The goal is to optimize pages
+with lots of content, not simple small pages (might actually be slower here).
+
+How does it work?
+---
+- Diff the new vdom tree with the old vdom tree and get an immutable result
+- Get layout information via CSS layout
+- Optimize the diff and replace non-visible DOM nodes with empty ones (but with correct dimensions)
+
+How does it perform?
+---
+
+
+
+
+
 An experimental component library
 
 Take as a given:
@@ -11,7 +27,7 @@ Goals
 - start application
 - create several workers to distribute work
   -> let workers do work before it's actually needed
-  -> 
+  ->
 
 
 - enabling fast 60fps rendering
