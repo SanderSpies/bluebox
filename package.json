@@ -1,0 +1,7 @@
+{
+  "name": "bluebox",
+  "main": "lib/index.js",
+  "dependencies": {
+
+  }
+}
