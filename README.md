@@ -1,25 +1,15 @@
 Bluebox
 ===
-This is a prototype for combining a VDom diff algorithm with style information. The goal is to optimize pages
-with lots of content, not simple small pages (might actually be slower here).
+Bluebox is a declarative components tree experiment
 
-How does it work?
+Target for 0.1
 ---
-- Diff the new vdom tree with the old vdom tree and get an immutable result
-- Get layout information via CSS layout
-- Optimize the diff and replace non-visible DOM nodes with empty ones (but with correct dimensions)
+- Immutable components tree
+- Optimal results from previous component tree
+- Add layout information
+- Render to GL
 
-- [TODO] Scroll support
-- [TODO] Resize support
-
-Limitations
+Not yet
 ---
-- We use CSS-Layout to determine what needs to be rendered on screen. Which means we use
-  the CSS-Layout defaults
-- We don't support automatic text sizing
-  - ideally it should be possible to measure and cache this on the client
-
-
-How does it perform?
----
-Probably pretty bad for now
+- Partial UI updates
+- Events
