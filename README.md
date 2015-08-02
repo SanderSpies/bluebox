@@ -2,21 +2,21 @@ Bluebox
 ===
 Bluebox is a declarative components tree with inline styles experiment.
 
-The idea is to take 
-
-Layout System
+Features
 ---
-Flex Box - but without dynamic text calculations.
+- declarative
+- inline styles
+- renders to WebGL
+- FlexBox layout system
 
 Components
 ---
-- Image
+- Image [done]
 - Text
-- View
+- View [done]
 
 TODO
 ---
-- support Image tag
 - support Text tag
 - overflow stuff
 - add support for more CSS features:
