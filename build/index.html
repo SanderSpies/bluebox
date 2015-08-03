@@ -51,7 +51,6 @@
        vec2 clipSpace = zeroToTwo - 1.0;
 
        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-
     }
     </script>
     <script id="2d-vertex-shader2" type="x-shader/x-vertex">
@@ -75,9 +74,15 @@
         precision mediump float;
 
         uniform vec4 u_color;
+        uniform float u_parentWidth;
 
         void main() {
-            gl_FragColor = u_color;
+            // TODO: improve overflow support
+            if (gl_FragCoord.x <= u_parentWidth) {
+                gl_FragColor = u_color;
+            } else {
+                gl_FragColor = vec4(0,0,0,0);
+            }
         }
     </script>
     <script id="2d-image-shader" type="x-shader/x-fragment">
@@ -85,12 +90,17 @@
 
         // our texture
         uniform sampler2D u_image;
+        uniform float u_parentWidth;
 
         // the texCoords passed in from the vertex shader.
         varying vec2 v_texCoord;
 
         void main() {
-           gl_FragColor = texture2D(u_image, v_texCoord);
+            if (gl_FragCoord.x <= u_parentWidth) {
+                gl_FragColor = texture2D(u_image, v_texCoord);
+            } else {
+                gl_FragColor = vec4(0,0,0,0);
+            }
         }
     </script>
 

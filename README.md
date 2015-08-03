@@ -2,6 +2,8 @@ Bluebox
 ===
 Bluebox is a declarative components tree with inline styles experiment.
 
+For now most of the work is being done on components and inline styles.
+
 Features
 ---
 - declarative
@@ -20,9 +22,7 @@ TODO
 - support Text tag
 - overflow stuff
 - add support for more CSS features:
-  - background
-  - backgroundColor
-  - backgroundImage
+  - backgroundColor [in progress]
   - border*
   - boxShadow
   - color
@@ -31,11 +31,15 @@ TODO
   - fontStyle
   - filter
     - blur, etc.
-  - opacity
+  - opacity [in progress]
+  - overflow
   - zoom
+  - transforms
   - text-overflow: ellipsis
-- add animation support
 - add keypress etc. support
+
+
+- add animation support
 - add JSX support
 - proper Object Pooling
 - proper texture pooling I guess ?!
