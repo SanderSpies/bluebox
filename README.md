@@ -32,7 +32,7 @@ TODO
   - filter
     - blur, etc.
   - opacity [in progress]
-  - overflow
+  - overflow [in progress]
   - zoom
   - transforms
   - text-overflow: ellipsis
