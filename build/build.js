@@ -2053,7 +2053,7 @@ function render(domElement,
   inheritedFilter) {
   if (!webGLContext) {
     webGLContext = domElement.getContext('webgl');// {preserveDrawingBuffer: true });
-    if(gl == null){
+    if(webGLContext == null){
       webGLContext = domElement.getContext('experimental-webgl');//  {preserveDrawingBuffer: true });
     }
 
