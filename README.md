@@ -4,6 +4,8 @@ Bluebox is a declarative components tree with inline styles experiment.
 
 For now most of the work is being done on components and inline styles.
 
+Warning: the current code base is messy, and is mostly to find out what works and what not.
+
 Features
 ---
 - declarative
