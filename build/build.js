@@ -2052,7 +2052,11 @@ function render(domElement,
   inheritedColor,
   inheritedFilter) {
   if (!webGLContext) {
-    webGLContext = domElement.getContext('webgl',  {preserveDrawingBuffer: true });
+    webGLContext = domElement.getContext('webgl');// {preserveDrawingBuffer: true });
+    if(gl == null){
+      webGLContext = domElement.getContext('experimental-webgl');//  {preserveDrawingBuffer: true });
+    }
+
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
     webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
