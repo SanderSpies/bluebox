@@ -77,10 +77,12 @@
         uniform vec4 u_dimensions;
 
         void main() {
-            // TODO: improve overflow support
-            if (gl_FragCoord.x <= u_dimensions.z && gl_FragCoord.x >= u_dimensions.x &&
-                gl_FragCoord.y <= u_dimensions.w && gl_FragCoord.y >= u_dimensions.y) {
-
+            float parentTop = u_dimensions[1] * 2.0 * -1.0;
+            float parentHeight = u_dimensions[3] * 2.0;
+            float parentLeft = u_dimensions[0];
+            float parentWidth = u_dimensions[2];
+            if (gl_FragCoord.x < parentWidth && gl_FragCoord.x > parentLeft &&
+                gl_FragCoord.y < parentHeight && gl_FragCoord.y > parentTop) {
                 gl_FragColor = u_color;
             } else {
                 gl_FragColor = vec4(0,0,0,0);
@@ -98,9 +100,12 @@
         varying vec2 v_texCoord;
 
         void main() {
-            if (gl_FragCoord.x <= u_dimensions.z && gl_FragCoord.x >= u_dimensions.x &&
-                gl_FragCoord.y <= u_dimensions.w && gl_FragCoord.y >= u_dimensions.y) {
-
+            float parentTop = u_dimensions[1] * 2.0 * -1.0;
+            float parentHeight = u_dimensions[3] * 2.0;
+            float parentLeft = u_dimensions[0];
+            float parentWidth = u_dimensions[2];
+            if (gl_FragCoord.x < parentWidth && gl_FragCoord.x > parentLeft &&
+                gl_FragCoord.y < parentHeight && gl_FragCoord.y > parentTop) {
                 gl_FragColor = texture2D(u_image, v_texCoord);
             } else {
                 gl_FragColor = vec4(0,0,0,0);

@@ -19,8 +19,9 @@ Components
 
 TODO
 ---
-- support Text tag
-- overflow stuff
+- support Text tag [in progress]
+- overflow stuff [in progress]
+- proper drawing order (so opacity works correctly)
 - add support for more CSS features:
   - backgroundColor [in progress]
   - border*
@@ -28,12 +29,12 @@ TODO
   - color
   - font
   - fontSize
+  - outline
   - fontStyle
   - filter
     - blur, etc.
   - opacity [in progress]
   - overflow [in progress]
-  - zoom
   - transforms
   - text-overflow: ellipsis
 - add keypress etc. support
@@ -44,3 +45,4 @@ TODO
 - proper Object Pooling
 - proper texture pooling I guess ?!
 - SVG icons?
+
