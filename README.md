@@ -15,15 +15,16 @@ Features
 
 Components
 ---
-- Image [done]
+- Image
 - Text
-- View [done]
+- View
 
 TODO
 ---
 - support Text tag [in progress]
+- images support [in progress]
 - overflow stuff [in progress]
-- proper drawing order (so opacity works correctly)
+- proper drawing order (so opacity works correctly) [in progress]
 - add support for more CSS features:
   - backgroundColor [in progress]
   - border*

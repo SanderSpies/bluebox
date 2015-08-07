@@ -3,66 +3,62 @@
 
 var C = require('./components/C');
 
-function View(props, children) {
-  return C('view', props, children);
+function View(props, style, children) {
+  return C('view', props, style, children || []);
 }
 
-function Text(text) {
-  return C('text', null, [text]);
+function Text(text, style) {
+  return C('text', {}, style, [text]);
 }
 
-function Image(props) {
-  return C('image', props, null);
+function Image(props, style) {
+  return C('image', props, style, []);
 }
 
 var sharedStyle = {backgroundColor: 'green', border: 'solid 1px black', opacity: 1, width: 100, height: 100, margin: 5};
 var sharedImageStyle = {width: 100, height: 100};
-module.exports = View({style: {backgroundColor: 'red'}}, [
-  View({
-    style: {
+module.exports = View({}, {backgroundColor: 'red'}, [
+  View({},{
       height: 100,
       justifyContent: 'flex-start',
       flexDirection: 'row',
       backgroundColor: 'black',
-      opacity: .6
-    }
+      opacity: .4
   }, [
-    View({style: {width: 100, height: 100, backgroundColor: 'red'}}, [Text('a')]),
-    View({style: {width: 100, height: 100, backgroundColor: 'blue'}}, [Text('b')])
+    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
+    View({}, {width: 100, height: 100, backgroundColor: 'blue'}, [Text('b')])
   ]),
-  View({style:{flexDirection: 'row'}}, [
-    View({style:{width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}}, [
-      View({style: {flexDirection: 'row', margin: 20}}, [
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: sharedStyle}, [Text('a')])
+  View({}, {flexDirection: 'row'}, [
+    View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
+      View({}, {flexDirection: 'row', margin: 20}, [
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')])
       ]),
-      View({style: {flexDirection: 'row', margin: 20}}, [
-        View({style: sharedStyle}, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
-        View({style: sharedStyle}, [Text('foobar')]),
-        View({style: sharedStyle}, [Text('a')]),
-        View({style: {width: 300, height: 100, transform: 'scale(2,3)', backgroundColor: 'white', color:'white', margin: 5, opacity: 0.1}}, [Text('a')]),
-        View({style: sharedStyle}, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
-        View({style: sharedStyle}, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
-        View({style: sharedStyle}, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
-        View({
-          style: {
-            width: 210, height: 100, backgroundColor: 'white', margin: 5, opacity: 1
-          }
-        }, null)
+      View({},{flexDirection: 'row', margin: 20}, [
+        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Text('foobar')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, {width: 300, height: 100, transform: 'scale(2,3)', backgroundColor: 'red', color:'white', margin: 5, opacity: 0.8}, [Text('a')]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
+        View({},sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
+        View({},{
+          width: 210, height: 100, backgroundColor: 'white', margin: 5, opacity: 1
+        }, [])
       ])
     ]),
-    View({style:{backgroundColor:'blue', height: 300, width: 300}}, [
+    View({}, {backgroundColor:'blue', height: 300, width: 300}, [
 
     ])
   ])
@@ -161,11 +157,43 @@ var ObjectPool = require('../ObjectPool');
 
 ObjectPool.prealloc('layout', {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0}, 1000);
 ObjectPool.prealloc('components', {layout: null, type: '', props: null, children: null}, 1000);
+var styleObj = {
+  backgroundColor: '',
+  color: '',
+  margin: '',
+  marginLeft: -1,
+  marginRight: -1,
+  marginTop: -1,
+  marginBottom: -1,
+  minHeight: -1,
+  minWidth: -1,
+  padding: '',
+  paddingLeft: -1,
+  paddingRight: -1,
+  paddingTop: -1,
+  paddingBottom: -1,
+  opacity: 1,
+  overflow: 'inherit',
+  width: -1,
+  height: -1
+};
+ObjectPool.prealloc('style', styleObj, 1000);
+var styleKeys = Object.keys(styleObj);
+function merge(parent, child) {
+  var childKeys = Object.keys(child);
+  for (var i = 0, l = childKeys.length; i < l; i++) {
+    var childKey = childKeys[i];
+    parent[childKey] = child[childKey];
+  }
+  return parent;
+}
 
-function Component(type, props, children) {
+function Component(type, props, style, children) {
   var layout = ObjectPool.getInstance('layout');
   var component = ObjectPool.getInstance('components');
+  var baseStyle = ObjectPool.getInstance('style');
   component.layout = layout;
+  component.style = style ? merge(baseStyle, style) : baseStyle;
   component.type = type;
   component.props = props;
   component.children = children;
@@ -402,6 +430,7 @@ var BlueBox = {
     if (diff2 !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
+    //console.log('A');
     renderer(el, diff2, oldComponentTree, null, 0, viewPortDimensions, 0, 0);
     //renderer(el, diff2, oldComponentTree, 0, viewPortDimensions, 1, 0);
     oldComponentTree = diff2;
@@ -499,6 +528,8 @@ module.exports = CSSWrap;
  */
 'use strict';
 
+// "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" http://localhost:63342/bluebox/build/index.html --no-sandbox --js-flags="--trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces"
+
 var CSSAlign = require('./CSSAlign');
 var CSSConstants = require('./CSSConstants');
 var CSSDirection = require('./CSSDirection');
@@ -593,30 +624,29 @@ function setLayoutDirection(node, direction) {
 }
 
 function getStylePosition(node, position) {
-  if (!node || !node.props || !node.props.style) {
-    return undefined;
+  if (!node || !node.style) {
+    return 0;
   }
   if (position === POSITION_INDEX.TOP) {
-    return node.props.style.top;
+    return node.style.top;
   }
   else if (position === POSITION_INDEX.LEFT) {
-    return node.props.style.left;
+    return node.style.left;
   }
   else if (position === POSITION_INDEX.RIGHT) {
-    return node.props.style.right;
+    return node.style.right;
   }
   else if (position === POSITION_INDEX.BOTTOM) {
-    return node.props.style.bottom;
+    return node.style.bottom;
   }
-  throw new Error('should not happen');
 }
 
 function getStyleDimension(node, dimension) {
   if (dimension === DIMENSION_INDEX.WIDTH) {
-    return node.props && node.props.style ? node.props.style.width : undefined;
+    return node.style.width;
   }
   else if (dimension === DIMENSION_INDEX.HEIGHT) {
-    return node.props && node.props.style ? node.props.style.height : undefined;
+    return node.style.height;
   }
   throw new Error('should not happen');
 }
@@ -659,19 +689,19 @@ function getPosition(node, position) {
 }
 
 function getMarginTop(node) {
-  return node.props && node.props.style ? (node.props.style.marginTop || getDimension(node.props.style.margin).top) : undefined;
+  return node.style.marginTop !== -1 ? node.style.marginTop : getDimension(node.style.margin).top;
 }
 
 function getMarginLeft(node) {
-  return node.props && node.props.style ? (node.props.style.marginLeft || getDimension(node.props.style.margin).left) : undefined;
+  return node.style.marginLeft !== -1 ? node.style.marginLeft : getDimension(node.style.margin).left;
 }
 
 function getMarginRight(node) {
-  return node.props && node.props.style ? (node.props.style.marginRight || getDimension(node.props.style.margin).right) : undefined;
+  return node.style.marginRight !== -1 ? node.style.marginRight : getDimension(node.style.margin).right;
 }
 
 function getMarginBottom(node) {
-  return node.props && node.props.style ? (node.props.style.marginBottom || getDimension(node.props.style.margin).bottom) : undefined;
+  return node.style.marginBottom !== -1 ? node.style.marginBottom : getDimension(node.style.margin).bottom;
 }
 
 function getMargin(node, position) {
@@ -713,8 +743,12 @@ function getTrailingMargin(node, axis) {
 }
 
 function getDimension(obj) {
-  if (!obj) {
-    return {};
+  if (!obj || obj === '') {
+    return {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0};
   }
 
   if (typeof obj === 'number') {
@@ -763,19 +797,19 @@ function getDimension(obj) {
 }
 
 function getPaddingTop(node) {
-  return node.props && node.props.style ? (node.props.style.paddingTop || getDimension(node.props.style.padding).top) : undefined;
+  return  node.style.paddingTop !== -1 ? node.style.paddingTop : getDimension(node.style.padding).top;
 }
 
 function getPaddingBottom(node) {
-  return node.props && node.props.style ? (node.props.style.paddingBottom || getDimension(node.props.style.padding).bottom) : undefined;
+  return  node.style.paddingBottom !== -1 ? node.style.paddingBottom : getDimension(node.style.padding).bottom;
 }
 
 function getPaddingLeft(node) {
-  return node.props && node.props.style ? (node.props.style.paddingLeft || getDimension(node.props.style.padding).left) : undefined;
+  return  node.style.paddingLeft !== -1 ? node.style.paddingLeft : getDimension(node.style.padding).left;
 }
 
 function getPaddingRight(node) {
-  return node.props && node.props.style ? (node.props.style.paddingRight || getDimension(node.props.style.padding).right) : undefined;
+  return  node.style.paddingRight !== -1 ? node.style.paddingRight : getDimension(node.style.padding).right;
 }
 
 function getPadding(node, position) {
@@ -817,19 +851,19 @@ function getTrailingPadding(node, axis) {
 }
 
 function getBorderTop(node) {
-  return node.props && node.props.style ? (node.props.style.borderTop || getDimension(node.props.style.border).top) : undefined;
+  return  node.style.borderTop !== -1 ? node.style.borderTop : getDimension(node.style.border).top;
 }
 
 function getBorderBottom(node) {
-  return node.props && node.props.style ? (node.props.style.borderBottom || getDimension(node.props.style.border).bottom) : undefined;
+  return  node.style.borderBottom !== -1 ? node.style.borderBottom : getDimension(node.style.border).bottom;
 }
 
 function getBorderLeft(node) {
-  return node.props && node.props.style ? (node.props.style.borderLeft || getDimension(node.props.style.border).left) : undefined;
+  return  node.style.borderLeft !== -1 ? node.style.borderLeft : getDimension(node.style.border).left;
 }
 
 function getBorderRight(node) {
-  return node.props && node.props.style ? (node.props.style.borderRight || getDimension(node.props.style.border).right) : undefined;
+  return  node.style.borderRight !== -1 ? node.style.borderRight : getDimension(node.style.border).right;
 }
 
 function getBorder(node, position) {
@@ -845,7 +879,6 @@ function getBorder(node, position) {
   else if (position === POSITION_INDEX.RIGHT) {
     return getBorderRight(node);
   }
-  throw new Error('should not happen');
 }
 
 function getLeadingBorder(node, axis) {
@@ -892,14 +925,14 @@ function getPaddingAndBorderAxis(node, axis) {
 function boundAxis(node, axis, value) {
   var min = undefined;
   var max = undefined;
-  if (node.props && node.props.style) {
+  if ( node.style) {
     if (isColumnDirection(axis)) {
-      min = node.props.style.minHeight;
-      max = node.props.style.maxHeight;
+      min = node.style.minHeight;
+      max = node.style.maxHeight;
     }
     else if (isRowDirection(axis)) {
-      min = node.props.style.minWidth;
-      max = node.props.style.maxWidth;
+      min = node.style.minWidth;
+      max = node.style.maxWidth;
     }
   }
 
@@ -947,7 +980,7 @@ function getRelativePosition(node, axis) {
 }
 
 function getFlex(node) {
-  return node.props && node.props.style ? node.props.style.flex : undefined;
+  return  node.style ? node.style.flex : undefined;
 }
 
 function isRowDirection(flexDirection) {
@@ -971,23 +1004,17 @@ function resolveAxis(axis, direction) {
 }
 
 function resolveDirection(node, parentDirection) {
-  var direction = CSSDirection.INHERIT;
-  var props = node.props;
-  if (props && props.style) {
-    var style = props.style;
+  var direction = parentDirection || CSSDirection.INHERIT;
+    var style = node.style;
     if ('direction' in style) {
       direction = style.direction;
     }
 
-    if (direction === CSSDirection.INHERIT) {
-      direction = (parentDirection === undefined ? CSSDirection.LTR : parentDirection);
-    }
-  }
   return direction;
 }
 
 function getFlexDirection(node) {
-  return node.props && node.props.style && 'flexDirection' in node.props.style ? node.props.style.flexDirection : CSSFlexDirection.COLUMN;
+  return  node.style && 'flexDirection' in node.style ? node.style.flexDirection : CSSFlexDirection.COLUMN;
 }
 
 function getCrossFlexDirection(flexDirection, direction) {
@@ -998,26 +1025,26 @@ function getCrossFlexDirection(flexDirection, direction) {
 }
 
 function getPositionType(node) {
-  return node.props && node.props.style && 'position' in node.props.style ? node.props.style.position : 'relative'
+  return  node.style && 'position' in node.style ? node.style.position : 'relative'
 }
 
 function getAlignItem(node, child) {
-  if (child.props && child.props.style && child.props.style.alignSelf !== CSSAlign.AUTO) {
-    return child.props.style.alignSelf;
+  if (child.style.alignSelf !== CSSAlign.AUTO) {
+    return child.style.alignSelf;
   }
-  return node.props && node.props.style ? node.props.style.alignItems : 'stretch';
+  return  node.style ? node.style.alignItems : 'stretch';
 }
 
 function getAlignContent(node) {
-  return node.props && node.props.style ? node.props.style.alignContent : 'flex-start';
+  return  node.style ? node.style.alignContent : 'flex-start';
 }
 
 function getJustifyContent(node) {
-  return node.props && node.props.style ? node.props.style.justifyContent : 'flex-start';
+  return  node.style ? node.style.justifyContent : 'flex-start';
 }
 
 function isFlexWrap(node) {
-  return node.props && node.props.style && node.props.style.flexWrap === CSSWrap.WRAP;
+  return  node.style && node.style.flexWrap === CSSWrap.WRAP;
 }
 
 function isFlex(node) {
@@ -1044,8 +1071,14 @@ function cloneObject(node) {
   return result;
 }
 
+
+
+
 function getChildCount(node) {
-  return node.children ? node.children.length : 0;
+  if (typeof node.children[0] === 'string') {
+    debugger;
+  }
+  return node.children.length;
 }
 
 function getChildAt(node, i) {
@@ -1069,7 +1102,15 @@ function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMax
     node.layout.right = 0;
     node.layout.bottom = 0;
 
-    var hasOnlyTextChildren = false;
+    var hasOnlyTextChildren = true;
+    for (var i = 0, l = node.children.length; i < l; i++) {
+      var child = node.children[i];
+      if (typeof child !== 'string') {
+        hasOnlyTextChildren = false;
+        break;
+      }
+    }
+
 
     // alright, we really need to recalculate the layout...
     var direction = resolveDirection(node, parentDirection);
@@ -1102,7 +1143,7 @@ function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMax
     //if (isMeasureDefined(node)) {
     var width = CSSConstants.UNDEFINED;
     if (isDimDefined(node, resolvedRowAxis)) {
-      width = node.props.style.width;
+      width = node.style.width;
     }
     else if (getLayoutDimension(node, dim[resolvedRowAxis]) !== undefined) {
       width = getLayoutDimension(node, dim[resolvedRowAxis]);
@@ -1200,341 +1241,342 @@ function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMax
     var linesMainDim = 0;
     var linesCount = 0;
 
-    while (endLine < getChildCount(node)) {
+    if (!hasOnlyTextChildren) {
+      while (endLine < getChildCount(node)) {
 
-      // <Loop A> Layout non flexible children and count children by type
+        // <Loop A> Layout non flexible children and count children by type
 
-      // mainContentDim is accumulation of the dimensions and margin of all the
-      // non flexible children. This will be used in order to either set the
-      // dimensions of the node if none already exist, or to compute the
-      // remaining space left for the flexible children.
-      var mainContentDim = 0;
+        // mainContentDim is accumulation of the dimensions and margin of all the
+        // non flexible children. This will be used in order to either set the
+        // dimensions of the node if none already exist, or to compute the
+        // remaining space left for the flexible children.
+        var mainContentDim = 0;
 
-      // There are three kind of children, non flexible, flexible and absolute.
-      // We need to know how many there are in order to distribute the space.
-      var flexibleChildrenCount = 0;
-      var totalFlexible = 0;
-      var nonFlexibleChildrenCount = 0;
+        // There are three kind of children, non flexible, flexible and absolute.
+        // We need to know how many there are in order to distribute the space.
+        var flexibleChildrenCount = 0;
+        var totalFlexible = 0;
+        var nonFlexibleChildrenCount = 0;
 
-      var maxWidth;
-      for (i = startLine; i < getChildCount(node); ++i) {
-        child = getChildAt(node, i);
-        if (typeof child === 'string') {
+        var maxWidth;
+        for (i = startLine; i < getChildCount(node); ++i) {
+          child = getChildAt(node, i);
+          if (typeof child === 'string') {
+            endLine = i + 1;
+            break;
+          }
+          var nextContentDim = 0;
+
+          // It only makes sense to consider a child flexible if we have a computed
+          // dimension for the node.
+          if (getLayoutDimension(node, dim[mainAxis]) !== undefined && isFlex(child)) {
+            flexibleChildrenCount++;
+            totalFlexible = totalFlexible + getFlex(child);
+
+            // Even if we don't know its exact size yet, we already know the padding,
+            // border and margin. We'll use this partial information, which represents
+            // the smallest possible size for the child, to compute the remaining
+            // available space.
+            nextContentDim = getPaddingAndBorderAxis(child, mainAxis) +
+            getMarginAxis(child, mainAxis);
+
+          }
+          else {
+            maxWidth = CSSConstants.UNDEFINED;
+            if (!isRowDirection(mainAxis)) {
+              maxWidth = parentMaxWidth -
+              getMarginAxis(node, resolvedRowAxis) -
+              getPaddingAndBorderAxis(node, resolvedRowAxis);
+
+              if (isDimDefined(node, resolvedRowAxis)) {
+                maxWidth = getLayoutDimension(node, dim[resolvedRowAxis]) -
+                getPaddingAndBorderAxis(node, resolvedRowAxis);
+              }
+            }
+            var maxHeight = 1; // TODO
+            // This is the main recursive call. We layout non flexible children.
+            if (alreadyComputedNextLayout === 0) {
+              node.children[i] = layoutNode(child, oldNode && oldNode.children ? getChildAt(oldNode, i) : null, oldNode ? node.layout.width !== oldNode.layout.width : true, maxWidth, maxHeight, direction);
+            }
+
+            // Absolute positioned elements do not take part of the layout, so we
+            // don't use them to compute mainContentDim
+            if (getPositionType(child) === CSSPositionType.RELATIVE) {
+              nonFlexibleChildrenCount++;
+              // At this point we know the final size and margin of the element.
+              nextContentDim = getDimWithMargin(child, mainAxis);
+            }
+          }
+
+          // The element we are about to add would make us go to the next line
+          if (isFlexWrap(node) &&
+            getLayoutDimension(node, dim[mainAxis]) !== undefined &&
+            mainContentDim + nextContentDim > definedMainDim &&
+              // If there's only one element, then it's bigger than the content
+              // and needs its own line
+            i !== startLine) {
+            nonFlexibleChildrenCount--;
+            alreadyComputedNextLayout = 1;
+            break;
+          }
+          alreadyComputedNextLayout = 0;
+          mainContentDim = mainContentDim + nextContentDim;
           endLine = i + 1;
-          break;
         }
-        var nextContentDim = 0;
 
-        // It only makes sense to consider a child flexible if we have a computed
-        // dimension for the node.
-        if (getLayoutDimension(node, dim[mainAxis]) !== undefined && isFlex(child)) {
-          flexibleChildrenCount++;
-          totalFlexible = totalFlexible + getFlex(child);
+        // <Loop B> Layout flexible children and allocate empty space
 
-          // Even if we don't know its exact size yet, we already know the padding,
-          // border and margin. We'll use this partial information, which represents
-          // the smallest possible size for the child, to compute the remaining
-          // available space.
-          nextContentDim = getPaddingAndBorderAxis(child, mainAxis) +
-          getMarginAxis(child, mainAxis);
+        // In order to position the elements in the main axis, we have two
+        // controls. The space between the beginning and the first element
+        // and the space between each two elements.
+        var leadingMainDim = 0;
+        var betweenMainDim = 0;
 
+        // The remaining available space that needs to be allocated
+        var remainingMainDim = 0;
+        if (getLayoutDimension(node, dim[mainAxis]) !== undefined) {
+          remainingMainDim = definedMainDim - mainContentDim;
         }
         else {
-          maxWidth = CSSConstants.UNDEFINED;
-          if (!isRowDirection(mainAxis)) {
-            maxWidth = parentMaxWidth -
-            getMarginAxis(node, resolvedRowAxis) -
-            getPaddingAndBorderAxis(node, resolvedRowAxis);
+          remainingMainDim = fmaxf(mainContentDim, 0) - mainContentDim;
+        }
 
-            if (isDimDefined(node, resolvedRowAxis)) {
-              maxWidth = getLayoutDimension(node, dim[resolvedRowAxis]) -
-              getPaddingAndBorderAxis(node, resolvedRowAxis);
+        // If there are flexible children in the mix, they are going to fill the
+        // remaining space
+        if (flexibleChildrenCount !== 0) {
+          var flexibleMainDim = remainingMainDim / totalFlexible;
+          var baseMainDim;
+          var boundMainDim;
+
+          // Iterate over every child in the axis. If the flex share of remaining
+          // space doesn't meet min/max bounds, remove this child from flex
+          // calculations.
+          for (i = startLine; i < endLine; ++i) {
+            child = getChildAt(node, i);
+
+            if (isFlex(child)) {
+              baseMainDim = flexibleMainDim * getFlex(child) +
+              getPaddingAndBorderAxis(child, mainAxis);
+              boundMainDim = boundAxis(child, mainAxis, baseMainDim);
+
+              if (baseMainDim !== boundMainDim) {
+                remainingMainDim -= boundMainDim;
+                totalFlexible -= getFlex(child);
+              }
             }
           }
-          var maxHeight = 1; // TODO
-          // This is the main recursive call. We layout non flexible children.
-          if (alreadyComputedNextLayout === 0) {
-            node.children[i] = layoutNode(child, oldNode && oldNode.children ? getChildAt(oldNode, i) : null, oldNode ? node.layout.width !== oldNode.layout.width : true, maxWidth, maxHeight, direction);
+          flexibleMainDim = remainingMainDim / totalFlexible;
+
+          // The non flexible children can overflow the container, in this case
+          // we should just assume that there is no space available.
+          if (flexibleMainDim < 0) {
+            flexibleMainDim = 0;
+          }
+          // We iterate over the full array and only apply the action on flexible
+          // children. This is faster than actually allocating a new array that
+          // contains only flexible children.
+          for (i = startLine; i < endLine; ++i) {
+            child = getChildAt(node, i);
+
+            if (typeof child === 'string') {
+              continue;
+            }
+
+            if (isFlex(child)) {
+              // At this point we know the final size of the element in the main
+              // dimension
+              setLayoutDimension(child, dim[mainAxis], boundAxis(child, mainAxis,
+                flexibleMainDim * getFlex(child) + getPaddingAndBorderAxis(child, mainAxis)
+              ));
+
+              maxWidth = CSSConstants.UNDEFINED;
+              if (isDimDefined(node, resolvedRowAxis)) {
+                maxWidth = getLayoutDimension(node, dim[resolvedRowAxis]) -
+                getPaddingAndBorderAxis(node, resolvedRowAxis);
+              }
+              else if (!isRowDirection(mainAxis)) {
+                maxWidth = parentMaxWidth -
+                getMarginAxis(node, resolvedRowAxis) -
+                getPaddingAndBorderAxis(node, resolvedRowAxis);
+              }
+
+              // And we recursively call the layout algorithm for this child
+              //debugger;
+              //var top = node.layout.top;
+              //var left = node.layout.left;
+
+              node.children[i] = layoutNode(child, oldNode ? getChildAt(oldNode, i) : null, oldNode ? node.layout.width !== oldNode.layout.width : true, maxWidth, maxHeight, direction);
+            }
           }
 
-          // Absolute positioned elements do not take part of the layout, so we
-          // don't use them to compute mainContentDim
-          if (getPositionType(child) === CSSPositionType.RELATIVE) {
-            nonFlexibleChildrenCount++;
-            // At this point we know the final size and margin of the element.
-            nextContentDim = getDimWithMargin(child, mainAxis);
+          // We use justifyContent to figure out how to allocate the remaining
+          // space available
+        }
+        else {
+          var justifyContent = getJustifyContent(node);
+          if (justifyContent === CSSJustify.CENTER) {
+            leadingMainDim = remainingMainDim / 2;
+          }
+          else if (justifyContent === CSSJustify.FLEX_END) {
+            leadingMainDim = remainingMainDim;
+          }
+          else if (justifyContent === CSSJustify.SPACE_BETWEEN) {
+            remainingMainDim = fmaxf(remainingMainDim, 0);
+            if (flexibleChildrenCount + nonFlexibleChildrenCount - 1 !== 0) {
+              betweenMainDim = remainingMainDim /
+              (flexibleChildrenCount + nonFlexibleChildrenCount - 1);
+            }
+            else {
+              betweenMainDim = 0;
+            }
+          }
+          else if (justifyContent === CSSJustify.SPACE_AROUND) {
+            // Space on the edges is half of the space between elements
+            betweenMainDim = remainingMainDim /
+            (flexibleChildrenCount + nonFlexibleChildrenCount);
+            leadingMainDim = betweenMainDim / 2;
           }
         }
 
-        // The element we are about to add would make us go to the next line
-        if (isFlexWrap(node) &&
-          getLayoutDimension(node, dim[mainAxis]) !== undefined &&
-          mainContentDim + nextContentDim > definedMainDim &&
-            // If there's only one element, then it's bigger than the content
-            // and needs its own line
-          i !== startLine) {
-          nonFlexibleChildrenCount--;
-          alreadyComputedNextLayout = 1;
-          break;
-        }
-        alreadyComputedNextLayout = 0;
-        mainContentDim = mainContentDim + nextContentDim;
-        endLine = i + 1;
-      }
+        // <Loop C> Position elements in the main axis and compute dimensions
 
-      // <Loop B> Layout flexible children and allocate empty space
+        // At this point, all the children have their dimensions set. We need to
+        // find their position. In order to do that, we accumulate data in
+        // variables that are also useful to compute the total dimensions of the
+        // container!
+        var crossDim = 0;
+        //debugger;
+        var mainDim = leadingMainDim +
+          getLeadingPaddingAndBorder(node, mainAxis);
 
-      // In order to position the elements in the main axis, we have two
-      // controls. The space between the beginning and the first element
-      // and the space between each two elements.
-      var leadingMainDim = 0;
-      var betweenMainDim = 0;
+        //console.log('mainDim:', mainDim);
 
-      // The remaining available space that needs to be allocated
-      var remainingMainDim = 0;
-      if (getLayoutDimension(node, dim[mainAxis]) !== undefined) {
-        remainingMainDim = definedMainDim - mainContentDim;
-      }
-      else {
-        remainingMainDim = fmaxf(mainContentDim, 0) - mainContentDim;
-      }
-
-      // If there are flexible children in the mix, they are going to fill the
-      // remaining space
-      if (flexibleChildrenCount !== 0) {
-        var flexibleMainDim = remainingMainDim / totalFlexible;
-        var baseMainDim;
-        var boundMainDim;
-
-        // Iterate over every child in the axis. If the flex share of remaining
-        // space doesn't meet min/max bounds, remove this child from flex
-        // calculations.
         for (i = startLine; i < endLine; ++i) {
           child = getChildAt(node, i);
+          if (typeof child === 'string') {
+            break;
+          }
+          child.lineIndex = linesCount;
 
-          if (isFlex(child)) {
-            baseMainDim = flexibleMainDim * getFlex(child) +
-            getPaddingAndBorderAxis(child, mainAxis);
-            boundMainDim = boundAxis(child, mainAxis, baseMainDim);
+          var leadingMainAxisChild = leading[mainAxis];
+          var posMainAxisChild = pos[mainAxis];
+          var posTypeChild = getPositionType(child);
+          if (posTypeChild === CSSPositionType.ABSOLUTE &&
+            isPosDefined(child, leadingMainAxisChild)) {
+            // In case the child is position absolute and has left/top being
+            // defined, we override the position to whatever the user said
+            // (and margin/border).
+            setLayoutPosition(child, posMainAxisChild, getPosition(child, leadingMainAxisChild) +
+            getLeadingBorder(node, mainAxis) +
+            getLeadingMargin(child, mainAxis));
+          }
+          else {
+            // If the child is position absolute (without top/left) or relative,
+            // we put it at the current accumulated offset.
+            setLayoutPosition(child, posMainAxisChild, getLayoutPosition(child, posMainAxisChild) + mainDim);
 
-            if (baseMainDim !== boundMainDim) {
-              remainingMainDim -= boundMainDim;
-              totalFlexible -= getFlex(child);
+            // Define the trailing position accordingly.
+            if (getLayoutDimension(node, dim[mainAxis]) !== undefined) {
+              setTrailingPosition(node, child, mainAxis);
             }
           }
-        }
-        flexibleMainDim = remainingMainDim / totalFlexible;
 
-        // The non flexible children can overflow the container, in this case
-        // we should just assume that there is no space available.
-        if (flexibleMainDim < 0) {
-          flexibleMainDim = 0;
+          // Now that we placed the element, we need to update the variables
+          // We only need to do that for relative elements. Absolute elements
+          // do not take part in that phase.
+          if (posTypeChild === CSSPositionType.RELATIVE) {
+            //console.log('new main dim:', mainDim, betweenMainDim, getDimWithMargin(child, mainAxis));
+            // The main dimension is the sum of all the elements dimension plus
+            // the spacing.
+            mainDim = mainDim + betweenMainDim + getDimWithMargin(child, mainAxis);
+            // The cross dimension is the max of the elements dimension since there
+            // can only be one element in that cross dimension.
+            crossDim = fmaxf(crossDim, boundAxis(child, crossAxis, getDimWithMargin(child, crossAxis)));
+          }
         }
-        // We iterate over the full array and only apply the action on flexible
-        // children. This is faster than actually allocating a new array that
-        // contains only flexible children.
+
+        var containerCrossAxis = getLayoutDimension(node, dim[crossAxis]);
+        if (containerCrossAxis === undefined) {
+          containerCrossAxis = fmaxf(
+            // For the cross dim, we add both sides at the end because the value
+            // is aggregate via a max function. Intermediate negative values
+            // can mess this computation otherwise
+            boundAxis(node, crossAxis, crossDim + getPaddingAndBorderAxis(node, crossAxis)),
+            getPaddingAndBorderAxis(node, crossAxis)
+          );
+        }
+
+        // <Loop D> Position elements in the cross axis
+
         for (i = startLine; i < endLine; ++i) {
           child = getChildAt(node, i);
 
           if (typeof child === 'string') {
-            continue;
+            break;
           }
+          var childPosition = getPositionType(child);
+          if (childPosition === CSSPositionType.ABSOLUTE &&
+            isPosDefined(child, leading[crossAxis])) {
+            // In case the child is absolutely positionned and has a
+            // top/left/bottom/right being set, we override all the previously
+            // computed positions to set it correctly.
+            setLayoutPosition(child, pos[crossAxis], getPosition(child, leading[crossAxis]) +
+            getLeadingBorder(node, crossAxis) +
+            getLeadingMargin(child, crossAxis));
 
-          if (isFlex(child)) {
-            // At this point we know the final size of the element in the main
-            // dimension
-            setLayoutDimension(child, dim[mainAxis], boundAxis(child, mainAxis,
-              flexibleMainDim * getFlex(child) + getPaddingAndBorderAxis(child, mainAxis)
-            ));
-
-            maxWidth = CSSConstants.UNDEFINED;
-            if (isDimDefined(node, resolvedRowAxis)) {
-              maxWidth = getLayoutDimension(node, dim[resolvedRowAxis]) -
-              getPaddingAndBorderAxis(node, resolvedRowAxis);
-            }
-            else if (!isRowDirection(mainAxis)) {
-              maxWidth = parentMaxWidth -
-              getMarginAxis(node, resolvedRowAxis) -
-              getPaddingAndBorderAxis(node, resolvedRowAxis);
-            }
-
-            // And we recursively call the layout algorithm for this child
-            //debugger;
-            //var top = node.layout.top;
-            //var left = node.layout.left;
-
-            node.children[i] = layoutNode(child, oldNode ? getChildAt(oldNode, i) : null, oldNode ? node.layout.width !== oldNode.layout.width : true, maxWidth, maxHeight, direction);
-          }
-        }
-
-        // We use justifyContent to figure out how to allocate the remaining
-        // space available
-      }
-      else {
-        var justifyContent = getJustifyContent(node);
-        if (justifyContent === CSSJustify.CENTER) {
-          leadingMainDim = remainingMainDim / 2;
-        }
-        else if (justifyContent === CSSJustify.FLEX_END) {
-          leadingMainDim = remainingMainDim;
-        }
-        else if (justifyContent === CSSJustify.SPACE_BETWEEN) {
-          remainingMainDim = fmaxf(remainingMainDim, 0);
-          if (flexibleChildrenCount + nonFlexibleChildrenCount - 1 !== 0) {
-            betweenMainDim = remainingMainDim /
-            (flexibleChildrenCount + nonFlexibleChildrenCount - 1);
           }
           else {
-            betweenMainDim = 0;
-          }
-        }
-        else if (justifyContent === CSSJustify.SPACE_AROUND) {
-          // Space on the edges is half of the space between elements
-          betweenMainDim = remainingMainDim /
-          (flexibleChildrenCount + nonFlexibleChildrenCount);
-          leadingMainDim = betweenMainDim / 2;
-        }
-      }
+            var leadingCrossDim = getLeadingPaddingAndBorder(node, crossAxis);
 
-      // <Loop C> Position elements in the main axis and compute dimensions
-
-      // At this point, all the children have their dimensions set. We need to
-      // find their position. In order to do that, we accumulate data in
-      // variables that are also useful to compute the total dimensions of the
-      // container!
-      var crossDim = 0;
-      //debugger;
-      var mainDim = leadingMainDim +
-        getLeadingPaddingAndBorder(node, mainAxis);
-
-      //console.log('mainDim:', mainDim);
-
-      for (i = startLine; i < endLine; ++i) {
-        child = getChildAt(node, i);
-        if (typeof child === 'string') {
-          break;
-        }
-        child.lineIndex = linesCount;
-
-        var leadingMainAxisChild = leading[mainAxis];
-        var posMainAxisChild = pos[mainAxis];
-        var posTypeChild = getPositionType(child);
-        if (posTypeChild === CSSPositionType.ABSOLUTE &&
-          isPosDefined(child, leadingMainAxisChild)) {
-          // In case the child is position absolute and has left/top being
-          // defined, we override the position to whatever the user said
-          // (and margin/border).
-          setLayoutPosition(child, posMainAxisChild, getPosition(child, leadingMainAxisChild) +
-          getLeadingBorder(node, mainAxis) +
-          getLeadingMargin(child, mainAxis));
-        }
-        else {
-          // If the child is position absolute (without top/left) or relative,
-          // we put it at the current accumulated offset.
-          setLayoutPosition(child, posMainAxisChild, getLayoutPosition(child, posMainAxisChild) + mainDim);
-
-          // Define the trailing position accordingly.
-          if (getLayoutDimension(node, dim[mainAxis]) !== undefined) {
-            setTrailingPosition(node, child, mainAxis);
-          }
-        }
-
-        // Now that we placed the element, we need to update the variables
-        // We only need to do that for relative elements. Absolute elements
-        // do not take part in that phase.
-        if (posTypeChild === CSSPositionType.RELATIVE) {
-          //console.log('new main dim:', mainDim, betweenMainDim, getDimWithMargin(child, mainAxis));
-          // The main dimension is the sum of all the elements dimension plus
-          // the spacing.
-          mainDim = mainDim + betweenMainDim + getDimWithMargin(child, mainAxis);
-          // The cross dimension is the max of the elements dimension since there
-          // can only be one element in that cross dimension.
-          crossDim = fmaxf(crossDim, boundAxis(child, crossAxis, getDimWithMargin(child, crossAxis)));
-        }
-      }
-
-      var containerCrossAxis = getLayoutDimension(node, dim[crossAxis]);
-      if (containerCrossAxis === undefined) {
-        containerCrossAxis = fmaxf(
-          // For the cross dim, we add both sides at the end because the value
-          // is aggregate via a max function. Intermediate negative values
-          // can mess this computation otherwise
-          boundAxis(node, crossAxis, crossDim + getPaddingAndBorderAxis(node, crossAxis)),
-          getPaddingAndBorderAxis(node, crossAxis)
-        );
-      }
-
-      // <Loop D> Position elements in the cross axis
-
-      for (i = startLine; i < endLine; ++i) {
-        child = getChildAt(node, i);
-
-        if (typeof child === 'string') {
-          break;
-        }
-        var childPosition = getPositionType(child);
-        if (childPosition === CSSPositionType.ABSOLUTE &&
-          isPosDefined(child, leading[crossAxis])) {
-          // In case the child is absolutely positionned and has a
-          // top/left/bottom/right being set, we override all the previously
-          // computed positions to set it correctly.
-          setLayoutPosition(child, pos[crossAxis], getPosition(child, leading[crossAxis]) +
-          getLeadingBorder(node, crossAxis) +
-          getLeadingMargin(child, crossAxis));
-
-        }
-        else {
-          var leadingCrossDim = getLeadingPaddingAndBorder(node, crossAxis);
-
-          // For a relative children, we're either using alignItems (parent) or
-          // alignSelf (child) in order to determine the position in the cross axis
-          if (childPosition === CSSPositionType.RELATIVE) {
-            var alignItem = getAlignItem(node, child);
-            if (alignItem === CSSAlign.STRETCH) {
-              // You can only stretch if the dimension has not already been set
-              // previously.
-              if (!isDimDefined(child, crossAxis)) {
-                setLayoutDimension(child, dim[crossAxis], fmaxf(
-                  boundAxis(child, crossAxis, containerCrossAxis -
+            // For a relative children, we're either using alignItems (parent) or
+            // alignSelf (child) in order to determine the position in the cross axis
+            if (childPosition === CSSPositionType.RELATIVE) {
+              var alignItem = getAlignItem(node, child);
+              if (alignItem === CSSAlign.STRETCH) {
+                // You can only stretch if the dimension has not already been set
+                // previously.
+                if (!isDimDefined(child, crossAxis)) {
+                  setLayoutDimension(child, dim[crossAxis], fmaxf(
+                    boundAxis(child, crossAxis, containerCrossAxis -
+                    getPaddingAndBorderAxis(node, crossAxis) -
+                    getMarginAxis(child, crossAxis)),
+                    // You never want to go smaller than padding
+                    getPaddingAndBorderAxis(child, crossAxis)
+                  ));
+                }
+              }
+              else if (alignItem !== CSSAlign.FLEX_START) {
+                // The remaining space between the parent dimensions+padding and child
+                // dimensions+margin.
+                var remainingCrossDim = containerCrossAxis -
                   getPaddingAndBorderAxis(node, crossAxis) -
-                  getMarginAxis(child, crossAxis)),
-                  // You never want to go smaller than padding
-                  getPaddingAndBorderAxis(child, crossAxis)
-                ));
+                  getDimWithMargin(child, crossAxis);
+
+                if (alignItem === CSSAlign.CENTER) {
+                  leadingCrossDim = leadingCrossDim + remainingCrossDim / 2;
+                }
+                else { // CSSAlign.FLEX_END
+                  leadingCrossDim = leadingCrossDim + remainingCrossDim;
+                }
               }
             }
-            else if (alignItem !== CSSAlign.FLEX_START) {
-              // The remaining space between the parent dimensions+padding and child
-              // dimensions+margin.
-              var remainingCrossDim = containerCrossAxis -
-                getPaddingAndBorderAxis(node, crossAxis) -
-                getDimWithMargin(child, crossAxis);
 
-              if (alignItem === CSSAlign.CENTER) {
-                leadingCrossDim = leadingCrossDim + remainingCrossDim / 2;
-              }
-              else { // CSSAlign.FLEX_END
-                leadingCrossDim = leadingCrossDim + remainingCrossDim;
-              }
+            // And we apply the position
+            setLayoutPosition(child, pos[crossAxis], getLayoutPosition(child, pos[crossAxis]) + linesCrossDim + leadingCrossDim);
+
+            // Define the trailing position accordingly.
+            if (getLayoutDimension(node, dim[crossAxis]) !== undefined) {
+              setTrailingPosition(node, child, crossAxis);
             }
-          }
-
-          // And we apply the position
-          setLayoutPosition(child, pos[crossAxis], getLayoutPosition(child, pos[crossAxis]) + linesCrossDim + leadingCrossDim);
-
-          // Define the trailing position accordingly.
-          if (getLayoutDimension(node, dim[crossAxis]) !== undefined) {
-            setTrailingPosition(node, child, crossAxis);
           }
         }
+
+        linesCrossDim = linesCrossDim + crossDim;
+        linesMainDim = fmaxf(linesMainDim, mainDim);
+        linesCount = linesCount + 1;
+        startLine = endLine;
       }
-
-      linesCrossDim = linesCrossDim + crossDim;
-      linesMainDim = fmaxf(linesMainDim, mainDim);
-      linesCount = linesCount + 1;
-      startLine = endLine;
     }
-
     // <Loop E>
 
     //
@@ -1785,12 +1827,15 @@ var WebGLColors = {
 
 
 function setBackgroundColor(webGLContext, element, colorLocation, inheritedOpacity) {
-  if (element.props && element.props.style && element.props.style.backgroundColor) {
-    var backgroundColor = WebGLColors[element.props.style.backgroundColor];
+  if (element.style.backgroundColor !== '') {
+    var backgroundColor = WebGLColors[element.style.backgroundColor];
     var opacity = 1;
-    var opacityProp = element.props.style.opacity;
+    var opacityProp = element.style.opacity;
     if (!isNaN(opacityProp)) {
       opacity = opacityProp * inheritedOpacity;
+    }
+    else if (inheritedOpacity) {
+      opacity = inheritedOpacity;
     }
 
     webGLContext.uniform4f(colorLocation, backgroundColor[0], backgroundColor[1], backgroundColor[2], opacity);
@@ -1804,15 +1849,17 @@ function setBorder(element) {
 }
 
 function isViewVisible(element) {
-  return element.props && element.props.style && element.props.style.backgroundColor ||
-    element.props && element.props.style && element.props.style.border;
+  return element.style && element.style.backgroundColor ||
+    element.style && element.style.border;
 }
 
 function renderView(webGLContext, viewProgram, element, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity) {
   if (isViewVisible(element)) {
 
     webGLContext.useProgram(viewProgram);
-    webGLContext.blendFunc(webGLContext.SRC_ALPHA, webGLContext.ONE_MINUS_SRC_ALPHA);
+    //webGLContext.blendEquationSeparate(webGLContext.FUNC_ADD, webGLContext.FUNC_ADD);
+    //webGLContext.blend
+    webGLContext.blendFuncSeparate(webGLContext.SRC_ALPHA, webGLContext.ONE_MINUS_SRC_ALPHA, webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
 
     var buffer = webGLContext.createBuffer();
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, buffer);
@@ -1951,7 +1998,6 @@ function drawTextOnCanvas(newElement, top, left, width, height, inheritedOpacity
   textCanvasCtx.font = "12px arial";
   textCanvasCtx.textAlign = "left";
   textCanvasCtx.textBaseline = "middle";
-  console.log('inheritedColor:', inheritedColor);
   textCanvasCtx.fillStyle = inheritedColor || "black";
   textCanvasCtx.fillText(newElement.children[0], 2, 12);
   return textCanvasCtx.canvas;
@@ -2105,18 +2151,15 @@ function render(domElement,
   if (newElement === oldElement) {
     return;
   }
-  if (newElement && !oldElement) {
+ if (newElement && !oldElement) {
     if (!newElement.layout) {
       return;
     }
 
     if (newElement.type === 'view') {
 
-
       renderView(webGLContext, viewProgram, newElement, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
-
-      if (newElement.props && newElement.props.style) {
-        var style = newElement.props.style;
+        var style = newElement.style;
         if ('opacity' in style) {
           inheritedOpacity = (inheritedOpacity || 1) * style.opacity;
         }
@@ -2128,23 +2171,21 @@ function render(domElement,
         }
         if (style.color) {
           inheritedColor = style.color;
-          console.log('inherited color:', inheritedColor);
-          window.a = true;
         }
         if (style.filter) {
           // complex...
         }
-      }
+
 
 
       var children = newElement.children;
       if (children) {
         for (var i = 0, l = children.length; i < l; i++) {
           var child = children[i];
-          if (newElement.props && newElement.props.style && newElement.props.style.overflow === 'hidden') {
-            parentWidth = newElement.layout.width - newElement.layout.right;
+          if (newElement.style.overflow === 'hidden') {
+            parentWidth = newElement.layout.width;
             parentLeft = left + newElement.layout.left;
-            parentHeight = newElement.layout.height - newElement.layout.bottom;
+            parentHeight = newElement.layout.height;
             parentTop = top + newElement.layout.top;
           }
           render(domElement, child, null, newElement, i, viewPortDimensions, top + newElement.layout.top, left + newElement.layout.left, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
@@ -2159,10 +2200,9 @@ function render(domElement,
       renderText(newElement, top, left, parent.layout.width, parent.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
     }
     else if (newElement.type === 'image') {
-      //renderImage(newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
+      //FIXME: renderImage(newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
     }
   }
-
 }
 
 
@@ -2483,7 +2523,7 @@ module.exports = render;
 },{}],18:[function(require,module,exports){
 var BlueBox = require('./index');
 
-var doms = [require('./CategoriesView'), require('./testdom2'), require('./testdom3')];
+var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
 var i = 0;
 
 //console.profile('rendering');
@@ -2493,50 +2533,17 @@ function renderMe() {
   }
 
   BlueBox.renderFromTop(doms[0], document.getElementById('canvas'));
+
+  setTimeout(function(){
+    console.log('again!');
+    BlueBox.renderFromTop(doms[0], document.getElementById('canvas'));
+  },2000);
+
   i++;
 }
 
+
+
 renderMe();
 
-},{"./CategoriesView":1,"./index":5,"./testdom2":19,"./testdom3":20}],19:[function(require,module,exports){
-'use strict';
-
-var C = require('./components/C');
-
-var foo = [];
-var style = {height: 30, flex: 1, backgroundColor: Math.random() * 2 < 1 ? 'green' : 'green'};
-for (var i = 0; i < 800; i++) {
-  foo.push(C('span', {key: i, style: style}, ['hai' + i]));
-}
-//foo[100].props.style.backgroundColor = 'green';
-foo[5].children[0] = 'yay100';
-
-module.exports = C('div', null,
-  [
-    C('div', {
-      style: {
-        backgroundColor: 'orange',
-        flexDirection: 'row'
-      }
-    }),
-    C('div', {
-      style: {
-        backgroundColor: 'orange',
-        flexDirection: 'row'
-      }
-    }),
-    C('div', {
-        style: {
-          backgroundColor: 'blue',
-          flexDirection: 'column'
-        }
-      },
-      foo)
-  ]);
-},{"./components/C":3}],20:[function(require,module,exports){
-'use strict';
-
-var C = require('./components/C');
-
-module.exports = C('div', null, null);
-},{"./components/C":3}]},{},[18]);
+},{"./CategoriesView":1,"./index":5}]},{},[18]);
