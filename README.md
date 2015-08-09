@@ -25,6 +25,7 @@ TODO
 - images support [in progress]
 - overflow stuff [in progress]
 - proper drawing order (so opacity works correctly) [in progress]
+- support in component updates
 - add support for more CSS features:
   - backgroundColor [in progress]
   - border*

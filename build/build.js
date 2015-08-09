@@ -1,22 +1,42 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
+var BlueBox = require('./index');
 var C = require('./components/C');
 
-function View(props, style, children) {
-  return C('view', props, style, children || []);
-}
+var View = BlueBox.create('view', {
 
-function Text(text, style) {
-  return C('text', {}, style, [text]);
-}
+  render: function(props, style, children) {
+    return C('view', props, style, children || []);
+  }
 
-function Image(props, style) {
-  return C('image', props, style, []);
-}
+});
+
+var Text = BlueBox.create('text', {
+
+  render: function(props, style, children) {
+    return C('text', {}, null, [props]);
+  }
+
+});
+
+var Image = BlueBox.create('image', {
+
+  render: function(props, style, children) {
+    return C('image', props, style, []);
+  }
+
+});
+
 
 var sharedStyle = {backgroundColor: 'green', border: 'solid 1px black', opacity: 1, width: 100, height: 100, margin: 5};
 var sharedImageStyle = {width: 100, height: 100};
+
+
+function onClick() {
+
+}
+
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
       height: 100,
@@ -31,7 +51,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', margin: 20}, [
-        View({}, sharedStyle, [Text('a')]),
+        View({onClick:onClick}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -45,7 +65,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')])
       ]),
-      View({},{flexDirection: 'row', margin: 20}, [
+      View({}, {flexDirection: 'row', margin: 20}, [
         View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
         View({}, sharedStyle, [Text('foobar')]),
         View({}, sharedStyle, [Text('a')]),
@@ -63,7 +83,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ])
 ]);
-},{"./components/C":3}],2:[function(require,module,exports){
+},{"./components/C":3,"./index":5}],2:[function(require,module,exports){
 'use strict';
 
 var ObjectPools = {};
@@ -156,7 +176,15 @@ module.exports = {
 var ObjectPool = require('../ObjectPool');
 
 ObjectPool.prealloc('layout', {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0}, 1000);
-ObjectPool.prealloc('components', {layout: null, type: '', props: null, children: null}, 1000);
+ObjectPool.prealloc('components', {
+  layout: null,
+  style: null,
+  parent: null,
+  type: '',
+  props: null,
+  children: null,
+  lineIndex: 0
+}, 1000);
 var styleObj = {
   backgroundColor: '',
   color: '',
@@ -197,6 +225,12 @@ function Component(type, props, style, children) {
   component.type = type;
   component.props = props;
   component.children = children;
+  for (var i = 0, l = children.length; i < l; i++) {
+    var child = children[i];
+    if (child.type) {
+      child.parent = component;
+    }
+  }
   return component;
 }
 
@@ -408,7 +442,14 @@ var oldEl;
 
 var BlueBox = {
 
-  renderFromTop:function(definition, el) {
+  create: function(type, structure) {
+    // register component
+    return function(props, style, children) {
+      return structure.render(props, style, children);
+    };
+  },
+
+  renderFromTop: function(definition, el) {
     if (!definition) {
       definition = oldComponentTree;
     }
@@ -527,8 +568,6 @@ module.exports = CSSWrap;
  * @flow
  */
 'use strict';
-
-// "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" http://localhost:63342/bluebox/build/index.html --no-sandbox --js-flags="--trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces"
 
 var CSSAlign = require('./CSSAlign');
 var CSSConstants = require('./CSSConstants');
