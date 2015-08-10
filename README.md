@@ -1,10 +1,37 @@
 Bluebox
 ===
+Work in progress.
+
 Bluebox is a declarative components tree with inline styles experiment.
 
-For now most of the work is being done on components and inline styles.
+Example
+---
+```
+    var TodoItem = Bluebox.create('TodoItem', function(props, style, children) {
+        return View({onClick: onTodoItemClick}, {}, []);
+    });
 
-Warning: the current code base is messy, and is mostly to find out what works and what not.
+    function onTodoItemClick(todoItemInstance, e) {
+
+        Bluebox
+            .update(todoItemInstance)
+            .withProperties({
+
+            });
+    }
+
+    var TodoList = Bluebox.create('TodoList', function(props, style, children) {
+        return View({}, {}, [
+            TodoItem(),
+            TodoItem(),
+            TodoItem(),
+            TodoItem()
+        ]
+    });
+
+    Bluebox.renderFromTop(TodoList, document.getElementById('webgl-canvas'));
+```
+
 
 Features
 ---
@@ -12,12 +39,16 @@ Features
 - inline styles
 - renders to WebGL
 - FlexBox layout system
+- trying to avoid `this` mostly
+- virtual event system
 
 Components
 ---
 - Image
 - Text
 - View
+- Custom components
+
 
 TODO
 ---

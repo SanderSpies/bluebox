@@ -1,40 +1,18 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-var BlueBox = require('./index');
-var C = require('./components/C');
+var Bluebox = require('./../../lib/index');
+var C = require('./../../lib/components/C');
 
-var View = BlueBox.create('view', {
-
-  render: function(props, style, children) {
-    return C('view', props, style, children || []);
-  }
-
-});
-
-var Text = BlueBox.create('text', {
-
-  render: function(props, style, children) {
-    return C('text', {}, null, [props]);
-  }
-
-});
-
-var Image = BlueBox.create('image', {
-
-  render: function(props, style, children) {
-    return C('image', props, style, []);
-  }
-
-});
-
+var Image = Bluebox.Components.Image;
+var Text = Bluebox.Components.Text;
+var View = Bluebox.Components.View;
 
 var sharedStyle = {backgroundColor: 'green', border: 'solid 1px black', opacity: 1, width: 100, height: 100, margin: 5};
 var sharedImageStyle = {width: 100, height: 100};
 
-
-function onClick() {
-
+function onClick(component, e) {
+  Bluebox.update(component).withProperties({foo: 'foo'});
 }
 
 module.exports = View({}, {backgroundColor: 'red'}, [
@@ -51,7 +29,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', margin: 20}, [
-        View({onClick:onClick}, sharedStyle, [Text('a')]),
+        View({onClick: onClick}, sharedStyle, [Text('foobar123')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -72,7 +50,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, {width: 300, height: 100, transform: 'scale(2,3)', backgroundColor: 'red', color:'white', margin: 5, opacity: 0.8}, [Text('a')]),
         View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
         View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
-        View({},sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
         View({},{
           width: 210, height: 100, backgroundColor: 'white', margin: 5, opacity: 1
         }, [])
@@ -83,97 +61,36 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ])
 ]);
-},{"./components/C":3,"./index":5}],2:[function(require,module,exports){
+},{"./../../lib/components/C":3,"./../../lib/index":9}],2:[function(require,module,exports){
+var Bluebox = require('./../../lib/index');
+
+var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
+var i = 0;
+
+//console.profile('rendering');
+function renderMe() {
+  if (i === 2) {
+    i = 0;
+  }
+
+  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+
+  setTimeout(function(){
+    console.log('again!');
+    Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+  },2000);
+
+  i++;
+}
+
+
+
+renderMe();
+
+},{"./../../lib/index":9,"./CategoriesView":1}],3:[function(require,module,exports){
 'use strict';
 
-var ObjectPools = {};
-var index = {};
-
-function clone(def, keys) {
-  //console.log('cloning:', def, keys);
-  var clone = {};
-  for (var i = 0, l = keys.length; i < l; i++) {
-    var key = keys[i];
-    clone[key] = def[key];
-  }
-  return clone;
-}
-
-function clean(def) {
-  var keys = Object.keys(def);
-  for (var i = 0, l = keys.length; i < l; i++) {
-    var key = keys[i];
-    var value = def[key];
-    if (!isNaN(value)) {
-      def[key] = -1;
-    }
-    else if (typeof value === 'boolean') {
-      def[key] = false;
-    }
-    else if (typeof value === 'object') {
-      def[key] = null;
-    }
-  }
-  return def;
-}
-
-function growalloc(poolName, size) {
-  var pool = ObjectPools[poolName];
-  var lastItem = pool[pool.length - 1];
-  var keys = Object.keys(lastItem);
-  for (var i = pool.length, l = pool.length + size; i < l; i++) {
-    pool[i] = clone(lastItem, keys);
-  }
-  console.warn('grew pool ', poolName, ' by ', size, ' to ', pool.length);
-}
-
-function prealloc(poolName, def, size) {
-  var pool = ObjectPools[poolName] = [];
-  index[poolName] = 0;
-  var keys = Object.keys(def);
-  for (var i = 0, l = size; i < l; i++) {
-    pool[i] = clone(def, keys);
-  //  console.log('prealloc:', poolName, i, pool[i]);
-  }
-}
-
-function getInstance(poolName) {
-  var pool = ObjectPools[poolName];
-  var i = index[poolName];
-  if (i < pool.length - 1) {
-    index[poolName]++;
-    var component = pool[i];
-    if (component) {
-      pool[i] = null;
-      return component;
-    }
-  }
-  growalloc(poolName, 10);
-  return getInstance(poolName);
-}
-
-function release(poolName, obj) {
-  var pool = ObjectPools[poolName];
-  for (var i = 0, l = pool.length; i < l - 1; i++) {
-    var component = pool[i];
-    if (!component) {
-      pool[i] = clean(obj);
-    }
-  }
-}
-
-module.exports = {
-  prealloc: prealloc,
-  getInstance: getInstance,
-  release: release
-};
-
-
-
-},{}],3:[function(require,module,exports){
-'use strict';
-
-var ObjectPool = require('../ObjectPool');
+var ObjectPool = require('../utils/ObjectPool');
 
 ObjectPool.prealloc('layout', {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0}, 1000);
 ObjectPool.prealloc('components', {
@@ -236,7 +153,43 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../ObjectPool":2}],4:[function(require,module,exports){
+},{"../utils/ObjectPool":22}],4:[function(require,module,exports){
+'use strict';
+
+var Bluebox = require('./../../lib/index');
+var C = require('./C');
+
+var Image = Bluebox.create('view', function render(props, style, children) {
+  return C('image', props, style, []);
+});
+
+module.exports = Image;
+
+},{"./../../lib/index":9,"./C":3}],5:[function(require,module,exports){
+'use strict';
+
+var Bluebox = require('./../../lib/index');
+var C = require('./C');
+
+var Text = Bluebox.create('text', function(props, style, children) {
+    return C('text', {}, null, [props]);
+});
+
+module.exports = Text;
+
+},{"./../../lib/index":9,"./C":3}],6:[function(require,module,exports){
+'use strict';
+
+var Bluebox = require('./../../lib/index');
+var C = require('./C');
+
+var View = Bluebox.create('view', function render(props, style, children) {
+  return C('view', props, style, children || []);
+});
+
+module.exports = View;
+
+},{"./../../lib/index":9,"./C":3}],7:[function(require,module,exports){
 'use strict';
 
 var isArray = Array.isArray;
@@ -428,36 +381,86 @@ function diff(newNode, oldNode, parent, direction) {
 
 module.exports = diff;
 
-},{}],5:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 'use strict';
 
-var diff = require('./diff');
-var layoutNode = require('./layout/layoutNode');
-var ViewPortHelper = require('./renderers/DOM/ViewPortHelper');
-var renderer = require('./renderers/GL/renderer');
+function handleEvent(component, fn) {
+  // TODO: during dev mode component should be non-changeable
+  return function(e) {
+    fn.call(null, component, e);
+  }
+}
 
-var oldComponentTree = null;
-var viewPortDimensions = null;
-var oldEl;
+function handleEvents(component, props) {
+  if (props.onClick) {
+    props.onClick = handleEvent(component, props.onClick);
+    //addEventListener('click', component, props.onClick);
+    document.addEventListener('click', props.onClick);
+  }
+  if (props.onKeyPress) {
 
-var BlueBox = {
+  }
+  if (props.onKeyUp) {
+
+  }
+
+  // TODO: virtual event system (only one listener of each etc.)
+}
+
+module.exports = handleEvents;
+},{}],9:[function(require,module,exports){
+'use strict';
+
+var diff            = require('./diff/diff');
+var handleEvents    = require('./events/handleEvents');
+var layoutNode      = require('./layout/layoutNode');
+var renderer        = require('./renderers/GL/renderer');
+var ViewPortHelper  = require('./renderers/DOM/ViewPortHelper');
+
+var oldComponentTree    = null;
+var oldDOMElement       = null;
+var viewPortDimensions  = null;
+
+function withProperties(component) {
+  return {
+    withProperties: function(props) {
+      // TODO: update the tree
+      // TODO: re-render it all
+      console.log(component, props);
+    }
+  };
+}
+
+var Bluebox = {
 
   create: function(type, structure) {
-    // register component
+    // TODO: register component
     return function(props, style, children) {
-      return structure.render(props, style, children);
+      var component =  structure(props, style, children);
+      handleEvents(component, props);
+      return component;
     };
   },
 
-  renderFromTop: function(definition, el) {
-    if (!definition) {
-      definition = oldComponentTree;
+  Components: {
+    Image: null,
+    Text: null,
+    View: null
+  },
+
+  update: function(component) {
+    return withProperties(component);
+  },
+
+  renderFromTop: function(componentTree, domElement) {
+    if (!componentTree) {
+      componentTree = oldComponentTree;
     }
-    if (!el) {
-      el = oldEl;
+    if (!domElement) {
+      domElement = oldDOMElement;
     }
-    oldEl = el;
-    var diff2 = diff(definition, oldComponentTree, null, 'ltr');
+    oldDOMElement = domElement;
+    var diff2 = diff(componentTree, oldComponentTree, null, 'ltr');
 
     var hasChanged = false;
     if (viewPortDimensions !== ViewPortHelper.getDimensions()) {
@@ -471,22 +474,22 @@ var BlueBox = {
     if (diff2 !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
-    //console.log('A');
-    renderer(el, diff2, oldComponentTree, null, 0, viewPortDimensions, 0, 0);
-    //renderer(el, diff2, oldComponentTree, 0, viewPortDimensions, 1, 0);
+    renderer(domElement, diff2, oldComponentTree, null, 0, viewPortDimensions, 0, 0);
     oldComponentTree = diff2;
     return diff2;
   }
 
 };
 
-ViewPortHelper.onScroll(function(){
-  BlueBox.renderFromTop();
-});
+module.exports = Bluebox;
 
-module.exports = BlueBox;
+Bluebox.Components.View = require('./components/View');
+Bluebox.Components.Text = require('./components/Text');
+Bluebox.Components.Image = require('./components/Image');
 
-},{"./diff":4,"./layout/layoutNode":13,"./renderers/DOM/ViewPortHelper":14,"./renderers/GL/renderer":16}],6:[function(require,module,exports){
+
+
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./events/handleEvents":8,"./layout/layoutNode":17,"./renderers/DOM/ViewPortHelper":18,"./renderers/GL/renderer":20}],10:[function(require,module,exports){
 'use strict';
 
 var CSSAlign = {
@@ -499,7 +502,7 @@ var CSSAlign = {
 
 module.exports = CSSAlign;
 
-},{}],7:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 'use strict';
 
 var CSSConstants = {
@@ -508,7 +511,7 @@ var CSSConstants = {
 
 module.exports = CSSConstants;
 
-},{}],8:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var CSSDirection = {
@@ -520,7 +523,7 @@ var CSSDirection = {
 module.exports = CSSDirection;
 
 
-},{}],9:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 var CSSFlexDirection = {
@@ -531,7 +534,7 @@ var CSSFlexDirection = {
 };
 
 module.exports = CSSFlexDirection;
-},{}],10:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var CSSJustify = {
@@ -544,7 +547,7 @@ var CSSJustify = {
 
 module.exports = CSSJustify;
 
-},{}],11:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 'use strict';
 
 var CSSPositionType = {
@@ -554,7 +557,7 @@ var CSSPositionType = {
 
 module.exports = CSSPositionType;
 
-},{}],12:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var CSSWrap = {
@@ -563,7 +566,7 @@ var CSSWrap = {
 };
 
 module.exports = CSSWrap;
-},{}],13:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /**
  * @flow
  */
@@ -1805,7 +1808,7 @@ function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMax
 
 module.exports = layoutNode;
 
-},{"./CSSAlign":6,"./CSSConstants":7,"./CSSDirection":8,"./CSSFlexDirection":9,"./CSSJustify":10,"./CSSPositionType":11,"./CSSWrap":12}],14:[function(require,module,exports){
+},{"./CSSAlign":10,"./CSSConstants":11,"./CSSDirection":12,"./CSSFlexDirection":13,"./CSSJustify":14,"./CSSPositionType":15,"./CSSWrap":16}],18:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1853,7 +1856,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],15:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -1930,7 +1933,7 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
 
 module.exports = renderView;
 
-},{}],16:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -2248,7 +2251,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderView":15,"./temp-utils":17}],17:[function(require,module,exports){
+},{"./renderView":19,"./temp-utils":21}],21:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2559,30 +2562,91 @@ module.exports = render;
 }());
 
 
-},{}],18:[function(require,module,exports){
-var BlueBox = require('./index');
+},{}],22:[function(require,module,exports){
+'use strict';
 
-var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
-var i = 0;
+var ObjectPools = {};
+var index = {};
 
-//console.profile('rendering');
-function renderMe() {
-  if (i === 2) {
-    i = 0;
+function clone(def, keys) {
+  //console.log('cloning:', def, keys);
+  var clone = {};
+  for (var i = 0, l = keys.length; i < l; i++) {
+    var key = keys[i];
+    clone[key] = def[key];
   }
-
-  BlueBox.renderFromTop(doms[0], document.getElementById('canvas'));
-
-  setTimeout(function(){
-    console.log('again!');
-    BlueBox.renderFromTop(doms[0], document.getElementById('canvas'));
-  },2000);
-
-  i++;
+  return clone;
 }
 
+function clean(def) {
+  var keys = Object.keys(def);
+  for (var i = 0, l = keys.length; i < l; i++) {
+    var key = keys[i];
+    var value = def[key];
+    if (!isNaN(value)) {
+      def[key] = -1;
+    }
+    else if (typeof value === 'boolean') {
+      def[key] = false;
+    }
+    else if (typeof value === 'object') {
+      def[key] = null;
+    }
+  }
+  return def;
+}
+
+function growalloc(poolName, size) {
+  var pool = ObjectPools[poolName];
+  var lastItem = pool[pool.length - 1];
+  var keys = Object.keys(lastItem);
+  for (var i = pool.length, l = pool.length + size; i < l; i++) {
+    pool[i] = clone(lastItem, keys);
+  }
+  console.warn('grew pool ', poolName, ' by ', size, ' to ', pool.length);
+}
+
+function prealloc(poolName, def, size) {
+  var pool = ObjectPools[poolName] = [];
+  index[poolName] = 0;
+  var keys = Object.keys(def);
+  for (var i = 0, l = size; i < l; i++) {
+    pool[i] = clone(def, keys);
+  //  console.log('prealloc:', poolName, i, pool[i]);
+  }
+}
+
+function getInstance(poolName) {
+  var pool = ObjectPools[poolName];
+  var i = index[poolName];
+  if (i < pool.length - 1) {
+    index[poolName]++;
+    var component = pool[i];
+    if (component) {
+      pool[i] = null;
+      return component;
+    }
+  }
+  growalloc(poolName, 10);
+  return getInstance(poolName);
+}
+
+function release(poolName, obj) {
+  var pool = ObjectPools[poolName];
+  for (var i = 0, l = pool.length; i < l - 1; i++) {
+    var component = pool[i];
+    if (!component) {
+      pool[i] = clean(obj);
+    }
+  }
+}
+
+module.exports = {
+  prealloc: prealloc,
+  getInstance: getInstance,
+  release: release
+};
 
 
-renderMe();
 
-},{"./CategoriesView":1,"./index":5}]},{},[18]);
+},{}]},{},[2]);

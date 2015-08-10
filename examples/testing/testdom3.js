@@ -1,5 +1,5 @@
 'use strict';
 
-var C = require('./components/C');
+var C = require('./../../lib/components/C');
 
 module.exports = C('div', null, null);

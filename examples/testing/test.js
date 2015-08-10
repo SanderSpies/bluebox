@@ -1,4 +1,4 @@
-var BlueBox = require('./index');
+var Bluebox = require('./../../lib/index');
 
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
 var i = 0;
@@ -9,11 +9,11 @@ function renderMe() {
     i = 0;
   }
 
-  BlueBox.renderFromTop(doms[0], document.getElementById('canvas'));
+  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
 
   setTimeout(function(){
     console.log('again!');
-    BlueBox.renderFromTop(doms[0], document.getElementById('canvas'));
+    Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
   },2000);
 
   i++;
