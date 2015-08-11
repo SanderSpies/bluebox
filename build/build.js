@@ -1,96 +1,53 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-var Bluebox = require('./../../lib/index');
-var C = require('./../../lib/components/C');
-
-var Image = Bluebox.Components.Image;
+var Bluebox = require('../../lib');
+var View = Bluebox.Components.View;
 var Text = Bluebox.Components.Text;
+
+var TodoItem = Bluebox.create('TodoItem', function(props) {
+  return View(props, {height: 50, flexDirection: 'row', backgroundColor: props.selected? 'red' : 'black', color: 'white'}, [Text('A todo item...')]);
+});
+
+function onTodoItemClick(todoItemComponent, e) {
+  todoItemComponent.props.onClick(todoItemComponent, e);
+}
+
+module.exports = TodoItem;
+
+},{"../../lib":9}],2:[function(require,module,exports){
+'use strict';
+
+var Bluebox = require('../../lib');
 var View = Bluebox.Components.View;
 
-var sharedStyle = {backgroundColor: 'green', border: 'solid 1px black', opacity: 1, width: 100, height: 100, margin: 5};
-var sharedImageStyle = {width: 100, height: 100};
+var TodoItem = require('./TodoItem');
 
-function onClick(component, e) {
-  Bluebox.update(component).withProperties({foo: 'foo'});
+var view;
+var TodoList = Bluebox.create('TodoList', function(props) {
+  view = View({}, {}, [
+    TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
+    TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
+    TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
+  ]);
+  return view;
+});
+
+function onTodoItemClick(todoItemComponent, e) {
+  var selected = [false, false, false];
+  selected[todoItemComponent.props.key] = true;
+  Bluebox.update(view).withProperties(selected);
 }
 
-module.exports = View({}, {backgroundColor: 'red'}, [
-  View({},{
-      height: 100,
-      justifyContent: 'flex-start',
-      flexDirection: 'row',
-      backgroundColor: 'black',
-      opacity: .4
-  }, [
-    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
-    View({}, {width: 100, height: 100, backgroundColor: 'blue'}, [Text('b')])
-  ]),
-  View({}, {flexDirection: 'row'}, [
-    View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      View({}, {flexDirection: 'row', margin: 20}, [
-        View({onClick: onClick}, sharedStyle, [Text('foobar123')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')])
-      ]),
-      View({}, {flexDirection: 'row', margin: 20}, [
-        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Text('foobar')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, {width: 300, height: 100, transform: 'scale(2,3)', backgroundColor: 'red', color:'white', margin: 5, opacity: 0.8}, [Text('a')]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
-        View({},{
-          width: 210, height: 100, backgroundColor: 'white', margin: 5, opacity: 1
-        }, [])
-      ])
-    ]),
-    View({}, {backgroundColor:'blue', height: 300, width: 300}, [
+Bluebox.renderFromTop(TodoList({selected:[false, false, false]}), document.getElementById('canvas'));
 
-    ])
-  ])
-]);
-},{"./../../lib/components/C":3,"./../../lib/index":9}],2:[function(require,module,exports){
-var Bluebox = require('./../../lib/index');
+module.exports = TodoList;
 
-var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
-var i = 0;
-
-//console.profile('rendering');
-function renderMe() {
-  if (i === 2) {
-    i = 0;
-  }
-
-  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-
-  setTimeout(function(){
-    console.log('again!');
-    Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-  },2000);
-
-  i++;
-}
-
-
-
-renderMe();
-
-},{"./../../lib/index":9,"./CategoriesView":1}],3:[function(require,module,exports){
+},{"../../lib":9,"./TodoItem":1}],3:[function(require,module,exports){
 'use strict';
 
 var ObjectPool = require('../utils/ObjectPool');
+var handleEvents    = require('../events/handleEvents');
 
 ObjectPool.prealloc('layout', {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0}, 1000);
 ObjectPool.prealloc('components', {
@@ -142,6 +99,7 @@ function Component(type, props, style, children) {
   component.type = type;
   component.props = props;
   component.children = children;
+  handleEvents(component, props);
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.type) {
@@ -153,7 +111,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../utils/ObjectPool":22}],4:[function(require,module,exports){
+},{"../events/handleEvents":8,"../utils/ObjectPool":22}],4:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -384,10 +342,17 @@ module.exports = diff;
 },{}],8:[function(require,module,exports){
 'use strict';
 
+// TODO: make it all virtual
+
 function handleEvent(component, fn) {
   // TODO: during dev mode component should be non-changeable
   return function(e) {
-    fn.call(null, component, e);
+    if(e instanceof MouseEvent) {
+      // TODO: improve more...
+      if (e.clientY > component.layout.top && e.clientY < (component.layout.top + component.layout.height)) {
+        fn.call(null, component, e);
+      }
+    }
   }
 }
 
@@ -412,7 +377,6 @@ module.exports = handleEvents;
 'use strict';
 
 var diff            = require('./diff/diff');
-var handleEvents    = require('./events/handleEvents');
 var layoutNode      = require('./layout/layoutNode');
 var renderer        = require('./renderers/GL/renderer');
 var ViewPortHelper  = require('./renderers/DOM/ViewPortHelper');
@@ -437,7 +401,7 @@ var Bluebox = {
     // TODO: register component
     return function(props, style, children) {
       var component =  structure(props, style, children);
-      handleEvents(component, props);
+
       return component;
     };
   },
@@ -489,7 +453,7 @@ Bluebox.Components.Image = require('./components/Image');
 
 
 
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./events/handleEvents":8,"./layout/layoutNode":17,"./renderers/DOM/ViewPortHelper":18,"./renderers/GL/renderer":20}],10:[function(require,module,exports){
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":17,"./renderers/DOM/ViewPortHelper":18,"./renderers/GL/renderer":20}],10:[function(require,module,exports){
 'use strict';
 
 var CSSAlign = {
