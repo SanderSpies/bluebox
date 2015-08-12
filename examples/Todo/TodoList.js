@@ -5,22 +5,32 @@ var View = Bluebox.Components.View;
 
 var TodoItem = require('./TodoItem');
 
-var view;
-var TodoList = Bluebox.create('TodoList', function(props) {
-  view = View({}, {}, [
+var TodoList = Bluebox.create('TodoList', function render(props) {
+  return View(props, {padding:20, backgroundColor: 'red'}, [
     TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
     TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
     TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
   ]);
-  return view;
 });
 
 function onTodoItemClick(todoItemComponent, e) {
   var selected = [false, false, false];
   selected[todoItemComponent.props.key] = true;
-  Bluebox.update(view).withProperties(selected);
+  Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
 }
 
-Bluebox.renderFromTop(TodoList({selected:[false, false, false]}), document.getElementById('canvas'));
+function onTodoItemListKeyUp(todoItemList, e) {
+  var selected = [false, false, false];
+  var selectedIndex =  todoItemList.props.selected.indexOf(true);
+  if (e.which === 40) {
+    selected[selectedIndex < 2 ? selectedIndex + 1 : 2] = true;
+  }
+  else if (e.which === 38) {
+    selected[selectedIndex > 0 ? selectedIndex - 1 : 0] = true;
+  }
+  Bluebox.update(todoItemList).withProperties({selected: selected});
+}
+
+Bluebox.renderFromTop(TodoList({onKeyUp: onTodoItemListKeyUp, selected:[false, false, false]}), document.getElementById('canvas'));
 
 module.exports = TodoList;

@@ -5,9 +5,19 @@ var Bluebox = require('../../lib');
 var View = Bluebox.Components.View;
 var Text = Bluebox.Components.Text;
 
-var TodoItem = Bluebox.create('TodoItem', function(props) {
-  return View(props, {height: 50, flexDirection: 'row', backgroundColor: props.selected? 'red' : 'black', color: 'white'}, [Text('A todo item...')]);
+var TodoItem = Bluebox.create('TodoItem', function render(props) {
+  props.onMouseEnter = onMouseEnter;
+  props.onMouseLeave = onMouseLeave;
+  return View(props, {height: 50, flexDirection: 'row', backgroundColor: props.selected? 'green' : 'black', color: 'white'}, [Text('A todo item...')]);
 });
+
+function onMouseEnter(todoItemComponent, e) {
+  document.body.style.cursor = 'pointer';
+}
+
+function onMouseLeave(todoItemComponent, e) {
+  document.body.style.cursor = '';
+}
 
 function onTodoItemClick(todoItemComponent, e) {
   todoItemComponent.props.onClick(todoItemComponent, e);
@@ -23,23 +33,33 @@ var View = Bluebox.Components.View;
 
 var TodoItem = require('./TodoItem');
 
-var view;
-var TodoList = Bluebox.create('TodoList', function(props) {
-  view = View({}, {}, [
+var TodoList = Bluebox.create('TodoList', function render(props) {
+  return View(props, {padding:20, backgroundColor: 'red'}, [
     TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
     TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
     TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
   ]);
-  return view;
 });
 
 function onTodoItemClick(todoItemComponent, e) {
   var selected = [false, false, false];
   selected[todoItemComponent.props.key] = true;
-  Bluebox.update(view).withProperties(selected);
+  Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
 }
 
-Bluebox.renderFromTop(TodoList({selected:[false, false, false]}), document.getElementById('canvas'));
+function onTodoItemListKeyUp(todoItemList, e) {
+  var selected = [false, false, false];
+  var selectedIndex =  todoItemList.props.selected.indexOf(true);
+  if (e.which === 40) {
+    selected[selectedIndex < 2 ? selectedIndex + 1 : 2] = true;
+  }
+  else if (e.which === 38) {
+    selected[selectedIndex > 0 ? selectedIndex - 1 : 0] = true;
+  }
+  Bluebox.update(todoItemList).withProperties({selected: selected});
+}
+
+Bluebox.renderFromTop(TodoList({onKeyUp: onTodoItemListKeyUp, selected:[false, false, false]}), document.getElementById('canvas'));
 
 module.exports = TodoList;
 
@@ -47,10 +67,10 @@ module.exports = TodoList;
 'use strict';
 
 var ObjectPool = require('../utils/ObjectPool');
-var handleEvents    = require('../events/handleEvents');
 
 ObjectPool.prealloc('layout', {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0}, 1000);
 ObjectPool.prealloc('components', {
+  customType: null,
   layout: null,
   style: null,
   parent: null,
@@ -99,7 +119,7 @@ function Component(type, props, style, children) {
   component.type = type;
   component.props = props;
   component.children = children;
-  handleEvents(component, props);
+
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.type) {
@@ -111,13 +131,13 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../events/handleEvents":8,"../utils/ObjectPool":22}],4:[function(require,module,exports){
+},{"../utils/ObjectPool":22}],4:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
 var C = require('./C');
 
-var Image = Bluebox.create('view', function render(props, style, children) {
+var Image = Bluebox.create('image', function render(props, style, children) {
   return C('image', props, style, []);
 });
 
@@ -150,9 +170,11 @@ module.exports = View;
 },{"./../../lib/index":9,"./C":3}],7:[function(require,module,exports){
 'use strict';
 
+var handleEvents = require('../events/handleEvents');
+var handleEvent = handleEvents.handleEvent;
+
 var isArray = Array.isArray;
 var keys = Object.keys;
-
 var BIG_ARRAY = 100;
 
 function createKeyMap(value) {
@@ -170,11 +192,11 @@ function createKeyMap(value) {
   return keyMap;
 }
 
-function diffArray(newNode, oldNode, parent) {
+function diffArray(newNode, oldNode, parent, oldParent) {
   var isDifferent = false;
   for (var i = 0, l = newNode.length; i < l; i++) {
     var oldNodeChild = oldNode[i];
-    var difference = diff(newNode[i], oldNodeChild, parent);
+    var difference = diff(newNode[i], oldNodeChild, parent, oldParent);
     if (oldNodeChild !== difference) {
       newNode[i] = difference;
       isDifferent = true;
@@ -194,7 +216,7 @@ function diffFunction(newNode, oldNode) {
 function handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, keyMap, newNode) {
   var oldNodeChildren = oldNode.children;
 
-  var difference2 = diff(newValue[k], oldNodeChildren ? oldNodeChildren[k] : null, newNode);
+  var difference2 = diff(newValue[k], oldNodeChildren ? oldNodeChildren[k] : null, newNode, oldNode);
   if (oldValue && oldValue[k] !== difference2) {
     isDifferent = true;
   }
@@ -216,13 +238,29 @@ function handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, 
   };
 }
 
-function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent) {
+function handleEventProperty(newComponent, oldComponent, key, fn) {
+  if (key === 'onClick' || key === 'onMouseEnter' || key === 'onMouseLeave' || key === 'onKeyUp' || key === 'onKeyPress')  {
+    if (!oldComponent) {
+      handleEvents.addEventListener(newComponent, key, handleEvents.handleEvent(fn));
+    }
+    else if (oldComponent !== newComponent) {
+      handleEvents.updateComponents(oldComponent, newComponent);
+    }
+    else if (oldComponent && !newComponent){
+      console.warn('TODO: remove event listeners for this and also the children...');
+    }
+  }
+}
+
+function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent) {
   var key = newNodeKeys[i];
-  if (key !== 'layout') {
+  if (key !== 'layout' && key !== 'parent') {
     var newValue = newNode[key];
     var oldValue = oldNode[key];
+    if (newNode.props) {
+      addEventListeners(newNode, oldNode);
+    }
     if (key === 'children' && isArray(newValue)) {
-
       if (!oldValue) {
         isDifferent = true;
         return {
@@ -248,10 +286,6 @@ function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent) {
             break;
           }
         }
-        if (isEligible) {
-          console.log('boom optimize me!');
-        }
-
       }
 
       //  TODO: if (!isEligible) {
@@ -264,7 +298,7 @@ function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent) {
     }
 
     else {
-      var difference3 = diff(newValue, oldValue, newNode);
+      var difference3 = diff(newValue, oldValue, newNode, oldNode);
       newNode[key] = difference3;
       if (difference3 !== oldValue) {
         isDifferent = true;
@@ -277,7 +311,7 @@ function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent) {
   };
 }
 
-function diffObject(newNode, oldNode, parent) {
+function diffObject(newNode, oldNode, parent, oldParent) {
   var isDifferent = false;
   var newNodeKeys = keys(newNode);
   var newNodeKeysLength = newNodeKeys.length;
@@ -288,19 +322,46 @@ function diffObject(newNode, oldNode, parent) {
   }
   if (!isDifferent) {
     for (var i = 0; i < newNodeKeysLength; i++) {
-      isDifferent = isDifferent || handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent).isDifferent  ;
+      isDifferent = isDifferent || handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent).isDifferent  ;
     }
   }
 
   return isDifferent;
 }
 
-function diff(newNode, oldNode, parent, direction) {
+function addEventListeners(node, oldNode) {
+  if (node.props.onClick) {
+    handleEventProperty(node, oldNode, 'onClick', node.props.onClick);
+  }
+  if (node.props.onKeyUp) {
+    handleEventProperty(node, oldNode, 'onKeyUp', node.props.onKeyUp);
+  }
+  if (node.props.onMouseEnter) {
+    handleEventProperty(node, oldNode, 'onMouseEnter', node.props.onMouseEnter);
+  }
+  if (node.props.onMouseLeave) {
+    handleEventProperty(node, oldNode, 'onMouseLeave', node.props.onMouseLeave);
+  }
+  if (node.children) {
+    for (var i = 0, l = node.children.length; i < l; i++) {
+      var child = node.children[i];
+      if (typeof child !== 'string') {
+        addEventListeners(node.children[i], oldNode ? oldNode.children[i]: null);
+      }
+    }
+  }
+}
+
+function diff(newNode, oldNode, parent, oldParent, direction) {
   var isDifferent = false;
   if (newNode === oldNode) {
     return oldNode;
   }
   if (!oldNode || !newNode) {
+    if (newNode) {
+
+      addEventListeners(newNode);
+    }
     return newNode;
   }
   var newNodeType = typeof newNode;
@@ -313,13 +374,13 @@ function diff(newNode, oldNode, parent, direction) {
     return newNode;
   }
   if (isArray(newNode)) {
-    isDifferent = isDifferent || diffArray(newNode, oldNode, parent, direction);
+    isDifferent = isDifferent || diffArray(newNode, oldNode, parent, oldParent, direction);
   }
   else if (newNodeType === 'object') {
-    isDifferent = isDifferent ||  diffObject(newNode, oldNode, parent);
+    isDifferent = isDifferent ||  diffObject(newNode, oldNode, parent, oldParent);
   }
   else if (newNodeType === 'function') {
-    isDifferent = isDifferent || diffFunction(newNode, oldNode, parent);
+    isDifferent = isDifferent || diffFunction(newNode, oldNode, parent, oldParent);
   }
   else if (newNode !== oldNode) {
     isDifferent = true;
@@ -339,40 +400,123 @@ function diff(newNode, oldNode, parent, direction) {
 
 module.exports = diff;
 
-},{}],8:[function(require,module,exports){
+},{"../events/handleEvents":8}],8:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
+var attachedEventListeners = {
+  onClick: [],
+  onKeyUp: [],
+  onMouseEnter: [],
+  onMouseMove: [],
+  onMouseLeave: []
+};
 
-function handleEvent(component, fn) {
-  // TODO: during dev mode component should be non-changeable
+var map = {
+  onClick: 'click',
+  onKeyUp: 'keyup',
+  onMouseMove: 'mousemove'
+};
+
+// TODO: ensure components stay correct after diffing
+
+function addEventListener(component, event, fn) {
+  if ((event === 'onMouseEnter' || event === 'onMouseLeave') && !attachedEventListeners.onMouseMove.length) {
+    document.addEventListener('mousemove', handleMouseMove(component));
+  }
+  else if (!attachedEventListeners[event].length) {
+    document.addEventListener(map[event], handleEvents2(component, event));
+  }
+  attachedEventListeners[event].push({component: component, fn: fn});
+}
+
+var mouseLeaveComponent = null;
+function handleMouseMove(component, fn) {
   return function(e) {
-    if(e instanceof MouseEvent) {
-      // TODO: improve more...
-      if (e.clientY > component.layout.top && e.clientY < (component.layout.top + component.layout.height)) {
-        fn.call(null, component, e);
+    if (mouseLeaveComponent && mouseLeaveComponent.component.props.onMouseLeave && !(e.clientY >= mouseLeaveComponent.component.layout.top && e.clientY <= (mouseLeaveComponent.component.layout.top + mouseLeaveComponent.component.layout.height) && e.clientX >= mouseLeaveComponent.component.layout.left && e.clientX <= (mouseLeaveComponent.component.layout.left + mouseLeaveComponent.component.layout.width) )) {
+      mouseLeaveComponent.component.props.onMouseLeave(mouseLeaveComponent.component, e);
+      mouseLeaveComponent = null;
+    }
+
+    var mouseEnterComponents = attachedEventListeners.onMouseEnter;
+    for (var i = 0, l = mouseEnterComponents.length; i < l; i++) {
+      var mouseEnterComponent = mouseEnterComponents[i];
+      if (mouseLeaveComponent !== mouseEnterComponent) {
+        if (e.clientY >= mouseEnterComponent.component.layout.top && e.clientY <= (mouseEnterComponent.component.layout.top + mouseEnterComponent.component.layout.height)
+          && e.clientX >= mouseEnterComponent.component.layout.left && e.clientX <= (mouseEnterComponent.component.layout.left + mouseEnterComponent.component.layout.width)) {
+          mouseEnterComponent.fn(mouseEnterComponent.component, e);
+          mouseLeaveComponent = mouseEnterComponent;
+        }
       }
+    }
+
+  };
+}
+
+function handleEvents2(component, type) {
+  return function(e) {
+    var listeners = attachedEventListeners[type];
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      var listener = listeners[i];
+      listener.fn(listener.component, e);
     }
   }
 }
 
-function handleEvents(component, props) {
-  if (props.onClick) {
-    props.onClick = handleEvent(component, props.onClick);
-    //addEventListener('click', component, props.onClick);
-    document.addEventListener('click', props.onClick);
+function handleEvent(fn) {
+  // TODO: during dev mode component should be non-changeable
+  return function(component, e) {
+    if(e instanceof MouseEvent) {
+      // TODO: improve more...
+      if (e.clientY > component.layout.top && e.clientY < (component.layout.top + component.layout.height)) {
+        fn(component, e);
+      }
+    }
+    if (e instanceof KeyboardEvent) {
+      fn(component, e);
+    }
   }
-  if (props.onKeyPress) {
-
-  }
-  if (props.onKeyUp) {
-
-  }
-
-  // TODO: virtual event system (only one listener of each etc.)
 }
 
-module.exports = handleEvents;
+function handleEvents(component) {
+  var props = component.props;
+  if (props.onClick) {
+    addEventListener(component, 'click', handleEvent(component, props.onClick));
+  }
+  if (props.onMouseEnter) {
+    addEventListener(component, 'mouseenter', props.onMouseEnter);
+  }
+  if (props.onKeyPress) {
+    addEventListener(component, 'keypress', handleEvent(component, props.onKeyPress));
+  }
+  if (props.onKeyUp) {
+    addEventListener(component, 'keyup', handleEvent(component, props.onKeyUp));
+  }
+}
+
+function updateComponents(oldComponent, newComponent) {
+  var onClickListeners = attachedEventListeners.onClick;
+  for (var i = 0, l = onClickListeners.length; i < l; i++) {
+    var onClickListener = onClickListeners[i];
+    if (onClickListener.component === oldComponent) {
+      onClickListener.component = newComponent;
+    }
+  }
+  var onKeyUpListeners = attachedEventListeners.onKeyUp;
+  for (var i = 0, l = onKeyUpListeners.length; i < l; i++) {
+    var onKeyUpListener = onKeyUpListeners[i];
+    if (onKeyUpListener.component === oldComponent) {
+      onKeyUpListener.component = newComponent;
+    }
+  }
+}
+
+module.exports = {
+  handleEvents: handleEvents,
+  addEventListener: addEventListener,
+  handleEvent: handleEvent,
+  updateComponents: updateComponents
+};
 },{}],9:[function(require,module,exports){
 'use strict';
 
@@ -380,17 +524,61 @@ var diff            = require('./diff/diff');
 var layoutNode      = require('./layout/layoutNode');
 var renderer        = require('./renderers/GL/renderer');
 var ViewPortHelper  = require('./renderers/DOM/ViewPortHelper');
-
 var oldComponentTree    = null;
 var oldDOMElement       = null;
 var viewPortDimensions  = null;
+var registeredComponentTypes = {};
+var keys = Object.keys;
+
+function registerComponentType(type, structure) {
+  registeredComponentTypes[type] = structure;
+}
+
+function rerenderComponent(type, props, style, children) {
+  var componentType = registeredComponentTypes[type];
+  return componentType(props, style, children);
+}
+
+function updateTree(component, newComponent) {
+  // go up the tree and replace all the nodes
+  var parent = component.parent;
+  if (parent) {
+    var parentChildren = parent.children;
+    for (var i = 0, l = parentChildren.length; i < l; i++) {
+      var child = parentChildren[i];
+      if (child === component) {
+        parent.children[i] = newComponent;
+        break;
+      }
+    }
+  }
+  else {
+    return newComponent;
+  }
+
+}
+
+function mergeProperties(newProps, existingProps) {
+  var existingPropKeys = keys(existingProps);
+  for (var i = 0, l = existingPropKeys.length; i < l; i++) {
+    var existingPropKey = existingPropKeys[i];
+    if (!newProps[existingPropKey]) {
+      newProps[existingPropKey] = existingProps[existingPropKey];
+    }
+  }
+  return newProps;
+}
 
 function withProperties(component) {
   return {
     withProperties: function(props) {
-      // TODO: update the tree
-      // TODO: re-render it all
-      console.log(component, props);
+      props = mergeProperties(props, component.props);
+      //console.log(component.props, props);
+      var newComponent = rerenderComponent(component.customType, props, component.style, component.children);
+      var newComponentTree = updateTree(component, newComponent);
+      Bluebox.renderFromTop(newComponentTree);
+      newComponent.customType = component.customType;
+      return newComponent;
     }
   };
 }
@@ -398,10 +586,10 @@ function withProperties(component) {
 var Bluebox = {
 
   create: function(type, structure) {
-    // TODO: register component
+    registerComponentType(type, structure);
     return function(props, style, children) {
       var component =  structure(props, style, children);
-
+      component.customType = type;
       return component;
     };
   },
@@ -424,23 +612,24 @@ var Bluebox = {
       domElement = oldDOMElement;
     }
     oldDOMElement = domElement;
-    var diff2 = diff(componentTree, oldComponentTree, null, 'ltr');
+    var newComponentTree = diff(componentTree, oldComponentTree, null, 'ltr');
 
     var hasChanged = false;
     if (viewPortDimensions !== ViewPortHelper.getDimensions()) {
       viewPortDimensions = ViewPortHelper.getDimensions();
       hasChanged = true;
     }
-    if (diff2.layout.width === undefined) {
-      diff2 = layoutNode(diff2, oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
-      console.log(diff2);
+    if (newComponentTree.layout.width === undefined) {
+      newComponentTree = layoutNode(newComponentTree, oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
     }
-    if (diff2 !== oldComponentTree || hasChanged) {
+    if (newComponentTree !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
-    renderer(domElement, diff2, oldComponentTree, null, 0, viewPortDimensions, 0, 0);
-    oldComponentTree = diff2;
-    return diff2;
+
+    renderer(domElement, newComponentTree, oldComponentTree, null, 0, viewPortDimensions, 0, 0);
+
+    oldComponentTree = newComponentTree;
+    return newComponentTree;
   }
 
 };
@@ -567,6 +756,9 @@ function fmaxf(a, b) {
 
 function setLayoutPosition(node, position, value) {
   if (position === POSITION_INDEX.TOP) {
+    if (value === 200) {
+      debugger;
+    }
     node.layout.top = value;
   }
   else if (position === POSITION_INDEX.LEFT) {
@@ -1081,9 +1273,6 @@ function cloneObject(node) {
 
 
 function getChildCount(node) {
-  if (typeof node.children[0] === 'string') {
-    debugger;
-  }
   return node.children.length;
 }
 
@@ -1092,14 +1281,6 @@ function getChildAt(node, i) {
 }
 
 function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMaxHeight, parentDirection) {
-
-  if (node === oldNode && !parentWidthChanged) {
-    return oldNode;
-  }
-  else {
-    if (node === oldNode) {
-      node = cloneObject(node); // make sure it's a new object for === checks
-    }
 
     node.layout.width = undefined;
     node.layout.height = undefined;
@@ -1766,7 +1947,7 @@ function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMax
       }
     }
 
-  }
+
   return node;
 }
 
@@ -2109,10 +2290,7 @@ function render(domElement,
       webGLContext = domElement.getContext('experimental-webgl');//  {preserveDrawingBuffer: true });
     }
 
-    domElement.width = viewPortDimensions.width;
-    domElement.height = viewPortDimensions.height;
-    webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
-    webGLContext.enable(webGLContext.BLEND);
+
     vertexShader = createShaderFromScriptElement(webGLContext, "2d-vertex-shader");
     vertexShader2 = createShaderFromScriptElement(webGLContext, "2d-vertex-shader2");
     fragmentShader = createShaderFromScriptElement(webGLContext, "2d-fragment-shader");
@@ -2142,7 +2320,14 @@ function render(domElement,
 
     webGLContext.uniform2f(iResolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
   }
-
+  //webGLContext.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set clear color to black, fully opaque
+  //webGLContext.enable(webGLContext.DEPTH_TEST);                               // Enable depth testing
+  //webGLContext.depthFunc(webGLContext.LEQUAL);                                // Near things obscure far things
+  //  webGLContext.clear(webGLContext.COLOR_BUFFER_BIT|webGLContext.DEPTH_BUFFER_BIT);
+  domElement.width = viewPortDimensions.width;
+  domElement.height = viewPortDimensions.height;
+  webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
+  webGLContext.enable(webGLContext.BLEND);
   if (!parentWidth) {
     parentWidth = viewPortDimensions.width;
     parentLeft = 0;
@@ -2157,7 +2342,7 @@ function render(domElement,
   if (newElement === oldElement) {
     return;
   }
- if (newElement && !oldElement) {
+ // fixme: if (newElement && !oldElement) {
     if (!newElement.layout) {
       return;
     }
@@ -2208,7 +2393,7 @@ function render(domElement,
     else if (newElement.type === 'image') {
       //FIXME: renderImage(newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
     }
-  }
+  //}
 }
 
 
@@ -2430,6 +2615,7 @@ module.exports = render;
    */
   var loadProgram = function(gl, shaders, opt_attribs, opt_locations) {
     var program = gl.createProgram();
+
     for (var ii = 0; ii < shaders.length; ++ii) {
       gl.attachShader(program, shaders[ii]);
     }
@@ -2533,7 +2719,6 @@ var ObjectPools = {};
 var index = {};
 
 function clone(def, keys) {
-  //console.log('cloning:', def, keys);
   var clone = {};
   for (var i = 0, l = keys.length; i < l; i++) {
     var key = keys[i];
