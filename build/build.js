@@ -788,7 +788,6 @@ function getLayoutDimension(node, dimension) {
   else if (dimension === DIMENSION_INDEX.HEIGHT) {
     return node.layout.height;
   }
-  throw new Error('should not happen');
 }
 
 function setLayoutDirection(node, direction) {
@@ -820,7 +819,6 @@ function getStyleDimension(node, dimension) {
   else if (dimension === DIMENSION_INDEX.HEIGHT) {
     return node.style.height;
   }
-  throw new Error('should not happen');
 }
 
 var leading = {
