@@ -1,5 +1,7 @@
 Bluebox
 ===
+[![Build Status](https://travis-ci.org/sanderspies/bluebox.svg?branch=master)](https://travis-ci.org/sanderspies/bluebox)
+
 Work in progress.
 
 Bluebox is a declarative components tree with inline styles experiment.
@@ -77,7 +79,6 @@ TODO
 
 - add animation support
 - add JSX support
-- proper Object Pooling
 - proper texture pooling I guess ?!
 - SVG icons?
 

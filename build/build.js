@@ -25,7 +25,7 @@ function onTodoItemClick(todoItemComponent, e) {
 
 module.exports = TodoItem;
 
-},{"../../lib":9}],2:[function(require,module,exports){
+},{"../../lib":10}],2:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('../../lib');
@@ -44,6 +44,7 @@ var TodoList = Bluebox.create('TodoList', function render(props) {
 function onTodoItemClick(todoItemComponent, e) {
   var selected = [false, false, false];
   selected[todoItemComponent.props.key] = true;
+
   Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
 }
 
@@ -63,44 +64,9 @@ Bluebox.renderFromTop(TodoList({onKeyUp: onTodoItemListKeyUp, selected:[false, f
 
 module.exports = TodoList;
 
-},{"../../lib":9,"./TodoItem":1}],3:[function(require,module,exports){
+},{"../../lib":10,"./TodoItem":1}],3:[function(require,module,exports){
 'use strict';
 
-var ObjectPool = require('../utils/ObjectPool');
-
-ObjectPool.prealloc('layout', {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0}, 1000);
-ObjectPool.prealloc('components', {
-  customType: null,
-  layout: null,
-  style: null,
-  parent: null,
-  type: '',
-  props: null,
-  children: null,
-  lineIndex: 0
-}, 1000);
-var styleObj = {
-  backgroundColor: '',
-  color: '',
-  margin: '',
-  marginLeft: -1,
-  marginRight: -1,
-  marginTop: -1,
-  marginBottom: -1,
-  minHeight: -1,
-  minWidth: -1,
-  padding: '',
-  paddingLeft: -1,
-  paddingRight: -1,
-  paddingTop: -1,
-  paddingBottom: -1,
-  opacity: 1,
-  overflow: 'inherit',
-  width: -1,
-  height: -1
-};
-ObjectPool.prealloc('style', styleObj, 1000);
-var styleKeys = Object.keys(styleObj);
 function merge(parent, child) {
   var childKeys = Object.keys(child);
   for (var i = 0, l = childKeys.length; i < l; i++) {
@@ -111,14 +77,35 @@ function merge(parent, child) {
 }
 
 function Component(type, props, style, children) {
-  var layout = ObjectPool.getInstance('layout');
-  var component = ObjectPool.getInstance('components');
-  var baseStyle = ObjectPool.getInstance('style');
-  component.layout = layout;
-  component.style = style ? merge(baseStyle, style) : baseStyle;
-  component.type = type;
-  component.props = props;
-  component.children = children;
+  var component = {
+    customType: null,
+    layout: {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0},
+    style: merge({
+      backgroundColor: '',
+      color: '',
+      margin: '',
+      marginLeft: -1,
+      marginRight: -1,
+      marginTop: -1,
+      marginBottom: -1,
+      minHeight: -1,
+      minWidth: -1,
+      padding: '',
+      paddingLeft: -1,
+      paddingRight: -1,
+      paddingTop: -1,
+      paddingBottom: -1,
+      opacity: 1,
+      overflow: 'inherit',
+      width: -1,
+      height: -1
+    }, style || {}),
+    parent: null,
+    type: type,
+    props: props,
+    children: children,
+    lineIndex: 0
+  };
 
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
@@ -131,7 +118,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../utils/ObjectPool":22}],4:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -143,7 +130,7 @@ var Image = Bluebox.create('image', function render(props, style, children) {
 
 module.exports = Image;
 
-},{"./../../lib/index":9,"./C":3}],5:[function(require,module,exports){
+},{"./../../lib/index":10,"./C":3}],5:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -155,7 +142,7 @@ var Text = Bluebox.create('text', function(props, style, children) {
 
 module.exports = Text;
 
-},{"./../../lib/index":9,"./C":3}],6:[function(require,module,exports){
+},{"./../../lib/index":10,"./C":3}],6:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -167,15 +154,17 @@ var View = Bluebox.create('view', function render(props, style, children) {
 
 module.exports = View;
 
-},{"./../../lib/index":9,"./C":3}],7:[function(require,module,exports){
+},{"./../../lib/index":10,"./C":3}],7:[function(require,module,exports){
+/**
+ * @flow
+ */
 'use strict';
 
-var handleEvents = require('../events/handleEvents');
-var handleEvent = handleEvents.handleEvent;
+var EventHandling = require('../events/EventHandling');
 
-var isArray = Array.isArray;
-var keys = Object.keys;
-var BIG_ARRAY = 100;
+var isArray          = Array.isArray;
+var keys             = Object.keys;
+var BIG_ARRAY        = 100;
 
 function createKeyMap(value) {
   var keyMap = {};
@@ -238,19 +227,6 @@ function handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, 
   };
 }
 
-function handleEventProperty(newComponent, oldComponent, key, fn) {
-  if (key === 'onClick' || key === 'onMouseEnter' || key === 'onMouseLeave' || key === 'onKeyUp' || key === 'onKeyPress')  {
-    if (!oldComponent) {
-      handleEvents.addEventListener(newComponent, key, handleEvents.handleEvent(fn));
-    }
-    else if (oldComponent !== newComponent) {
-      handleEvents.updateComponents(oldComponent, newComponent);
-    }
-    else if (oldComponent && !newComponent){
-      console.warn('TODO: remove event listeners for this and also the children...');
-    }
-  }
-}
 
 function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent) {
   var key = newNodeKeys[i];
@@ -258,7 +234,7 @@ function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, o
     var newValue = newNode[key];
     var oldValue = oldNode[key];
     if (newNode.props) {
-      addEventListeners(newNode, oldNode);
+      EventHandling.setEventListeners(newNode, oldNode);
     }
     if (key === 'children' && isArray(newValue)) {
       if (!oldValue) {
@@ -269,46 +245,23 @@ function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, o
       }
       var keyMap = createKeyMap(oldValue);
       var skipKeys = false;
-      var length = newValue.length;
-      var isEligible = false;
-      if (length > BIG_ARRAY) {
-        var flexDirection = newNode.props.style.flexDirection;
-        isEligible = true;
-        if (!flexDirection) {
-          flexDirection = 'column';
-        }
-        var style = newValue[0].props.style;
-
-        for (var i = 1, l = length; i < l; i++) {
-          var otherStyle = newValue[i].props.style;
-          if (otherStyle !== style) {
-            isEligible = false;
-            break;
-          }
-        }
-      }
-
-      //  TODO: if (!isEligible) {
       for (var k = 0, j = newValue.length; k < j; k++) {
         var __ret = handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, keyMap, newNode);
-        isDifferent = isDifferent || __ret.isDifferent;
+        isDifferent = isDifferent || __ret;
         skipKeys = __ret.skipKeys;
       }
-
     }
-
     else {
       var difference3 = diff(newValue, oldValue, newNode, oldNode);
       newNode[key] = difference3;
       if (difference3 !== oldValue) {
         isDifferent = true;
       }
+
     }
   }
 
-  return {
-    isDifferent: isDifferent
-  };
+  return isDifferent;
 }
 
 function diffObject(newNode, oldNode, parent, oldParent) {
@@ -322,45 +275,23 @@ function diffObject(newNode, oldNode, parent, oldParent) {
   }
   if (!isDifferent) {
     for (var i = 0; i < newNodeKeysLength; i++) {
-      isDifferent = isDifferent || handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent).isDifferent  ;
+      isDifferent = isDifferent || handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent);
     }
   }
 
   return isDifferent;
 }
 
-function addEventListeners(node, oldNode) {
-  if (node.props.onClick) {
-    handleEventProperty(node, oldNode, 'onClick', node.props.onClick);
-  }
-  if (node.props.onKeyUp) {
-    handleEventProperty(node, oldNode, 'onKeyUp', node.props.onKeyUp);
-  }
-  if (node.props.onMouseEnter) {
-    handleEventProperty(node, oldNode, 'onMouseEnter', node.props.onMouseEnter);
-  }
-  if (node.props.onMouseLeave) {
-    handleEventProperty(node, oldNode, 'onMouseLeave', node.props.onMouseLeave);
-  }
-  if (node.children) {
-    for (var i = 0, l = node.children.length; i < l; i++) {
-      var child = node.children[i];
-      if (typeof child !== 'string') {
-        addEventListeners(node.children[i], oldNode ? oldNode.children[i]: null);
-      }
-    }
-  }
-}
 
-function diff(newNode, oldNode, parent, oldParent, direction) {
+
+function diff(newNode, oldNode, parent, oldParent) {
   var isDifferent = false;
   if (newNode === oldNode) {
     return oldNode;
   }
   if (!oldNode || !newNode) {
-    if (newNode) {
-
-      addEventListeners(newNode);
+    if (newNode && newNode.props) {
+      EventHandling.setEventListeners(newNode, oldNode);
     }
     return newNode;
   }
@@ -374,7 +305,7 @@ function diff(newNode, oldNode, parent, oldParent, direction) {
     return newNode;
   }
   if (isArray(newNode)) {
-    isDifferent = isDifferent || diffArray(newNode, oldNode, parent, oldParent, direction);
+    isDifferent = isDifferent || diffArray(newNode, oldNode, parent, oldParent);
   }
   else if (newNodeType === 'object') {
     isDifferent = isDifferent ||  diffObject(newNode, oldNode, parent, oldParent);
@@ -397,10 +328,56 @@ function diff(newNode, oldNode, parent, oldParent, direction) {
   return returnNode;
 }
 
-
 module.exports = diff;
 
-},{"../events/handleEvents":8}],8:[function(require,module,exports){
+},{"../events/EventHandling":8}],8:[function(require,module,exports){
+'use strict';
+
+var handleEvents = require('../events/handleEvents');
+var handleEvent = handleEvents.handleEvent;
+
+function handleEventProperty(newComponent, oldComponent, key, fn) {
+  if (key === 'onClick' || key === 'onMouseEnter' || key === 'onMouseLeave' || key === 'onKeyUp' || key === 'onKeyPress')  {
+    if (!oldComponent) {
+      handleEvents.addEventListener(newComponent, key, handleEvents.handleEvent(fn));
+    }
+    else if (oldComponent !== newComponent) {
+      handleEvents.updateComponents(oldComponent, newComponent);
+    }
+    else if (oldComponent && !newComponent){
+      console.warn('TODO: remove event listeners for this and also the children...');
+    }
+  }
+}
+
+function setEventListeners(node, oldNode) {
+  if (node.props.onClick) {
+    handleEventProperty(node, oldNode, 'onClick', node.props.onClick);
+  }
+  if (node.props.onKeyUp) {
+    handleEventProperty(node, oldNode, 'onKeyUp', node.props.onKeyUp);
+  }
+  if (node.props.onMouseEnter) {
+    handleEventProperty(node, oldNode, 'onMouseEnter', node.props.onMouseEnter);
+  }
+  if (node.props.onMouseLeave) {
+    handleEventProperty(node, oldNode, 'onMouseLeave', node.props.onMouseLeave);
+  }
+  if (node.children) {
+    for (var i = 0, l = node.children.length; i < l; i++) {
+      var child = node.children[i];
+      if (typeof child !== 'string') {
+        setEventListeners(node.children[i], oldNode ? oldNode.children[i]: null);
+      }
+    }
+  }
+}
+
+module.exports = {
+  setEventListeners: setEventListeners
+};
+
+},{"../events/handleEvents":9}],9:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
@@ -517,7 +494,7 @@ module.exports = {
   handleEvent: handleEvent,
   updateComponents: updateComponents
 };
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 'use strict';
 
 var diff            = require('./diff/diff');
@@ -642,7 +619,7 @@ Bluebox.Components.Image = require('./components/Image');
 
 
 
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":17,"./renderers/DOM/ViewPortHelper":18,"./renderers/GL/renderer":20}],10:[function(require,module,exports){
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":18,"./renderers/DOM/ViewPortHelper":19,"./renderers/GL/renderer":21}],11:[function(require,module,exports){
 'use strict';
 
 var CSSAlign = {
@@ -655,7 +632,7 @@ var CSSAlign = {
 
 module.exports = CSSAlign;
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var CSSConstants = {
@@ -664,7 +641,7 @@ var CSSConstants = {
 
 module.exports = CSSConstants;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 var CSSDirection = {
@@ -676,7 +653,7 @@ var CSSDirection = {
 module.exports = CSSDirection;
 
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var CSSFlexDirection = {
@@ -687,7 +664,7 @@ var CSSFlexDirection = {
 };
 
 module.exports = CSSFlexDirection;
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 'use strict';
 
 var CSSJustify = {
@@ -700,7 +677,7 @@ var CSSJustify = {
 
 module.exports = CSSJustify;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var CSSPositionType = {
@@ -710,7 +687,7 @@ var CSSPositionType = {
 
 module.exports = CSSPositionType;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var CSSWrap = {
@@ -719,7 +696,7 @@ var CSSWrap = {
 };
 
 module.exports = CSSWrap;
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /**
  * @flow
  */
@@ -756,9 +733,6 @@ function fmaxf(a, b) {
 
 function setLayoutPosition(node, position, value) {
   if (position === POSITION_INDEX.TOP) {
-    if (value === 200) {
-      debugger;
-    }
     node.layout.top = value;
   }
   else if (position === POSITION_INDEX.LEFT) {
@@ -1953,7 +1927,7 @@ function layoutNode(node, oldNode, parentWidthChanged, parentMaxWidth, parentMax
 
 module.exports = layoutNode;
 
-},{"./CSSAlign":10,"./CSSConstants":11,"./CSSDirection":12,"./CSSFlexDirection":13,"./CSSJustify":14,"./CSSPositionType":15,"./CSSWrap":16}],18:[function(require,module,exports){
+},{"./CSSAlign":11,"./CSSConstants":12,"./CSSDirection":13,"./CSSFlexDirection":14,"./CSSJustify":15,"./CSSPositionType":16,"./CSSWrap":17}],19:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -2001,7 +1975,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -2078,7 +2052,7 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
 
 module.exports = renderView;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -2099,10 +2073,10 @@ function loadImage(src) {
     // TODO: pool this
     var image = new Image();
 
-    image.onload = function() {
+    image.onload = function image$onload() {
       resolve(image);
     };
-    image.onerror = function() {
+    image.onerror = function image$onerror() {
       reject(image);
     };
     image.src = src;
@@ -2400,7 +2374,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderView":19,"./temp-utils":21}],21:[function(require,module,exports){
+},{"./renderView":20,"./temp-utils":22}],22:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2710,92 +2684,6 @@ module.exports = render;
   })();
 
 }());
-
-
-},{}],22:[function(require,module,exports){
-'use strict';
-
-var ObjectPools = {};
-var index = {};
-
-function clone(def, keys) {
-  var clone = {};
-  for (var i = 0, l = keys.length; i < l; i++) {
-    var key = keys[i];
-    clone[key] = def[key];
-  }
-  return clone;
-}
-
-function clean(def) {
-  var keys = Object.keys(def);
-  for (var i = 0, l = keys.length; i < l; i++) {
-    var key = keys[i];
-    var value = def[key];
-    if (!isNaN(value)) {
-      def[key] = -1;
-    }
-    else if (typeof value === 'boolean') {
-      def[key] = false;
-    }
-    else if (typeof value === 'object') {
-      def[key] = null;
-    }
-  }
-  return def;
-}
-
-function growalloc(poolName, size) {
-  var pool = ObjectPools[poolName];
-  var lastItem = pool[pool.length - 1];
-  var keys = Object.keys(lastItem);
-  for (var i = pool.length, l = pool.length + size; i < l; i++) {
-    pool[i] = clone(lastItem, keys);
-  }
-  console.warn('grew pool ', poolName, ' by ', size, ' to ', pool.length);
-}
-
-function prealloc(poolName, def, size) {
-  var pool = ObjectPools[poolName] = [];
-  index[poolName] = 0;
-  var keys = Object.keys(def);
-  for (var i = 0, l = size; i < l; i++) {
-    pool[i] = clone(def, keys);
-  //  console.log('prealloc:', poolName, i, pool[i]);
-  }
-}
-
-function getInstance(poolName) {
-  var pool = ObjectPools[poolName];
-  var i = index[poolName];
-  if (i < pool.length - 1) {
-    index[poolName]++;
-    var component = pool[i];
-    if (component) {
-      pool[i] = null;
-      return component;
-    }
-  }
-  growalloc(poolName, 10);
-  return getInstance(poolName);
-}
-
-function release(poolName, obj) {
-  var pool = ObjectPools[poolName];
-  for (var i = 0, l = pool.length; i < l - 1; i++) {
-    var component = pool[i];
-    if (!component) {
-      pool[i] = clean(obj);
-    }
-  }
-}
-
-module.exports = {
-  prealloc: prealloc,
-  getInstance: getInstance,
-  release: release
-};
-
 
 
 },{}]},{},[2]);
