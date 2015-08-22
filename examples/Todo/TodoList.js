@@ -16,7 +16,6 @@ var TodoList = Bluebox.create('TodoList', function render(props) {
 function onTodoItemClick(todoItemComponent, e) {
   var selected = [false, false, false];
   selected[todoItemComponent.props.key] = true;
-
   Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
 }
 

@@ -82,3 +82,5 @@ TODO
 - proper texture pooling I guess ?!
 - SVG icons?
 
+Acknowledgements
+---
