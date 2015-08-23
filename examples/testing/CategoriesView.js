@@ -17,7 +17,7 @@ function onClick(component, e) {
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
       height: 100,
-      justifyContent: 'flex-start',
+      justifyContent: 'center',
       flexDirection: 'row',
       backgroundColor: 'black',
       opacity: .4

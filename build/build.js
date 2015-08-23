@@ -18,7 +18,7 @@ function onClick(component, e) {
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
       height: 100,
-      justifyContent: 'flex-start',
+      justifyContent: 'center',
       flexDirection: 'row',
       backgroundColor: 'black',
       opacity: .4
@@ -656,6 +656,50 @@ Bluebox.Components.Image = require('./components/Image');
 var COLUMN = 'column';
 var ROW = 'row';
 
+function justifyContentFn(node, parentWidth, parentHeight, newFlexDirection) {
+  var justifyContent = node.style.justifyContent;
+  var remainingSpaceMainAxis;
+  if (newFlexDirection === ROW) {
+    remainingSpaceMainAxis = parentWidth - node.children[node.children.length - 1].layout.right;
+  }
+  else {
+    remainingSpaceMainAxis = parentHeight - node.children[node.children.length - 1].layout.bottom;
+  }
+
+
+  if (justifyContent === 'center') {
+    remainingSpaceMainAxis = remainingSpaceMainAxis / 2;
+    justifyContent = 'flex-end';
+  }
+
+  if (justifyContent === 'flex-end') {
+    // rearrange items
+    if (newFlexDirection === ROW) {
+      for (var i = 0, l = node.children.length; i < l; i++) {
+        var child = node.children[i];
+        var childLayout = child.layout;
+        childLayout.left += remainingSpaceMainAxis;
+        childLayout.right += remainingSpaceMainAxis;
+      }
+    }
+    else {
+      for (var i = 0, l = node.children.length; i < l; i++) {
+        var child = node.children[i];
+        var childLayout = child.layout;
+        childLayout.top += remainingSpaceMainAxis;
+        childLayout.bottom += remainingSpaceMainAxis;
+      }
+    }
+  }
+
+  if (justifyContent === 'space-around') {
+
+  }
+  if (justifyContent === 'space-between') {
+    
+  }
+}
+
 function layoutNode(node, previousSibling, mainAxis) {
   var nodeLayout = node.layout;
 
@@ -663,25 +707,20 @@ function layoutNode(node, previousSibling, mainAxis) {
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
   var parentHeight = parentLayout ? parentLayout.height : 0;
-  var justifyContent = parent ? parent.style.justifyContent : 'flex-start';
   var alignItems = parent ? parent.style.alignItems : 'flex-start';
 
   var crossAxis = mainAxis === COLUMN ? ROW : COLUMN;
 
   if (previousSibling) {
     if (mainAxis === COLUMN) {
-      if (justifyContent === 'flex-start') {
-        nodeLayout.top = previousSibling.layout.bottom + previousSibling.style.marginBottom;
-      }
+      nodeLayout.top = previousSibling.layout.bottom + previousSibling.style.marginBottom;
+
       if (alignItems === 'flex-start' && parentLayout) {
         nodeLayout.left = parentLayout.left;
       }
-
     }
     else if (mainAxis === ROW) {
-      if (justifyContent === 'flex-start') {
-        nodeLayout.left = previousSibling.layout.right  + previousSibling.style.marginRight;
-      }
+      nodeLayout.left = previousSibling.layout.right  + previousSibling.style.marginRight;
 
       if (alignItems === 'flex-start' && parentLayout) {
         nodeLayout.top = parentLayout.top;
@@ -728,33 +767,7 @@ function layoutNode(node, previousSibling, mainAxis) {
     }
 
 
-    var remainingSpaceMainAxis;
-    if (mainAxis === ROW) {
-      remainingSpaceMainAxis = parentWidth - node.children[node.children.length - 1].layout.right;
-    }
-    else {
-      remainingSpaceMainAxis = parentHeight - node.children[node.children.length - 1].layout.bottom;
-    }
-
-    if (justifyContent === 'flex-end') {
-      // rearrange items
-      if (mainAxis === ROW) {
-        for (var i = 0, l = node.children.length; i < l; i++) {
-          var child = node.children[i];
-          var childLayout = child.layout;
-          childLayout.left -= remainingSpaceMainAxis;
-          childLayout.right -= remainingSpaceMainAxis;
-        }
-      }
-      else {
-        for (var i = 0, l = node.children.length; i < l; i++) {
-          var child = node.children[i];
-          var childLayout = child.layout;
-          childLayout.top -= remainingSpaceMainAxis;
-          childLayout.bottom -= remainingSpaceMainAxis;
-        }
-      }
-    }
+    justifyContentFn(node, parentWidth, parentHeight, newFlexDirection);
 
 
     //if (mainAxis === ROW) {
