@@ -6,7 +6,7 @@ var View = Bluebox.Components.View;
 var TodoItem = require('./TodoItem');
 
 var TodoList = Bluebox.create('TodoList', function render(props) {
-  return View(props, {padding:20, backgroundColor: 'red'}, [
+  return View(props, {paddingTop:20, paddingBottom: 20, paddingLeft: 20, paddingRight: 20, backgroundColor: 'red'}, [
     TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
     TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
     TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
