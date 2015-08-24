@@ -21,12 +21,11 @@ module.exports = function(grunt) {
         options: {
           frameworks: ['jasmine', 'browserify'],
           files: [
-            'lib/layout/layoutNode-tests/layout-consts-test.js',
-            'lib/layout/layoutNode-tests/layout-random-test.js'
+            'lib/layout/layoutNode-tests/flexDirection-test.js',
+            'lib/layout/layoutNode-tests/justifyContent-test.js'
           ],
           preprocessors: {
-            'lib/layout/*.js': ['browserify'],
-            'lib/layout/layoutNode-tests/*.js': ['browserify']
+            'lib/layout/layoutNode-tests/*-test.js': ['browserify']
           },
           browsers: ['Chrome'],
           singleRun: true

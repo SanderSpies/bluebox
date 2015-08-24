@@ -1,93 +1,74 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-var Bluebox = require('./../../lib/index');
-var C = require('./../../lib/components/C');
-
-var Image = Bluebox.Components.Image;
+var Bluebox = require('../../lib');
+var View = Bluebox.Components.View;
 var Text = Bluebox.Components.Text;
+var Image = Bluebox.Components.Image;
+
+var imageStyle = {
+  width: 50,
+  height: 50
+};
+
+var TodoItem = Bluebox.create('TodoItem', function render(props) {
+  props.onMouseEnter = onMouseEnter;
+  props.onMouseLeave = onMouseLeave;
+  return View(props, {height: 50, flexDirection: 'row', backgroundColor: props.selected? 'green' : 'black', color: 'white'}, [
+    Image({src: 'images/foo.png'}, imageStyle),
+    Text('A todo item...')
+  ]);
+});
+
+function onMouseEnter(todoItemComponent, e) {
+  document.body.style.cursor = 'pointer';
+}
+
+function onMouseLeave(todoItemComponent, e) {
+  document.body.style.cursor = '';
+}
+
+module.exports = TodoItem;
+
+},{"../../lib":10}],2:[function(require,module,exports){
+'use strict';
+
+var Bluebox = require('../../lib');
 var View = Bluebox.Components.View;
 
-var sharedStyle = {backgroundColor: 'green', border: 'solid 1px black', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
-var sharedImageStyle = {width: 100, height: 100};
+var TodoItem = require('./TodoItem');
 
-function onClick(component, e) {
-  Bluebox.update(component).withProperties({foo: 'foo'});
+var TodoList = Bluebox.create('TodoList', function render(props) {
+  return View(props, {paddingTop:20, paddingBottom: 20, paddingLeft: 20, paddingRight: 20, backgroundColor: 'red'}, [
+    TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
+    TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
+    TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
+  ]);
+});
+
+function onTodoItemClick(todoItemComponent, e) {
+  var selected = [false, false, false];
+  selected[todoItemComponent.props.key] = true;
+  Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
 }
 
-module.exports = View({}, {backgroundColor: 'red'}, [
-  View({},{
-      height: 100,
-      justifyContent: 'center',
-      flexDirection: 'row',
-      backgroundColor: 'black',
-      opacity: .4
-  }, [
-    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
-    View({}, {width: 100, height: 100, backgroundColor: 'blue'}, [Text('b')])
-  ]),
-  View({}, {flexDirection: 'row'}, [
-    View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({onClick: onClick}, sharedStyle, [Text('foobar123')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, sharedStyle, [Text('a')])
-      ]),
-      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Text('foobar')]),
-        View({}, sharedStyle, [Text('a')]),
-        View({}, {width: 300, height: 100, transform: 'scale(2,3)', backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
-        View({},{
-          width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
-        }, [])
-      ])
-    ]),
-    View({}, {backgroundColor:'blue', height: 300, width: 300}, [
-
-    ])
-  ])
-]);
-},{"./../../lib/components/C":3,"./../../lib/index":10}],2:[function(require,module,exports){
-var Bluebox = require('./../../lib/index');
-
-var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
-var i = 0;
-
-//console.profile('rendering');
-function renderMe() {
-  if (i === 2) {
-    i = 0;
+function onTodoItemListKeyUp(todoItemList, e) {
+  var selected = [false, false, false];
+  var selectedIndex =  todoItemList.props.selected.indexOf(true);
+  if (e.which === 40) {
+    selected[selectedIndex < 2 ? selectedIndex + 1 : 2] = true;
   }
-
-  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-
-  setTimeout(function(){
-    console.log('again!');
-    Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-  },2000);
-
-  i++;
+  else if (e.which === 38) {
+    selected[selectedIndex > 0 ? selectedIndex - 1 : 0] = true;
+  }
+  Bluebox.update(todoItemList).withProperties({selected: selected});
 }
 
+Bluebox.renderFromTop(TodoList({onKeyUp: onTodoItemListKeyUp, selected:[false, false, false]}), document.getElementById('canvas'));
 
+module.exports = TodoList;
 
-renderMe();
-
-},{"./../../lib/index":10,"./CategoriesView":1}],3:[function(require,module,exports){
+},{"../../lib":10,"./TodoItem":1}],3:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -102,7 +83,7 @@ function merge(parent, child) {
 function Component(type, props, style, children) {
   var component = {
     customType: null,
-    layout: {width: undefined, height: undefined, top: 0, left: 0, right: 0, bottom: 0},
+    layout: {left: 0, width: undefined, right: 0, top: 0, height: undefined, bottom: 0},
     style: merge({
       backgroundColor: '',
       color: '',
@@ -526,7 +507,7 @@ module.exports = {
 'use strict';
 
 var diff            = require('./diff/diff');
-var layoutNode      = require('./layout/layoutNode-new');
+var layoutNode      = require('./layout/layoutNode');
 var render        = require('./renderers/GL/render');
 var ViewPortHelper  = require('./renderers/DOM/ViewPortHelper');
 var oldComponentTree    = null;
@@ -534,6 +515,7 @@ var oldDOMElement       = null;
 var viewPortDimensions  = null;
 var registeredComponentTypes = {};
 var keys = Object.keys;
+var toDOMString = require('./layout/layoutNode-tests/utils/toDOMString');
 
 global.__DEV__ = process.env.NODE_ENV !== 'production';
 
@@ -630,7 +612,7 @@ var Bluebox = {
     if (newComponentTree.layout.width === undefined) {
       newComponentTree = layoutNode(newComponentTree, null, 'column', oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
     }
-    console.log(newComponentTree)
+
     if (newComponentTree !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
@@ -650,11 +632,50 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode-new":11,"./renderers/DOM/ViewPortHelper":12,"./renderers/GL/render":13,"_process":16}],11:[function(require,module,exports){
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":12,"./layout/layoutNode-tests/utils/toDOMString":11,"./renderers/DOM/ViewPortHelper":13,"./renderers/GL/render":14,"_process":17}],11:[function(require,module,exports){
+'use strict';
+
+function toDOMString(node, indent) {
+  indent = indent || 0;
+  var result = '';
+  var children = node.children;
+  var spaceBefore = '  ';
+  result += spaceBefore + '<div ';
+  result += '  style="';
+  var styleKeys = Object.keys(node.style);
+  for(var i = 0, l = styleKeys.length; i < l; i++) {
+    var styleKey = styleKeys[i];
+    var value = node.style[styleKey];
+
+    styleKey = styleKey.replace(/([A-Z])/g, '-$1').toLowerCase();
+    if (value) {
+      if (!isNaN(value) && styleKey !== 'opacity') {
+        value = value + 'px';
+      }
+      result += styleKey + ':' + value + ';';
+    }
+  }
+  result +='">';
+  indent++;
+  for (var i = 0, l = children.length; i < l; i++) {
+    var child = children[i];
+    if (typeof child !== 'string') {
+      result += toDOMString(child, indent);
+    }
+  }
+  result += spaceBefore + '</div>\n';
+  return result;
+}
+
+
+module.exports = toDOMString;
+
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var COLUMN = 'column';
 var ROW = 'row';
+var FLEX_START = 'flex-start';
 
 function justifyContentFn(node, parentWidth, parentHeight, newFlexDirection) {
   var justifyContent = node.style.justifyContent;
@@ -696,7 +717,7 @@ function justifyContentFn(node, parentWidth, parentHeight, newFlexDirection) {
 
   }
   if (justifyContent === 'space-between') {
-    
+
   }
 }
 
@@ -706,8 +727,8 @@ function layoutNode(node, previousSibling, mainAxis) {
   var parent = node.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
-  var parentHeight = parentLayout ? parentLayout.height : 0;
-  var alignItems = parent ? parent.style.alignItems : 'flex-start';
+  var parentHeight = parentLayout ? parentLayout.height : document.body.clientHeight;
+  var alignItems = parent ? parent.style.alignItems : FLEX_START;
 
   var crossAxis = mainAxis === COLUMN ? ROW : COLUMN;
 
@@ -715,14 +736,14 @@ function layoutNode(node, previousSibling, mainAxis) {
     if (mainAxis === COLUMN) {
       nodeLayout.top = previousSibling.layout.bottom + previousSibling.style.marginBottom;
 
-      if (alignItems === 'flex-start' && parentLayout) {
+      if (alignItems === FLEX_START && parentLayout) {
         nodeLayout.left = parentLayout.left;
       }
     }
     else if (mainAxis === ROW) {
       nodeLayout.left = previousSibling.layout.right  + previousSibling.style.marginRight;
 
-      if (alignItems === 'flex-start' && parentLayout) {
+      if (alignItems === FLEX_START && parentLayout) {
         nodeLayout.top = parentLayout.top;
       }
     }
@@ -769,19 +790,18 @@ function layoutNode(node, previousSibling, mainAxis) {
 
     justifyContentFn(node, parentWidth, parentHeight, newFlexDirection);
 
-
-    //if (mainAxis === ROW) {
+    if (mainAxis === ROW) {
       if (node.layout.right < node.children[node.children.length - 1].layout.right && node.layout.width === 0) {
         node.layout.right = node.children[node.children.length - 1].layout.right;
         node.layout.width = node.children[node.children.length - 1].layout.right - node.layout.left;
       }
-   // }
-    //else {
-      if (node.layout.bottom < maxSize && node.layout.height === 0) {
+    }
+    else {
+      if (node.layout.height === 0) {
         node.layout.bottom = maxSize + node.style.paddingBottom;
         node.layout.height = maxSize + node.style.paddingBottom;
       }
-   // }
+    }
 
   }
 
@@ -790,7 +810,7 @@ function layoutNode(node, previousSibling, mainAxis) {
 
 module.exports = layoutNode;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -838,7 +858,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -1211,7 +1231,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderView":14,"./temp-utils":15}],14:[function(require,module,exports){
+},{"./renderView":15,"./temp-utils":16}],15:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -1288,7 +1308,7 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
 
 module.exports = renderView;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -1600,7 +1620,7 @@ module.exports = renderView;
 }());
 
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

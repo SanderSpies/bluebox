@@ -7,7 +7,7 @@ var Image = Bluebox.Components.Image;
 var Text = Bluebox.Components.Text;
 var View = Bluebox.Components.View;
 
-var sharedStyle = {backgroundColor: 'green', border: 'solid 1px black', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
+var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
 var sharedImageStyle = {width: 100, height: 100};
 
 function onClick(component, e) {
@@ -46,7 +46,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
         View({}, sharedStyle, [Text('foobar')]),
         View({}, sharedStyle, [Text('a')]),
-        View({}, {width: 300, height: 100, transform: 'scale(2,3)', backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
+        View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
         View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
         View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
         View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
