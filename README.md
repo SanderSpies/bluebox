@@ -1,7 +1,5 @@
 Bluebox
 ===
-[![Build Status](https://travis-ci.org/sanderspies/bluebox.svg?branch=master)](https://travis-ci.org/sanderspies/bluebox)
-
 Work in progress.
 
 Bluebox is a declarative components tree with inline styles experiment.
