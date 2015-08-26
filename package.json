@@ -22,6 +22,6 @@
   },
   "scripts": {
     "test": "./node_modules/.bin/grunt test",
-    "build": "./node_modules/.bin/browserify -t flow-typestrip examples/Todo/TodoList.js -o build/build.js"
+    "build": "./node_modules/.bin/browserify -t flow-typestrip examples/testing/test.js -o build/build.js"
   }
 }

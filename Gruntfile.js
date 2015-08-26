@@ -17,12 +17,12 @@ module.exports = function(grunt) {
     },
     karma: {
       main: {
-
         options: {
           frameworks: ['jasmine', 'browserify'],
           files: [
             'lib/layout/layoutNode-tests/flexDirection-test.js',
-            'lib/layout/layoutNode-tests/justifyContent-test.js'
+            'lib/layout/layoutNode-tests/justifyContent-test.js',
+            'lib/layout/layoutNode-tests/alignItems-test.js'
           ],
           preprocessors: {
             'lib/layout/layoutNode-tests/*-test.js': ['browserify']
@@ -38,5 +38,4 @@ module.exports = function(grunt) {
   });
 
   grunt.registerTask('test', ['jest', 'karma', 'rendering']);
-
 };

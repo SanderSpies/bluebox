@@ -79,6 +79,3 @@ TODO
 - add JSX support
 - proper texture pooling I guess ?!
 - SVG icons?
-
-Acknowledgements
----

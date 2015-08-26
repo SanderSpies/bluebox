@@ -1,74 +1,94 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-var Bluebox = require('../../lib');
-var View = Bluebox.Components.View;
-var Text = Bluebox.Components.Text;
+var Bluebox = require('./../../lib/index');
+var C = require('./../../lib/components/C');
+
 var Image = Bluebox.Components.Image;
-
-var imageStyle = {
-  width: 50,
-  height: 50
-};
-
-var TodoItem = Bluebox.create('TodoItem', function render(props) {
-  props.onMouseEnter = onMouseEnter;
-  props.onMouseLeave = onMouseLeave;
-  return View(props, {height: 50, flexDirection: 'row', backgroundColor: props.selected? 'green' : 'black', color: 'white'}, [
-    Image({src: 'images/foo.png'}, imageStyle),
-    Text('A todo item...')
-  ]);
-});
-
-function onMouseEnter(todoItemComponent, e) {
-  document.body.style.cursor = 'pointer';
-}
-
-function onMouseLeave(todoItemComponent, e) {
-  document.body.style.cursor = '';
-}
-
-module.exports = TodoItem;
-
-},{"../../lib":10}],2:[function(require,module,exports){
-'use strict';
-
-var Bluebox = require('../../lib');
+var Text = Bluebox.Components.Text;
 var View = Bluebox.Components.View;
 
-var TodoItem = require('./TodoItem');
+var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
+var sharedImageStyle = {width: 100, height: 100};
 
-var TodoList = Bluebox.create('TodoList', function render(props) {
-  return View(props, {paddingTop:20, paddingBottom: 20, paddingLeft: 20, paddingRight: 20, backgroundColor: 'red'}, [
-    TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
-    TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
-    TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
-  ]);
-});
-
-function onTodoItemClick(todoItemComponent, e) {
-  var selected = [false, false, false];
-  selected[todoItemComponent.props.key] = true;
-  Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
+function onClick(component, e) {
+  Bluebox.update(component).withProperties({foo: 'foo'});
 }
 
-function onTodoItemListKeyUp(todoItemList, e) {
-  var selected = [false, false, false];
-  var selectedIndex =  todoItemList.props.selected.indexOf(true);
-  if (e.which === 40) {
-    selected[selectedIndex < 2 ? selectedIndex + 1 : 2] = true;
+module.exports = View({}, {backgroundColor: 'red'}, [
+  View({},{
+      height: 100,
+      justifyContent: 'space-around',
+      flexDirection: 'row',
+      backgroundColor: 'black',
+      opacity: .4
+  }, [
+    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
+    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
+    View({}, {width: 100, height: 100, backgroundColor: 'blue'}, [Text('b')])
+  ]),
+  View({}, {flexDirection: 'row'}, [
+    View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
+      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+        View({onClick: onClick}, sharedStyle, [Text('foobar123')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')])
+      ]),
+      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Text('foobar')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
+        View({},{
+          width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
+        }, [])
+      ])
+    ]),
+    View({}, {backgroundColor:'blue', height: 300, width: 300}, [
+
+    ])
+  ])
+]);
+},{"./../../lib/components/C":3,"./../../lib/index":10}],2:[function(require,module,exports){
+var Bluebox = require('./../../lib/index');
+
+var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
+var i = 0;
+
+//console.profile('rendering');
+function renderMe() {
+  if (i === 2) {
+    i = 0;
   }
-  else if (e.which === 38) {
-    selected[selectedIndex > 0 ? selectedIndex - 1 : 0] = true;
-  }
-  Bluebox.update(todoItemList).withProperties({selected: selected});
+
+  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+
+  setTimeout(function(){
+    console.log('again!');
+    Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+  },2000);
+
+  i++;
 }
 
-Bluebox.renderFromTop(TodoList({onKeyUp: onTodoItemListKeyUp, selected:[false, false, false]}), document.getElementById('canvas'));
 
-module.exports = TodoList;
 
-},{"../../lib":10,"./TodoItem":1}],3:[function(require,module,exports){
+renderMe();
+
+},{"./../../lib/index":10,"./CategoriesView":1}],3:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -174,9 +194,8 @@ var isArray          = Array.isArray;
 var keys             = Object.keys;
 var BIG_ARRAY        = 100;
 
-function createKeyMap(value) {
+function createKeyMap(children) {
   var keyMap = {};
-  var children = value.children;
   if (children) {
     for (var i = 0, l = children.length; i < l; i++) {
       var child = children[i];
@@ -212,19 +231,16 @@ function diffFunction(newNode, oldNode) {
 }
 function handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, keyMap, newNode) {
   var oldNodeChildren = oldNode.children;
-
-  var difference2 = diff(newValue[k], oldNodeChildren ? oldNodeChildren[k] : null, newNode, oldNode);
-  if (oldValue && oldValue[k] !== difference2) {
-    isDifferent = true;
+  var key = newValue[k].props.key;
+  var difference2;
+  if (key && keyMap[key]) {
+    difference2 = diff(newValue[k], keyMap[key]);
   }
-  if (!skipKeys && isDifferent && difference2 && difference2.props) {
-    var key2 = difference2.props.key;
-    if (key2 && oldNodeChildren) {
-      difference2 = keyMap[key2] || difference2;
-    }
-    else {
-      skipKeys = true;
-    }
+  else {
+    difference2 = diff(newValue[k], oldNodeChildren ? oldNodeChildren[k] : null, newNode, oldNode);
+  }
+  if (!oldValue || oldValue[k] !== difference2) {
+    isDifferent = true;
   }
 
   newNode.children[k] = difference2;
@@ -255,7 +271,7 @@ function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, o
       var skipKeys = false;
       for (var k = 0, j = newValue.length; k < j; k++) {
         var __ret = handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, keyMap, newNode);
-        isDifferent = isDifferent || __ret;
+        isDifferent = __ret || isDifferent;
         skipKeys = __ret.skipKeys;
       }
     }
@@ -281,10 +297,8 @@ function diffObject(newNode, oldNode, parent, oldParent) {
   if (newNodeKeysLength !== oldNodeKeysLength) {
     isDifferent = true;
   }
-  if (!isDifferent) {
-    for (var i = 0; i < newNodeKeysLength; i++) {
-      isDifferent = isDifferent || handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent);
-    }
+  for (var i = 0; i < newNodeKeysLength; i++) {
+    isDifferent = handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent) || isDifferent;
   }
 
   return isDifferent;
@@ -313,13 +327,13 @@ function diff(newNode, oldNode, parent, oldParent) {
     return newNode;
   }
   if (isArray(newNode)) {
-    isDifferent = isDifferent || diffArray(newNode, oldNode, parent, oldParent);
+    isDifferent = diffArray(newNode, oldNode, parent, oldParent) || isDifferent;
   }
   else if (newNodeType === 'object') {
-    isDifferent = isDifferent ||  diffObject(newNode, oldNode, parent, oldParent);
+    isDifferent = diffObject(newNode, oldNode, parent, oldParent) || isDifferent;
   }
   else if (newNodeType === 'function') {
-    isDifferent = isDifferent || diffFunction(newNode, oldNode, parent, oldParent);
+    isDifferent = diffFunction(newNode, oldNode, parent, oldParent) || isDifferent;
   }
   else if (newNode !== oldNode) {
     isDifferent = true;
@@ -677,48 +691,53 @@ var COLUMN = 'column';
 var ROW = 'row';
 var FLEX_START = 'flex-start';
 
-function justifyContentFn(node, parentWidth, parentHeight, newFlexDirection) {
-  var justifyContent = node.style.justifyContent;
-  var remainingSpaceMainAxis;
-  if (newFlexDirection === ROW) {
-    remainingSpaceMainAxis = parentWidth - node.children[node.children.length - 1].layout.right;
-  }
-  else {
-    remainingSpaceMainAxis = parentHeight - node.children[node.children.length - 1].layout.bottom;
-  }
-
-
-  if (justifyContent === 'center') {
-    remainingSpaceMainAxis = remainingSpaceMainAxis / 2;
-    justifyContent = 'flex-end';
-  }
-
-  if (justifyContent === 'flex-end') {
-    // rearrange items
-    if (newFlexDirection === ROW) {
-      for (var i = 0, l = node.children.length; i < l; i++) {
-        var child = node.children[i];
-        var childLayout = child.layout;
+function justifyContentFn(child, previousChild, newFlexDirection, justifyContent, remainingSpaceMainAxis) {
+    var childLayout = child.layout;
+    if (justifyContent === 'flex-end') {
+      // rearrange items
+      if (newFlexDirection === ROW) {
         childLayout.left += remainingSpaceMainAxis;
         childLayout.right += remainingSpaceMainAxis;
       }
-    }
-    else {
-      for (var i = 0, l = node.children.length; i < l; i++) {
-        var child = node.children[i];
-        var childLayout = child.layout;
+      else {
         childLayout.top += remainingSpaceMainAxis;
         childLayout.bottom += remainingSpaceMainAxis;
       }
     }
-  }
+    else if (justifyContent === 'space-around') {
+      if (newFlexDirection === ROW) {
+        if (!previousChild) {
+          childLayout.left = remainingSpaceMainAxis;
+        }
+        else {
+          childLayout.left = previousChild.layout.right + remainingSpaceMainAxis * 2;
+        }
+        childLayout.right = childLayout.left + childLayout.width;
+      }
+      else {
+        if (!previousChild) {
+          childLayout.top = remainingSpaceMainAxis;
+        }
+        else {
+          childLayout.top = previousChild.layout.bottom + remainingSpaceMainAxis * 2;
+        }
+        childLayout.bottom = childLayout.top + childLayout.height;
+      }
+    }
+    else if (justifyContent === 'space-between' && previousChild) {
+      if (newFlexDirection === ROW) {
+        childLayout.left = previousChild.layout.right + remainingSpaceMainAxis;
+        childLayout.right = childLayout.left + childLayout.width;
+      }
+      else {
+        childLayout.top = previousChild.layout.bottom + remainingSpaceMainAxis;
+        childLayout.bottom = childLayout.top + childLayout.height;
+      }
+    }
+}
 
-  if (justifyContent === 'space-around') {
+function alignItemsFn() {
 
-  }
-  if (justifyContent === 'space-between') {
-
-  }
 }
 
 function layoutNode(node, previousSibling, mainAxis) {
@@ -759,7 +778,6 @@ function layoutNode(node, previousSibling, mainAxis) {
   nodeLayout.width = node.style.width || parentWidth;
   nodeLayout.height = node.style.height;
 
-
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
 
@@ -767,9 +785,9 @@ function layoutNode(node, previousSibling, mainAxis) {
   if (node.children.length && typeof node.children[0] !== 'string') {
     var newFlexDirection = node.style && node.style.flexDirection? node.style.flexDirection : COLUMN;
     var maxSize = 0;
+    var previousChild;
     for (var i = 0, l = node.children.length; i < l; i++) {
       var child = node.children[i];
-      var previousChild = i > 0 ? node.children[i - 1] : null;
       layoutNode(child, previousChild, newFlexDirection);
 
       if (mainAxis === COLUMN) {
@@ -784,16 +802,27 @@ function layoutNode(node, previousSibling, mainAxis) {
         if (child.layout.bottom > maxSize) {
           maxSize = child.layout.bottom + child.style.marginBottom;
         }
+      } else {
+        if (i === 0) {
+          child.layout.left += node.style.paddingLeft;
+          child.layout.right += node.style.paddingRight;
+        }
+        child.layout.top += node.style.paddingTop;
+        child.layout.height -= node.style.paddingTop + node.style.paddingBottom;
+        child.layout.bottom -= node.style.paddingBottom;
+
+        if (child.layout.bottom > maxSize) {
+          maxSize = child.layout.right + child.style.marginRight;
+        }
       }
+      previousChild = child;
     }
 
-
-    justifyContentFn(node, parentWidth, parentHeight, newFlexDirection);
-
+    // resize containers if necessary
     if (mainAxis === ROW) {
-      if (node.layout.right < node.children[node.children.length - 1].layout.right && node.layout.width === 0) {
-        node.layout.right = node.children[node.children.length - 1].layout.right;
-        node.layout.width = node.children[node.children.length - 1].layout.right - node.layout.left;
+      if (node.layout.width === 0) {
+        node.layout.right = maxSize + node.style.paddingRight;
+        node.layout.width = maxSize + node.style.paddingRight;
       }
     }
     else {
@@ -803,6 +832,40 @@ function layoutNode(node, previousSibling, mainAxis) {
       }
     }
 
+    parentHeight = node.layout.height;
+    parentWidth = node.layout.width;
+
+    // correct the children position (justifyContent, alignItems, more?!)
+    var justifyContent = node.style.justifyContent;
+    var remainingSpaceMainAxis;
+    var remainingSpaceCrossAxis;
+    if (newFlexDirection === ROW) {
+      remainingSpaceMainAxis = parentWidth - node.children[node.children.length - 1].layout.right;
+      remainingSpaceCrossAxis  = parentHeight - node.children[node.children.length - 1].layout.bottom;
+    }
+    else {
+      remainingSpaceMainAxis = parentHeight - node.children[node.children.length - 1].layout.bottom;
+      remainingSpaceCrossAxis = parentWidth - node.children[node.children.length - 1].layout.right;
+    }
+
+    if (justifyContent === 'center') {
+      remainingSpaceMainAxis = remainingSpaceMainAxis / 2;
+      justifyContent = 'flex-end';
+    } else if (justifyContent === 'space-between') {
+      remainingSpaceMainAxis = remainingSpaceMainAxis / (node.children.length - 1);
+    } else if (justifyContent === 'space-around') {
+      remainingSpaceMainAxis = remainingSpaceMainAxis / (node.children.length * 2);
+    }
+
+
+
+    previousChild = null;
+
+    for (var i = 0, l = node.children.length; i < l; i++) {
+      var child = node.children[i];
+      justifyContentFn(child, previousChild, newFlexDirection, justifyContent, remainingSpaceMainAxis);
+      previousChild = child;
+    }
   }
 
   return node;

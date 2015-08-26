@@ -17,11 +17,12 @@ function onClick(component, e) {
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
       height: 100,
-      justifyContent: 'center',
+      justifyContent: 'space-around',
       flexDirection: 'row',
       backgroundColor: 'black',
       opacity: .4
   }, [
+    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
     View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
     View({}, {width: 100, height: 100, backgroundColor: 'blue'}, [Text('b')])
   ]),
