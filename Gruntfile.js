@@ -30,7 +30,7 @@ module.exports = function(grunt) {
             'lib/layout/layoutNode-tests/*-test.js': ['browserify']
           },
           browsers: ['Chrome'],
-          singleRun: true
+            singleRun: true
         }
       }
     },
