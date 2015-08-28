@@ -23,9 +23,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       opacity: .4,
       alignItems: 'center'
   }, [
-    View({}, {width: 100, height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {width: 100, height: 100, backgroundColor: 'red', flexGrow: 1}, [Text('a')]),
-    View({}, {width: 100, height: 100, backgroundColor: 'blue', flexGrow: 4}, [Text('b')])
+    View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
+    View({}, {height: 100, backgroundColor: 'red', flexGrow: 1}, [Text('a')]),
+    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 4}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
