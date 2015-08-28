@@ -22,7 +22,9 @@ module.exports = function(grunt) {
           files: [
             'lib/layout/layoutNode-tests/flexDirection-test.js',
             'lib/layout/layoutNode-tests/justifyContent-test.js',
-            'lib/layout/layoutNode-tests/alignItems-test.js'
+            'lib/layout/layoutNode-tests/alignItems-test.js',
+            'lib/layout/layoutNode-tests/alignSelf-test.js',
+            'lib/layout/layoutNode-tests/flexGrow-test.js'
           ],
           preprocessors: {
             'lib/layout/layoutNode-tests/*-test.js': ['browserify']

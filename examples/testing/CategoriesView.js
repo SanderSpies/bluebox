@@ -16,15 +16,16 @@ function onClick(component, e) {
 
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
-      height: 100,
+      height: 300,
       justifyContent: 'space-around',
       flexDirection: 'row',
       backgroundColor: 'black',
-      opacity: .4
+      opacity: .4,
+      alignItems: 'center'
   }, [
-    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
-    View({}, {width: 100, height: 100, backgroundColor: 'red'}, [Text('a')]),
-    View({}, {width: 100, height: 100, backgroundColor: 'blue'}, [Text('b')])
+    View({}, {width: 100, height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
+    View({}, {width: 100, height: 100, backgroundColor: 'red', flexGrow: 1}, [Text('a')]),
+    View({}, {width: 100, height: 100, backgroundColor: 'blue', flexGrow: 4}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
@@ -56,7 +57,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         }, [])
       ])
     ]),
-    View({}, {backgroundColor:'blue', height: 300, width: 300}, [
+    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 100}, [
 
     ])
   ])
