@@ -11,10 +11,10 @@ function renderMe() {
 
   Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
 
-  setTimeout(function(){
-    console.log('again!');
-    Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-  },2000);
+  //setTimeout(function(){
+  //  console.log('again!');
+  //  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+  //},2000);
 
   i++;
 }

@@ -60,5 +60,13 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 100}, [
 
     ])
+  ]),
+  View({}, {position: 'absolute', top: 10, left: 10, right: 10, bottom: 10, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
+    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'column', alignItems: 'center'}, [
+      View({}, {flexGrow: 1, width: 20, backgroundColor: 'green'}, []),
+      View({}, {flexGrow: 2, width: 20, backgroundColor: 'red'}, []),
+      View({}, {flexGrow: 1, width: 20, backgroundColor: 'green'}, []),
+    ])
+
   ])
 ]);
