@@ -11,10 +11,6 @@ var View = Bluebox.Components.View;
 var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
 var sharedImageStyle = {width: 100, height: 100};
 
-function onClick(component, e) {
-  Bluebox.update(component).withProperties({foo: 'foo'});
-}
-
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
       height: 300,
@@ -26,12 +22,12 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   }, [
     View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
     View({}, {height: 100, backgroundColor: 'red', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 4}, [Text('b')])
+    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({onClick: onClick}, sharedStyle, [Text('foobar123')]),
+        View({}, sharedStyle, [Text('foobar123')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -58,18 +54,26 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         }, [])
       ])
     ]),
-    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 100}, [
+    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 50}, [
 
     ])
   ]),
-  //View({}, {position: 'absolute', top: 10, left: 10, right: 10, bottom: 10, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-  //  View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'column', alignItems: 'center'}, [
-  //    View({}, {flexGrow: 1, width: 20, backgroundColor: 'green'}, []),
-  //    View({}, {flexGrow: 2, width: 20, backgroundColor: 'red'}, []),
-  //    View({}, {flexGrow: 1, width: 20, backgroundColor: 'green'}, []),
-  //  ])
-  //
-  //])
+  View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
+    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'center'}, [
+      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green'}, []),
+      View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
+      View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
+        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
+        View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
+        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
+
+
+        ])
+      ]),
+      //View({}, {position: 'absolute', right: 10, top: 10, width: 20, height: 20, backgroundColor: 'green'}, [])
+    ])
+
+  ])
 ]);
 },{"./../../lib/components/C":3,"./../../lib/index":10}],2:[function(require,module,exports){
 var Bluebox = require('./../../lib/index');
@@ -541,6 +545,7 @@ var diff            = require('./diff/diff');
 var layoutNode      = require('./layout/layoutNode');
 var render        = require('./renderers/GL/render');
 var ViewPortHelper  = require('./renderers/DOM/ViewPortHelper');
+var toDOMString = require('./layout/layoutNode-tests/utils/toDOMString');
 var oldComponentTree    = null;
 var oldDOMElement       = null;
 var viewPortDimensions  = null;
@@ -633,7 +638,8 @@ var Bluebox = {
     }
     oldDOMElement = domElement;
     var newComponentTree = diff(componentTree, oldComponentTree, null, 'ltr');
-    //console.log(newComponentTree);
+
+
     var hasChanged = false;
     if (viewPortDimensions !== ViewPortHelper.getDimensions()) {
       viewPortDimensions = ViewPortHelper.getDimensions();
@@ -642,6 +648,9 @@ var Bluebox = {
     if (newComponentTree.layout.width === undefined) {
       newComponentTree = layoutNode(newComponentTree, null, 'column', oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
     }
+
+    console.log(newComponentTree);
+    //console.log(toDOMString(newComponentTree));
 
     if (newComponentTree !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
@@ -662,7 +671,53 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":11,"./renderers/DOM/ViewPortHelper":12,"./renderers/GL/render":13,"_process":16}],11:[function(require,module,exports){
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":12,"./layout/layoutNode-tests/utils/toDOMString":11,"./renderers/DOM/ViewPortHelper":13,"./renderers/GL/render":14,"_process":17}],11:[function(require,module,exports){
+'use strict';
+
+function toDOMString(node, indent) {
+  indent = indent || 0;
+  var result = '';
+  var children = node.children;
+  var spaceBefore = '  ';
+  result += spaceBefore + '<div ';
+  result += '  style="';
+  var styleKeys = Object.keys(node.style);
+  for(var i = 0, l = styleKeys.length; i < l; i++) {
+    var styleKey = styleKeys[i];
+    var value = node.style[styleKey];
+    styleKey = styleKey.replace(/([A-Z])/g, '-$1').toLowerCase();
+    if (!isNaN(value) || value) {
+      if (!isNaN(value) && styleKey !== 'opacity' && styleKey !== 'flex-grow') {
+        if (value > 0) {
+          value = value + 'px';
+        }
+        else if(styleKey === 'width' && value === 0) {
+          value = 'initial';
+        }
+        else {
+          value = '';
+        }
+      }
+
+      result += styleKey + ':' + value + ';';
+    }
+  }
+  result +='">';
+  indent++;
+  for (var i = 0, l = children.length; i < l; i++) {
+    var child = children[i];
+    if (typeof child !== 'string') {
+      result += toDOMString(child, indent);
+    }
+  }
+  result += spaceBefore + '</div>\n';
+  return result;
+}
+
+
+module.exports = toDOMString;
+
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var COLUMN = 'column';
@@ -793,7 +848,12 @@ function absolutePosition(node, previousSibling, xMainAxis, xCrossAxis) {
     node.layout[xCrossAxis.DIMENSION] = node.layout[xCrossAxis.END] - node.layout[xCrossAxis.START];
   }
 
-  //_processChildren(node, xMainAxis, xCrossAxis, true);
+  if (!node.layout.height && node.style.height !== undefined) {
+    node.layout.height = node.style.height;
+}
+  if (!node.layout.width && node.style.width  !== undefined) {
+    node.layout.width = node.style.width;
+  }
 }
 
 function alignItemsFn(child, previousChild, newFlexDirection, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
@@ -818,9 +878,7 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
 }
 var X = 0;
 function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
-  if (X===61) {
-  //  debugger;
-  }
+
   X++;
   var parent = node.parent;
   var parentLayout = parent ? parent.layout : null;
@@ -889,8 +947,12 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     remainingSpaceMainAxis = mainDimensionSize - node.children[node.children.length - 1].layout[xNewMainAxisDirection.END];
     previousChild = null;
 
-    if (remainingSpaceMainAxis < 0) {
+    if (remainingSpaceMainAxis < 0 || isNaN(remainingSpaceMainAxis)) {
       remainingSpaceMainAxis = mainDimensionSize;
+    }
+
+    if (X===61) {
+      debugger;
     }
 
     //if (isNaN(remainingSpaceMainAxis)) {
@@ -985,7 +1047,7 @@ function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
 
 module.exports = layoutNode;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1033,7 +1095,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -1406,7 +1468,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderView":14,"./temp-utils":15}],14:[function(require,module,exports){
+},{"./renderView":15,"./temp-utils":16}],15:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -1483,7 +1545,7 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
 
 module.exports = renderView;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -1795,7 +1857,7 @@ module.exports = renderView;
 }());
 
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

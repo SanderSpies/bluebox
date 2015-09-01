@@ -10,10 +10,6 @@ var View = Bluebox.Components.View;
 var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
 var sharedImageStyle = {width: 100, height: 100};
 
-function onClick(component, e) {
-  Bluebox.update(component).withProperties({foo: 'foo'});
-}
-
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({},{
       height: 300,
@@ -25,12 +21,12 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   }, [
     View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
     View({}, {height: 100, backgroundColor: 'red', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 4}, [Text('b')])
+    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({onClick: onClick}, sharedStyle, [Text('foobar123')]),
+        View({}, sharedStyle, [Text('foobar123')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -57,15 +53,23 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         }, [])
       ])
     ]),
-    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 100}, [
+    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 50}, [
 
     ])
   ]),
-  View({}, {position: 'absolute', top: 10, left: 10, right: 10, bottom: 10, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'column', alignItems: 'center'}, [
-      View({}, {flexGrow: 1, width: 20, backgroundColor: 'green'}, []),
-      View({}, {flexGrow: 2, width: 20, backgroundColor: 'red'}, []),
-      View({}, {flexGrow: 1, width: 20, backgroundColor: 'green'}, []),
+  View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
+    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'center'}, [
+      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green'}, []),
+      View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
+      View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
+        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
+        View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
+        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
+
+
+        ])
+      ]),
+      //View({}, {position: 'absolute', right: 10, top: 10, width: 20, height: 20, backgroundColor: 'green'}, [])
     ])
 
   ])
