@@ -25,10 +25,9 @@ module.exports = function(grunt) {
             'lib/layout/layoutNode-tests/alignItems-test.js',
             'lib/layout/layoutNode-tests/alignSelf-test.js',
             'lib/layout/layoutNode-tests/flexGrow-test.js',
-            //'lib/layout/layoutNode-tests/flexWrap-test.js',
+            'lib/layout/layoutNode-tests/flexWrap-test.js',
             'lib/layout/layoutNode-tests/margin-test.js',
             //'lib/layout/layoutNode-tests/padding-test.js',
-            //'lib/layout/layoutNode-tests/percentage-test.js',
             'lib/layout/layoutNode-tests/positionAbsolute-test.js',
             'lib/layout/layoutNode-tests/combinations-test.js',
             //'lib/layout/layoutNode-tests/randomLayout-test.js'

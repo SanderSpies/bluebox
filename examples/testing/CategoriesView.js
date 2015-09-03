@@ -20,7 +20,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       alignItems: 'center'
   }, [
     View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'red', flexGrow: 1}, [Text('a')]),
+    View({}, {height: 100, backgroundColor: 'red', flexGrow: 4}, [Text('a')]),
     View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
@@ -53,13 +53,18 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         }, [])
       ])
     ]),
-    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 50}, [
-
+    View({}, {backgroundColor:'blue', height: 300, width: 300, alignSelf: 'center', marginLeft: 50, flexWrap: 'wrap', flexDirection: 'row'}, [
+      View({}, {backgroundColor: 'black', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []),
+      View({}, {backgroundColor: 'black', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []),
+      View({}, {backgroundColor: 'black', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []),
+      View({}, {backgroundColor: 'black', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []),
+      View({}, {backgroundColor: 'black', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []),
+      View({}, {backgroundColor: 'black', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, [])
     ])
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row'}, [
-      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green'}, []),
+    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
+      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
       View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
       View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
         View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
