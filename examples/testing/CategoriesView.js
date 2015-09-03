@@ -58,7 +58,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'center'}, [
+    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row'}, [
       View({}, {flexGrow: 1, height: 20, backgroundColor: 'green'}, []),
       View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
       View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
@@ -68,9 +68,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
 
 
         ])
-      ]),
-      //View({}, {position: 'absolute', right: 10, top: 10, width: 20, height: 20, backgroundColor: 'green'}, [])
+      ])
     ])
-
   ])
 ]);

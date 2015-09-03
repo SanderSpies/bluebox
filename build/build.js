@@ -59,7 +59,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'center'}, [
+    View({}, {backgroundColor:'blue', left: 0, right: 0, height: 300, position: 'absolute', flexDirection: 'row'}, [
       View({}, {flexGrow: 1, height: 20, backgroundColor: 'green'}, []),
       View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
       View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
@@ -69,10 +69,8 @@ module.exports = View({}, {backgroundColor: 'red'}, [
 
 
         ])
-      ]),
-      //View({}, {position: 'absolute', right: 10, top: 10, width: 20, height: 20, backgroundColor: 'green'}, [])
+      ])
     ])
-
   ])
 ]);
 },{"./../../lib/components/C":3,"./../../lib/index":10}],2:[function(require,module,exports){
@@ -842,14 +840,21 @@ function absolutePosition(node, previousSibling, xMainAxis, xCrossAxis) {
   if (node.style[xMainAxis.END] !== undefined) {
     node.layout[xMainAxis.END] = parentLayout[xMainAxis.END] - node.style[xMainAxis.END];
     node.layout[xMainAxis.DIMENSION] = node.layout[xMainAxis.END] - node.layout[xMainAxis.START];
+
+    // FIX ME: goes to low here!
+
   }
   if (node.style[xCrossAxis.END] !== undefined) {
     node.layout[xCrossAxis.END] = parentLayout[xCrossAxis.END] - node.style[xCrossAxis.END];
     node.layout[xCrossAxis.DIMENSION] = node.layout[xCrossAxis.END] - node.layout[xCrossAxis.START];
+    if (node.layout.height < 0) {
+      console.log('WTF:', node.layout.height, node);
+    }
   }
 
   if (!node.layout.height && node.style.height !== undefined) {
     node.layout.height = node.style.height;
+    //console.log('A:', node.layout.height);
 }
   if (!node.layout.width && node.style.width  !== undefined) {
     node.layout.width = node.style.width;
@@ -873,6 +878,7 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
       child.layout.top = previousChild.layout.bottom;
     }
     child.layout.height = child.style.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (child.style.height || 0);
+    //console.log('A:', child.layout.height);
     child.layout.bottom = child.layout.top + child.layout.height;
   }
 }
@@ -891,10 +897,11 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     var xNewMainAxisDirection = AXIS[newMainAxisDirection];
     var xNewCrossAxisDirection = AXIS[newCrossAxisDirection];
     var maxSize = 0;
-    var previousChild;
+    var previousChild = null;
     var totalFlexGrow = 0;
     var lineIndex = 0;
     var isFlexWrap = node.style.flexWrap === 'wrap';
+    var totalChildrenSize = 0;
     for (var i = 0, l = node.children.length; i < l; i++) {
       var child = node.children[i];
       layoutNode(child, previousChild, newMainAxisDirection, shouldProcessAbsolute);
@@ -914,6 +921,9 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
           }
           child.layout.lineIndex = lineIndex;
         }
+
+        totalChildrenSize += child.style[xNewMainAxisDirection.DIMENSION] || 0;
+
         if (child.layout[xMainAxis.END] > maxSize) {
           maxSize = child.layout[xMainAxis.END] + child.style[xMainAxis.MARGIN_TRAILING];
         }
@@ -929,6 +939,7 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     if (node.layout[xMainAxis.DIMENSION] === 0) {
       node.layout[xMainAxis.END] = maxSize + node.style[xMainAxis.PADDING_TRAILING];
       node.layout[xMainAxis.DIMENSION] = maxSize + node.style[xMainAxis.PADDING_TRAILING];
+      //console.log('A:', node.layout.height);
     }
 
     var newParentHeight = node.layout.height;
@@ -944,20 +955,10 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     var alignItems = node.style.alignItems;
 
     var remainingSpaceMainAxis;
-    remainingSpaceMainAxis = mainDimensionSize - node.children[node.children.length - 1].layout[xNewMainAxisDirection.END];
+
+    remainingSpaceMainAxis = mainDimensionSize - totalChildrenSize;
+
     previousChild = null;
-
-    if (remainingSpaceMainAxis < 0 || isNaN(remainingSpaceMainAxis)) {
-      remainingSpaceMainAxis = mainDimensionSize;
-    }
-
-    if (X===61) {
-      debugger;
-    }
-
-    //if (isNaN(remainingSpaceMainAxis)) {
-    //  remainingSpaceMainAxis = mainDimensionSize = node.style[xMainAxis.DIMENSION];
-    //}
 
     if (!totalFlexGrow) {
       if (justifyContent === 'center') {
@@ -976,16 +977,17 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
       var child = node.children[i];
       var isPositionAbsolute = child.style.position === 'absolute';
       var remainingSpaceCrossAxisSelf = crossDimensionSize - child.layout[xNewCrossAxisDirection.DIMENSION] - child.layout[xNewCrossAxisDirection.START];
-      if (isPositionAbsolute) {
-        absolutePosition(child, previousChild, xNewMainAxisDirection, xNewCrossAxisDirection);
-      }
+
       if (totalFlexGrow) {
         flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
       }
       else {
+
         justifyContentFn(child, previousChild, newMainAxisDirection, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
       }
-
+      if (isPositionAbsolute) {
+        absolutePosition(child, previousChild, xNewMainAxisDirection, xNewCrossAxisDirection);
+      }
 
       var alignSelf = child.style.alignSelf || alignItems;
       if (alignSelf === 'center') {
@@ -999,9 +1001,9 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
         remainingSpaceCrossAxisSelf = remainingSpaceCrossAxisSelf / (node.children.length * 2);
       }
       alignItemsFn(child, previousChild, newCrossAxisDirection, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
-      if (isPositionAbsolute) {
-        _processChildren(child, xNewMainAxisDirection, xNewCrossAxisDirection, true);
-      } else  {
+
+      _processChildren(child, xNewMainAxisDirection, xNewCrossAxisDirection, isPositionAbsolute);
+      if (!isPositionAbsolute){
         previousChild = child;
       }
     }
@@ -1022,7 +1024,7 @@ function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
   var crossAxis = mainAxis === COLUMN ? ROW : COLUMN;
   var xCrossAxis = AXIS[crossAxis];
 
-  if (previousSibling) {
+  if (previousSibling && node.style.position !== 'absolute') {
     nodeLayout[xMainAxis.START] = previousSibling.layout[xMainAxis.END] + previousSibling.style[xMainAxis.MARGIN_TRAILING];
     nodeLayout[xCrossAxis.START] = parentLayout[xCrossAxis.START];
 
@@ -1032,11 +1034,13 @@ function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
     nodeLayout.top = parent ? parentLayout.top : 0;
   }
 
+
   nodeLayout.left += node.style.marginLeft;
   nodeLayout.top += node.style.marginTop;
 
   nodeLayout.width = node.style.width || (!node.style.flexGrow ? parentWidth : 0) || 0;
   nodeLayout.height = node.style.height || 0;
+  //console.log('A:', node.layout.height);
 
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
