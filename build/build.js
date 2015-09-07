@@ -1,74 +1,147 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-var Bluebox = require('../../lib');
-var View = Bluebox.Components.View;
-var Text = Bluebox.Components.Text;
+var Bluebox = require('./../../lib/index');
+var C = require('./../../lib/components/C');
+
 var Image = Bluebox.Components.Image;
-
-var imageStyle = {
-  width: 50,
-  height: 50
-};
-
-var TodoItem = Bluebox.create('TodoItem', function render(props) {
-  props.onMouseEnter = onMouseEnter;
-  props.onMouseLeave = onMouseLeave;
-  return View(props, {height: 50, flexDirection: 'row', backgroundColor: props.selected? 'green' : 'black', color: 'white'}, [
-    Image({src: 'images/foo.png'}, imageStyle),
-    Text('A todo item...')
-  ]);
-});
-
-function onMouseEnter(todoItemComponent, e) {
-  document.body.style.cursor = 'pointer';
-}
-
-function onMouseLeave(todoItemComponent, e) {
-  document.body.style.cursor = '';
-}
-
-module.exports = TodoItem;
-
-},{"../../lib":10}],2:[function(require,module,exports){
-'use strict';
-
-var Bluebox = require('../../lib');
+var Text = Bluebox.Components.Text;
 var View = Bluebox.Components.View;
 
-var TodoItem = require('./TodoItem');
+var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
+var sharedImageStyle = {width: 100, height: 100};
+//
+//module.exports = View({}, {flexDirection: 'row', backgroundColor: 'green', height: 500, width: 1000, alignItems: 'flex-end', flexWrap: 'wrap'}, [
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'blue', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'white', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'black', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'red', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'blue', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'white', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'black', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'red', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'blue', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'white', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'black', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'red', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'blue', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'white', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'black', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'red', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'blue', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'white', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'black', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'red', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'blue', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'white', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'black', height: Math.floor(100 * Math.random())}, []),
+//  View({}, {width: Math.floor(100 * Math.random()), backgroundColor: 'red', height: Math.floor(100 * Math.random())}, [])
+//]);
+//
+//return;
 
-var TodoList = Bluebox.create('TodoList', function render(props) {
-  return View(props, {paddingTop:20, paddingBottom: 20, paddingLeft: 20, paddingRight: 20, backgroundColor: 'red'}, [
-    TodoItem({onClick:onTodoItemClick, selected: props.selected[0], key: 0}),
-    TodoItem({onClick:onTodoItemClick, selected: props.selected[1], key: 1}),
-    TodoItem({onClick:onTodoItemClick, selected: props.selected[2], key: 2})
-  ]);
-});
+module.exports = View({}, {backgroundColor: 'red'}, [
+  View({},{
+      height: 300,
+      justifyContent: 'space-around',
+      flexDirection: 'row',
+      backgroundColor: 'black',
+      opacity: .4,
+      alignItems: 'center'
+  }, [
+    View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
+    View({}, {height: 100, backgroundColor: 'red', flexGrow: 4}, [Text('a')]),
+    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
+  ]),
+  View({}, {flexDirection: 'row'}, [
+    View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
+      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+        View({}, sharedStyle, [Text('foobar123')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a')])
+      ]),
+      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Text('foobar')]),
+        View({}, sharedStyle, [Text('a')]),
+        View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
+        View({},{
+          width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
+        }, [])
+      ])
+    ]),
+    View({}, {backgroundColor:'blue', height: 200, width: 300, alignSelf: 'center', marginLeft: 50, flexWrap: 'wrap', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, [
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 120
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []),// 190
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []), // 230
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 270
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 50
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []), // 120
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 220
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 270
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []), // 290
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 100
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 150
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []), // 220
+      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 100
+      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []) // 170
+    ])
+  ]),
+  View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
+    View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
+      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
+      View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
+      View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
+        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
+        View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
+        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
 
-function onTodoItemClick(todoItemComponent, e) {
-  var selected = [false, false, false];
-  selected[todoItemComponent.props.key] = true;
-  Bluebox.update(todoItemComponent.parent).withProperties({selected: selected});
+
+        ])
+      ])
+    ])
+  ])
+]);
+},{"./../../lib/components/C":3,"./../../lib/index":10}],2:[function(require,module,exports){
+var Bluebox = require('./../../lib/index');
+
+var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
+var i = 0;
+
+//console.profile('rendering');
+function renderMe() {
+  if (i === 2) {
+    i = 0;
+  }
+
+  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+
+  //setTimeout(function(){
+  //  console.log('again!');
+  //  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
+  //},2000);
+
+  i++;
 }
 
-function onTodoItemListKeyUp(todoItemList, e) {
-  var selected = [false, false, false];
-  var selectedIndex =  todoItemList.props.selected.indexOf(true);
-  if (e.which === 40) {
-    selected[selectedIndex < 2 ? selectedIndex + 1 : 2] = true;
-  }
-  else if (e.which === 38) {
-    selected[selectedIndex > 0 ? selectedIndex - 1 : 0] = true;
-  }
-  Bluebox.update(todoItemList).withProperties({selected: selected});
-}
 
-Bluebox.renderFromTop(TodoList({onKeyUp: onTodoItemListKeyUp, selected:[false, false, false]}), document.getElementById('canvas'));
 
-module.exports = TodoList;
+renderMe();
 
-},{"../../lib":10,"./TodoItem":1}],3:[function(require,module,exports){
+},{"./../../lib/index":10,"./CategoriesView":1}],3:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -617,7 +690,7 @@ var Bluebox = {
     }
 
     console.log(newComponentTree);
-    //console.log(toDOMString(newComponentTree));
+    console.log(toDOMString(newComponentTree));
 
     if (newComponentTree !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
@@ -713,6 +786,9 @@ var AXIS = {
 };
 
 function justifyContentFn(child, previousChild, newFlexDirection, justifyContent, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
+  if (justifyContent === 'center') {
+    justifyContent = 'flex-end';
+  }
   var childLayout = child.layout;
   if (isPositionAbsolute && (child.style[newFlexDirection === 'row' ? 'left' : 'top'] !== undefined || child.style[newFlexDirection === 'row' ? 'right' : 'bottom'] !== undefined)) {
     return;
@@ -732,26 +808,26 @@ function justifyContentFn(child, previousChild, newFlexDirection, justifyContent
   else if (justifyContent === 'space-around') {
     if (newFlexDirection === ROW) {
       if (!previousChild) {
-        childLayout.left = remainingSpaceMainAxis;
+        childLayout.left += remainingSpaceMainAxis + child.style.marginLeft;
       }
       else {
-        childLayout.left = previousChild.layout.right + remainingSpaceMainAxis * 2;
+        childLayout.left = previousChild.layout.right + child.style.marginLeft + remainingSpaceMainAxis * 2;
       }
       childLayout.right = childLayout.left + childLayout.width;
     }
     else {
       if (!previousChild) {
-        childLayout.top = remainingSpaceMainAxis;
+        childLayout.top += remainingSpaceMainAxis + child.style.marginTop;
       }
       else {
-        childLayout.top = previousChild.layout.bottom + remainingSpaceMainAxis * 2;
+        childLayout.top = previousChild.layout.bottom + child.style.marginTop + remainingSpaceMainAxis * 2;
       }
       childLayout.bottom = childLayout.top + childLayout.height;
     }
   }
   else if (justifyContent === 'space-between' && previousChild) {
     if (newFlexDirection === ROW) {
-      childLayout.left = previousChild.layout.right + remainingSpaceMainAxis;
+      childLayout.left = previousChild.layout.right + remainingSpaceMainAxis + previousChild.style.marginRight + child.style.marginLeft;
       childLayout.right = childLayout.left + childLayout.width;
     }
     else {
@@ -876,6 +952,10 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     var totalChildrenSize = 0;
     var additional = 0;
     var maxCrossDimension = 0;
+    var lineLengths = [];
+    var crossLineLengths = [];
+    var lineNrOfChildren = [];
+    var currNrOfChildren = 0;
     for (var i = 0, l = node.children.length; i < l; i++) {
       var child = node.children[i];
       layoutNode(child, previousChild, newMainAxisDirection, shouldProcessAbsolute);
@@ -888,32 +968,35 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
       child.layout[xCrossAxis.DIMENSION] -= node.style[xCrossAxis.PADDING_LEADING] + node.style[xCrossAxis.PADDING_TRAILING];
       child.layout[xCrossAxis.END] -= node.style[xCrossAxis.PADDING_TRAILING];
 
-      child.layout[xNewCrossAxisDirection.START] += additional;
-      child.layout[xNewCrossAxisDirection.END] += additional;
-
-
-
       var skipPrevious = false;
+
       if (child.style.position !== 'absolute') {
 
-        totalChildrenSize += (child.style[xNewMainAxisDirection.DIMENSION] + child.style[xNewCrossAxisDirection.MARGIN_LEADING] + child.style[xNewCrossAxisDirection.MARGIN_TRAILING]) || 0;
-
+        var newSize = (child.style[xNewMainAxisDirection.DIMENSION] + child.style[xNewCrossAxisDirection.MARGIN_LEADING] + child.style[xNewCrossAxisDirection.MARGIN_TRAILING]) || 0;
         if (isFlexWrap) {
-          if (totalChildrenSize > node.layout[xNewMainAxisDirection.DIMENSION]) {
+
+          if ((totalChildrenSize + newSize) > node.layout[xNewMainAxisDirection.DIMENSION]) {
+            lineLengths.push(totalChildrenSize);
+            crossLineLengths.push(maxCrossDimension);
+            lineNrOfChildren.push(currNrOfChildren);
             lineIndex++;
+            currNrOfChildren = 0;
             additional += maxCrossDimension;
             maxCrossDimension = 0;
-            totalChildrenSize = 0;
+
             child.layout[xNewMainAxisDirection.START] = node.layout[xNewMainAxisDirection.START]  + child.style[xNewMainAxisDirection.MARGIN_LEADING];
-            child.layout[xNewMainAxisDirection.END] = node.layout[xNewMainAxisDirection.START] + child.layout[xNewMainAxisDirection.DIMENSION];
-            child.layout[xNewCrossAxisDirection.START] += additional;
-            child.layout[xNewCrossAxisDirection.END] += additional;
+            child.layout[xNewMainAxisDirection.END] = child.layout[xNewMainAxisDirection.START] + child.layout[xNewMainAxisDirection.DIMENSION];
+
+            totalChildrenSize = 0; //(child.style[xNewMainAxisDirection.DIMENSION] + child.style[xNewCrossAxisDirection.MARGIN_LEADING] + child.style[xNewCrossAxisDirection.MARGIN_TRAILING]);
+
           }
           child.layout.lineIndex = lineIndex;
-
         }
+        currNrOfChildren++;
+        totalChildrenSize += newSize;
 
-
+        child.layout[xNewCrossAxisDirection.START] += additional;
+        child.layout[xNewCrossAxisDirection.END] += additional;
 
         if (child.layout[xMainAxis.END] > maxSize) {
           maxSize = child.layout[xMainAxis.END] + child.style[xMainAxis.MARGIN_TRAILING];
@@ -932,10 +1015,12 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
         }
       }
 
-
     }
 
-    // resize containers if necessary
+    additional += maxCrossDimension;
+    lineLengths.push(totalChildrenSize);
+    crossLineLengths.push(maxCrossDimension);
+    lineNrOfChildren.push(currNrOfChildren);
 
     if (node.layout[xMainAxis.DIMENSION] === 0) {
       node.layout[xMainAxis.END] = maxSize + node.style[xMainAxis.PADDING_TRAILING];
@@ -955,28 +1040,32 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     var alignItems = node.style.alignItems;
 
     var remainingSpaceMainAxis;
-
-    remainingSpaceMainAxis = mainDimensionSize - totalChildrenSize;
-
     previousChild = null;
-
-    if (!totalFlexGrow) {
-      if (justifyContent === 'center') {
-        remainingSpaceMainAxis = remainingSpaceMainAxis / 2;
-        justifyContent = 'flex-end';
-      }
-      else if (justifyContent === 'space-between') {
-        remainingSpaceMainAxis = remainingSpaceMainAxis / (node.children.length - 1);
-      }
-      else if (justifyContent === 'space-around') {
-        remainingSpaceMainAxis = remainingSpaceMainAxis / (node.children.length * 2);
-      }
-    }
-
+    var currentLineIndex = -1;
+    var currCrossSize = 0;
     for (var i = 0, l = node.children.length; i < l; i++) {
       var child = node.children[i];
+      if (currentLineIndex !== child.layout.lineIndex) {
+        currentLineIndex = child.layout.lineIndex;
+        remainingSpaceMainAxis = mainDimensionSize - lineLengths[currentLineIndex];
+        if (!totalFlexGrow) {
+          if (justifyContent === 'center') {
+            remainingSpaceMainAxis = remainingSpaceMainAxis / 2;
+          }
+          else if (justifyContent === 'space-between') {
+            remainingSpaceMainAxis = remainingSpaceMainAxis / (lineNrOfChildren[currentLineIndex] - 1);
+            previousChild = null;
+          }
+          else if (justifyContent === 'space-around') {
+            remainingSpaceMainAxis = remainingSpaceMainAxis / (lineNrOfChildren[currentLineIndex] * 2);
+            previousChild = null;
+          }
+        }
+        currCrossSize += lineLengths[currentLineIndex];
+      }
       var isPositionAbsolute = child.style.position === 'absolute';
-      var remainingSpaceCrossAxisSelf = crossDimensionSize - child.layout[xNewCrossAxisDirection.DIMENSION];
+
+      var remainingSpaceCrossAxisSelf = crossDimensionSize - additional;
       if (totalFlexGrow) {
         flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
       }
@@ -987,17 +1076,15 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
         absolutePosition(child, previousChild, xNewMainAxisDirection, xNewCrossAxisDirection);
       }
 
-      var alignSelf = child.style.alignSelf || alignItems;
+      var alignSelf = (!isFlexWrap ? child.style.alignSelf : alignItems) || alignItems;
+      var addSpace = crossLineLengths[currentLineIndex] - child.layout[xNewCrossAxisDirection.DIMENSION] - child.style[xNewCrossAxisDirection.MARGIN_TRAILING] - child.style[xNewCrossAxisDirection.MARGIN_LEADING];
+      if (addSpace) {
+        remainingSpaceCrossAxisSelf += addSpace;
+      }
       if (alignSelf === 'center') {
-        remainingSpaceCrossAxisSelf = remainingSpaceCrossAxisSelf / 2;
-        alignSelf = 'flex-end';
+        remainingSpaceCrossAxisSelf = (remainingSpaceCrossAxisSelf / 2);
       }
-      else if (alignSelf === 'space-between') {
-        remainingSpaceCrossAxisSelf = remainingSpaceCrossAxisSelf / (node.children.length - 1);
-      }
-      else if (alignSelf === 'space-around') {
-        remainingSpaceCrossAxisSelf = remainingSpaceCrossAxisSelf / (node.children.length * 2);
-      }
+
       alignItemsFn(child, previousChild, newCrossAxisDirection, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
 
       _processChildren(child, xNewMainAxisDirection, xNewCrossAxisDirection, isPositionAbsolute);
