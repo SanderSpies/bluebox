@@ -130,13 +130,13 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')])
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'},sharedImageStyle)]),
         View({}, sharedStyle, [Text('foobar')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg'}, sharedImageStyle)]),
         View({},{
           width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
         }, [])

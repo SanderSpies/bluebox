@@ -131,13 +131,13 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')])
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({}, sharedStyle, [Image({src: 'images/foo.png', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'},sharedImageStyle)]),
         View({}, sharedStyle, [Text('foobar')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg', style: sharedImageStyle})]),
-        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg', style: sharedImageStyle})]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg'}, sharedImageStyle)]),
         View({},{
           width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
         }, [])
@@ -213,7 +213,7 @@ function merge(parent, child) {
   return parent;
 }
 var UNDEFINED = 7000;
-var __DEV__ = false;
+var __DEV__ = true;
 function Component(type, props, style, children) {
   var component = {
     customType: null,
@@ -257,7 +257,7 @@ function Component(type, props, style, children) {
   };
   if (__DEV__) {
     Object.freeze(component.style);
-    Object.seal(component.layout);
+    Object.seal(component.layout)
   }
 
   for (var i = 0, l = children.length; i < l; i++) {
@@ -593,7 +593,8 @@ function handleEvent(fn) {
   return function(component, e) {
     if(e instanceof MouseEvent) {
       // TODO: improve more...
-      if (e.clientY > component.layout.top && e.clientY < (component.layout.top + component.layout.height)) {
+      if (e.clientY > component.layout.top && e.clientY < component.layout.bottom &&
+        e.clientX > component.layout.left && e.clientX < component.layout.right) {
         fn(component, e);
       }
     }
@@ -655,6 +656,7 @@ var oldComponentTree    = null;
 var oldDOMElement       = null;
 var viewPortDimensions  = null;
 var registeredComponentTypes = {};
+var AXIS = require('./layout/AXIS');
 var keys = Object.keys;
 
 global.__DEV__ = process.env.NODE_ENV !== 'production';
@@ -751,7 +753,9 @@ var Bluebox = {
       hasChanged = true;
     }
     if (newComponentTree.layout.width === undefined) {
-      newComponentTree = layoutNode(newComponentTree, null, 'column', oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
+      console.log('foo:', AXIS);
+      newComponentTree = layoutNode(newComponentTree, null, AXIS.column, AXIS.row, false);
+      // oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
     }
 
     console.log(newComponentTree);
@@ -776,7 +780,30 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/layoutNode":12,"./layout/layoutNode-tests/utils/toDOMString":11,"./renderers/DOM/ViewPortHelper":13,"./renderers/GL/render":14,"_process":17}],11:[function(require,module,exports){
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/AXIS":11,"./layout/layoutNode":13,"./layout/layoutNode-tests/utils/toDOMString":12,"./renderers/DOM/ViewPortHelper":14,"./renderers/GL/render":15,"_process":18}],11:[function(require,module,exports){
+var AXIS = {
+  row: {
+    START: 'left',
+    END: 'right',
+    DIMENSION: 'width',
+    MARGIN_LEADING: 'marginLeft',
+    MARGIN_TRAILING: 'marginRight',
+    PADDING_LEADING: 'paddingLeft',
+    PADDING_TRAILING: 'paddingRight'
+  },
+  column: {
+    START: 'top',
+    END: 'bottom',
+    DIMENSION: 'height',
+    MARGIN_LEADING: 'marginTop',
+    MARGIN_TRAILING: 'marginBottom',
+    PADDING_LEADING: 'paddingTop',
+    PADDING_TRAILING: 'paddingBottom'
+  }
+};
+
+module.exports = AXIS;
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var UNDEFINED = 7000;
@@ -824,144 +851,107 @@ function toDOMString(node, indent) {
 
 module.exports = toDOMString;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
+var __DEV__ = true;
 var COLUMN = 'column';
 var ROW = 'row';
 var FLEX_START = 'flex-start';
+var FLEX_END = 'flex-end';
+var SPACE_AROUND = 'space-around';
+var SPACE_BETWEEN = 'space-between';
+var ABSOLUTE = 'absolute';
+var STRETCH = 'stretch';
 var LEFT = 'left';
-var TOP = 'top'
+var TOP = 'top';
 var RIGHT = 'right';
 var BOTTOM = 'bottom';
-var AXIS = {
-  row: {
-    START: 'left',
-    END: 'right',
-    DIMENSION: 'width',
-    MARGIN_LEADING: 'marginLeft',
-    MARGIN_TRAILING: 'marginRight',
-    PADDING_LEADING: 'paddingLeft',
-    PADDING_TRAILING: 'paddingRight'
-  },
-  column: {
-    START: 'top',
-    END: 'bottom',
-    DIMENSION: 'height',
-    MARGIN_LEADING: 'marginTop',
-    MARGIN_TRAILING: 'marginBottom',
-    PADDING_LEADING: 'paddingTop',
-    PADDING_TRAILING: 'paddingBottom'
-  }
-};
+var CENTER = 'center';
+var AXIS = require('./AXIS');
+var WRAP = 'wrap';
 var UNDEFINED = 7000;
-function justifyContentFn(child, previousChild, newFlexDirection, justifyContent, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
-  if (justifyContent === 'center') {
-    justifyContent = 'flex-end';
+
+function justifyContentFn(child, previousChild, mainAxis, justifyContentX, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
+  var justifyContent = justifyContentX;
+  if (justifyContent === CENTER) {
+    justifyContent = FLEX_END;
   }
   var childLayout = child.layout;
   var childStyle = child.style;
-  if (isPositionAbsolute && (childStyle[newFlexDirection === 'row' ? 'left' : 'top'] !== UNDEFINED || childStyle[newFlexDirection === 'row' ? 'right' : 'bottom'] !== UNDEFINED)) {
+  if (isPositionAbsolute && (childStyle[mainAxis.START] !== UNDEFINED || childStyle[mainAxis.END] !== UNDEFINED)) {
     return;
   }
 
-  if (justifyContent === 'flex-end') {
-    // rearrange items
-    if (newFlexDirection === ROW) {
-      childLayout.left += remainingSpaceMainAxis;
-      childLayout.right += remainingSpaceMainAxis;
-    }
-    else {
-      childLayout.top += remainingSpaceMainAxis;
-      childLayout.bottom += remainingSpaceMainAxis;
-    }
+  if (justifyContent === FLEX_END) {
+    childLayout[mainAxis.START] += remainingSpaceMainAxis;
+    childLayout[mainAxis.END] += remainingSpaceMainAxis;
+
   }
-  else if (justifyContent === 'space-around') {
-    if (newFlexDirection === ROW) {
-      if (!previousChild) {
-        childLayout.left += remainingSpaceMainAxis + childStyle.marginLeft;
-      }
-      else {
-        childLayout.left = previousChild.layout.right + childStyle.marginLeft + remainingSpaceMainAxis * 2;
-      }
-      childLayout.right = childLayout.left + childLayout.width;
+  else if (justifyContent === SPACE_AROUND) {
+    if (!previousChild) {
+      childLayout[mainAxis.START] += remainingSpaceMainAxis + childStyle[mainAxis.MARGIN_LEADING];
     }
     else {
-      if (!previousChild) {
-        childLayout.top += remainingSpaceMainAxis + childStyle.marginTop;
-      }
-      else {
-        childLayout.top = previousChild.layout.bottom + childStyle.marginTop + remainingSpaceMainAxis * 2;
-      }
-      childLayout.bottom = childLayout.top + childLayout.height;
+      childLayout[mainAxis.START] = previousChild.layout[mainAxis.END] + childStyle[mainAxis.MARGIN_LEADING] + remainingSpaceMainAxis * 2;
     }
+    childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
+
   }
-  else if (justifyContent === 'space-between' && previousChild) {
-    if (newFlexDirection === ROW) {
-      childLayout.left = previousChild.layout.right + remainingSpaceMainAxis + previousChild.style.marginRight + childStyle.marginLeft;
-      childLayout.right = childLayout.left + childLayout.width;
-    }
-    else {
-      childLayout.top = previousChild.layout.bottom + remainingSpaceMainAxis;
-      childLayout.bottom = childLayout.top + childLayout.height;
-    }
+  else if (justifyContent === SPACE_BETWEEN && previousChild) {
+    childLayout[mainAxis.START] = previousChild.layout[mainAxis.END] + remainingSpaceMainAxis + previousChild.style[mainAxis.MARGIN_TRAILING] + childStyle[mainAxis.MARGIN_LEADING];
+    childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
   }
-  else if (justifyContent === 'stretch') {
-    if (newFlexDirection === ROW && childLayout.width === 0) {
-      childLayout.left = 0;
-      childLayout.width = parentWidth;
-      childLayout.right = parentWidth;
+  else if (justifyContent === STRETCH) {
+    if (childLayout[mainAxis.DIMENSION] === 0) {
+      childLayout[mainAxis.START] = 0;
+      childLayout[mainAxis.DIMENSION] = mainAxis === AXIS.row ? parentWidth : parentHeight;
+      childLayout[mainAxis.END] = childLayout[mainAxis.DIMENSION];
     }
-    else {
-      if (childLayout.height === 0) {
-        childLayout.top = 0;
-        childLayout.height = parentHeight;
-        childLayout.bottom = parentHeight;
-      }
-    }
+
   }
 }
 
-function absolutePosition(node, previousSibling, xMainAxis, xCrossAxis) {
+function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
   var parent = node.parent;
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var parentLayout = parent.layout;
 
-  nodeLayout[xMainAxis.START] = parentLayout[xMainAxis.START];
-  nodeLayout[xCrossAxis.START] = parentLayout[xCrossAxis.START];
-  if (nodeStyle[xMainAxis.START] !== UNDEFINED) {
-    nodeLayout[xMainAxis.START] += nodeStyle[xMainAxis.START];
-    nodeLayout[xMainAxis.END] += nodeStyle[xMainAxis.START];
+  nodeLayout[mainAxis.START] = parentLayout[mainAxis.START];
+  nodeLayout[crossAxis.START] = parentLayout[crossAxis.START];
+  if (nodeStyle[mainAxis.START] !== UNDEFINED) {
+    nodeLayout[mainAxis.START] += nodeStyle[mainAxis.START];
+    nodeLayout[mainAxis.END] += nodeStyle[mainAxis.START];
 
   }
-  else if (nodeStyle[xMainAxis.END] !== UNDEFINED && nodeStyle[xMainAxis.DIMENSION] !== UNDEFINED) {
-    nodeLayout[xMainAxis.START] = parentLayout[xMainAxis.END] - nodeStyle[xMainAxis.DIMENSION] - nodeStyle[xMainAxis.END];
+  else if (nodeStyle[mainAxis.END] !== UNDEFINED && nodeStyle[mainAxis.DIMENSION] !== UNDEFINED) {
+    nodeLayout[mainAxis.START] = parentLayout[mainAxis.END] - nodeStyle[mainAxis.DIMENSION] - nodeStyle[mainAxis.END];
   }
   else if (previousSibling) {
-    nodeLayout[xMainAxis.START] = previousSibling.layout[xMainAxis.END] + previousSibling.style[xMainAxis.MARGIN_TRAILING];
+    nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
   }
 
 
-  if (nodeStyle[xCrossAxis.START] !== UNDEFINED) {
-    nodeLayout[xCrossAxis.START] += nodeStyle[xCrossAxis.START];
-    nodeLayout[xCrossAxis.END] += nodeStyle[xCrossAxis.START];
+  if (nodeStyle[crossAxis.START] !== UNDEFINED) {
+    nodeLayout[crossAxis.START] += nodeStyle[crossAxis.START];
+    nodeLayout[crossAxis.END] += nodeStyle[crossAxis.START];
 
   }
-  else if (nodeStyle[xCrossAxis.END] !== UNDEFINED && nodeStyle[xCrossAxis.DIMENSION] !== UNDEFINED) {
-    nodeLayout[xCrossAxis.START] = parentLayout[xCrossAxis.END] - nodeStyle[xCrossAxis.DIMENSION] - nodeStyle[xCrossAxis.END];
+  else if (nodeStyle[crossAxis.END] !== UNDEFINED && nodeStyle[crossAxis.DIMENSION] !== UNDEFINED) {
+    nodeLayout[crossAxis.START] = parentLayout[crossAxis.END] - nodeStyle[crossAxis.DIMENSION] - nodeStyle[crossAxis.END];
   }
   else {
-    nodeLayout[xCrossAxis.START] = parent ? parentLayout[xCrossAxis.START] : 0;
+    nodeLayout[crossAxis.START] = parent ? parentLayout[crossAxis.START] : 0;
   }
 
-  if (nodeStyle[xMainAxis.END] !== UNDEFINED) {
-    nodeLayout[xMainAxis.END] = parentLayout[xMainAxis.END] - nodeStyle[xMainAxis.END];
-    nodeLayout[xMainAxis.DIMENSION] = nodeLayout[xMainAxis.END] - nodeLayout[xMainAxis.START];
+  if (nodeStyle[mainAxis.END] !== UNDEFINED) {
+    nodeLayout[mainAxis.END] = parentLayout[mainAxis.END] - nodeStyle[mainAxis.END];
+    nodeLayout[mainAxis.DIMENSION] = nodeLayout[mainAxis.END] - nodeLayout[mainAxis.START];
   }
-  if (nodeStyle[xCrossAxis.END] !== UNDEFINED) {
-    nodeLayout[xCrossAxis.END] = parentLayout[xCrossAxis.END] - nodeStyle[xCrossAxis.END];
-    nodeLayout[xCrossAxis.DIMENSION] = nodeLayout[xCrossAxis.END] - nodeLayout[xCrossAxis.START];
+  if (nodeStyle[crossAxis.END] !== UNDEFINED) {
+    nodeLayout[crossAxis.END] = parentLayout[crossAxis.END] - nodeStyle[crossAxis.END];
+    nodeLayout[crossAxis.DIMENSION] = nodeLayout[crossAxis.END] - nodeLayout[crossAxis.START];
   }
 
 
@@ -982,27 +972,27 @@ function absolutePosition(node, previousSibling, xMainAxis, xCrossAxis) {
 
 }
 
-function alignItemsFn(child, previousChild, newFlexDirection, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
-  justifyContentFn(child, previousChild, newFlexDirection, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute);
+function alignItemsFn(child, previousChild, mainAxis, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
+  justifyContentFn(child, previousChild, mainAxis, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute);
 }
 
-function _correctChildren(node, top, left, xMainAxis, xCrossAxis) {
+function correctChildren(node, top, left, mainAxis, crossAxis) {
   var previousChild = null;
   for (var i = 0, l = node.children.length; i < l; i++) {
     var child = node.children[i];
     var childStyle = child.style;
     var childLayout = child.layout;
     if (child.children) {
-      var isAbsolutePosition = childStyle.position === 'absolute';
+      var isAbsolutePosition = childStyle.position === ABSOLUTE;
       if (isAbsolutePosition) {
-        absolutePosition(child, previousChild, xMainAxis, xCrossAxis);
+        absolutePosition(child, previousChild, mainAxis, crossAxis);
       }
       else {
         childLayout.left += left;
         childLayout.right += left;
         childLayout.top += top;
         childLayout.bottom += top;
-        _correctChildren(child, top, left, xMainAxis, xCrossAxis);
+        correctChildren(child, top, left, mainAxis, crossAxis);
       }
       previousChild = child;
     }
@@ -1027,7 +1017,7 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
     childLayout.bottom = childLayout.top + childLayout.height;
   }
 }
-function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
+function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
   var parent = node.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
@@ -1038,13 +1028,13 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
   if (nodeChildren.length && typeof nodeChildren[0] !== 'string') {
     var newMainAxisDirection = nodeStyle && nodeStyle.flexDirection ? nodeStyle.flexDirection : COLUMN;
     var newCrossAxisDirection = newMainAxisDirection === COLUMN ? ROW : COLUMN;
-    var xNewMainAxisDirection = AXIS[newMainAxisDirection];
-    var xNewCrossAxisDirection = AXIS[newCrossAxisDirection];
+    var mainAxis = AXIS[newMainAxisDirection];
+    var crossAxis = AXIS[newCrossAxisDirection];
     var maxSize = 0;
     var previousChild = null;
     var totalFlexGrow = 0;
     var lineIndex = 0;
-    var isFlexWrap = nodeStyle.flexWrap === 'wrap';
+    var isFlexWrap = nodeStyle.flexWrap === WRAP;
     var totalChildrenSize = 0;
     var additional = 0;
     var maxCrossDimension = 0;
@@ -1052,29 +1042,34 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     var crossLineLengths = [];
     var lineNrOfChildren = [];
     var currNrOfChildren = 0;
-    for (var i = 0, l = nodeChildren.length; i < l; i++) {
-      var child = nodeChildren[i];
-      var childStyle = child.style;
-      var childLayout = child.layout;
-      layoutNode(child, previousChild, newMainAxisDirection, shouldProcessAbsolute);
+    var child;
+    var childStyle;
+    var childLayout;
+    var i;
+    var l;
+    for (i = 0, l = nodeChildren.length; i < l; i++) {
+      child = nodeChildren[i];
+      childStyle = child.style;
+      childLayout = child.layout;
+      layoutNode(child, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
 
       var skipPrevious = false;
 
-      if (childStyle.position !== 'absolute') {
+      if (childStyle.position !== ABSOLUTE) {
 
         if (i === 0) {
-          childLayout[xMainAxis.START] += nodeStyle[xMainAxis.PADDING_LEADING];
-          childLayout[xMainAxis.END] += nodeStyle[xMainAxis.PADDING_TRAILING];
+          childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
+          childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
         }
-        childLayout[xCrossAxis.START] += nodeStyle[xCrossAxis.PADDING_LEADING];
-        childLayout[xCrossAxis.DIMENSION] -= nodeStyle[xCrossAxis.PADDING_LEADING] + nodeStyle[xCrossAxis.PADDING_TRAILING];
-        childLayout[xCrossAxis.END] -= nodeStyle[xCrossAxis.PADDING_TRAILING];
+        childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
+        childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
+        childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
 
-        var newSize = childStyle[xNewMainAxisDirection.DIMENSION] !== UNDEFINED ? (childStyle[xNewMainAxisDirection.DIMENSION] + childStyle[xNewCrossAxisDirection.MARGIN_LEADING] + childStyle[xNewCrossAxisDirection.MARGIN_TRAILING]) || 0 : 0;
+        var newSize = childStyle[mainAxis.DIMENSION] !== UNDEFINED ? (childStyle[mainAxis.DIMENSION] + childStyle[crossAxis.MARGIN_LEADING] + childStyle[crossAxis.MARGIN_TRAILING]) || 0 : 0;
 
         if (isFlexWrap) {
 
-          if ((totalChildrenSize + newSize) > nodeLayout[xNewMainAxisDirection.DIMENSION]) {
+          if ((totalChildrenSize + newSize) > nodeLayout[mainAxis.DIMENSION]) {
             lineLengths.push(totalChildrenSize);
             crossLineLengths.push(maxCrossDimension);
             lineNrOfChildren.push(currNrOfChildren);
@@ -1083,10 +1078,10 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
             additional += maxCrossDimension;
             maxCrossDimension = 0;
 
-            childLayout[xNewMainAxisDirection.START] = nodeLayout[xNewMainAxisDirection.START]  + childStyle[xNewMainAxisDirection.MARGIN_LEADING];
-            childLayout[xNewMainAxisDirection.END] = childLayout[xNewMainAxisDirection.START] + childLayout[xNewMainAxisDirection.DIMENSION];
+            childLayout[mainAxis.START] = nodeLayout[mainAxis.START]  + childStyle[mainAxis.MARGIN_LEADING];
+            childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
 
-            totalChildrenSize = 0; //(childStyle[xNewMainAxisDirection.DIMENSION] + childStyle[xNewCrossAxisDirection.MARGIN_LEADING] + childStyle[xNewCrossAxisDirection.MARGIN_TRAILING]);
+            totalChildrenSize = 0;
 
           }
           childLayout.lineIndex = lineIndex;
@@ -1094,11 +1089,11 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
         currNrOfChildren++;
         totalChildrenSize += newSize;
 
-        childLayout[xNewCrossAxisDirection.START] += additional;
-        childLayout[xNewCrossAxisDirection.END] += additional;
+        childLayout[crossAxis.START] += additional;
+        childLayout[crossAxis.END] += additional;
 
-        if (childLayout[xMainAxis.END] > maxSize) {
-          maxSize = childLayout[xMainAxis.END] + childStyle[xMainAxis.MARGIN_TRAILING];
+        if (childLayout[parentMainAxis.END] > maxSize) {
+          maxSize = childLayout[parentMainAxis.END] + childStyle[parentMainAxis.MARGIN_TRAILING];
         }
 
         totalFlexGrow += childStyle.flexGrow;
@@ -1109,8 +1104,8 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
           previousChild = child;
         }
 
-        if ((childLayout[xNewCrossAxisDirection.DIMENSION] + childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] + childStyle[xNewCrossAxisDirection.MARGIN_LEADING])> maxCrossDimension) {
-          maxCrossDimension = childLayout[xNewCrossAxisDirection.DIMENSION] + childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] + childStyle[xNewCrossAxisDirection.MARGIN_LEADING];
+        if ((childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING])> maxCrossDimension) {
+          maxCrossDimension = childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING];
         }
       }
 
@@ -1121,17 +1116,17 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     crossLineLengths.push(maxCrossDimension);
     lineNrOfChildren.push(currNrOfChildren);
 
-    if (nodeLayout[xMainAxis.DIMENSION] === 0) {
-      nodeLayout[xMainAxis.END] = maxSize + nodeStyle[xMainAxis.PADDING_TRAILING];
-      nodeLayout[xMainAxis.DIMENSION] = maxSize + nodeStyle[xMainAxis.PADDING_TRAILING] - nodeLayout[xMainAxis.START];
+    if (nodeLayout[parentMainAxis.DIMENSION] === 0) {
+      nodeLayout[parentMainAxis.END] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING];
+      nodeLayout[parentMainAxis.DIMENSION] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING] - nodeLayout[parentMainAxis.START];
     }
 
     var newParentHeight = nodeLayout.height;
     var newParentWidth = nodeLayout.width;
 
 
-    var mainDimensionSize = newMainAxisDirection === ROW ? newParentWidth : newParentHeight;
-    var crossDimensionSize = newMainAxisDirection === ROW ? newParentHeight : newParentWidth;
+    var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
+    var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
 
 
     // correct the children position (justifyContent, alignItems, more?!)
@@ -1142,29 +1137,30 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
     previousChild = null;
     var currentLineIndex = -1;
     var currCrossSize = 0;
-    for (var i = 0, l = nodeChildren.length; i < l; i++) {
-      var child = nodeChildren[i];
-      var childStyle = child.style;
-      var childLayout = child.layout;
+
+    for (i = 0, l = nodeChildren.length; i < l; i++) {
+      child = nodeChildren[i];
+      childStyle = child.style;
+      childLayout = child.layout;
       if (currentLineIndex !== childLayout.lineIndex) {
         currentLineIndex = childLayout.lineIndex;
         remainingSpaceMainAxis = mainDimensionSize - lineLengths[currentLineIndex];
         if (!totalFlexGrow) {
-          if (justifyContent === 'center') {
-            remainingSpaceMainAxis = remainingSpaceMainAxis / 2;
+          if (justifyContent === CENTER) {
+            remainingSpaceMainAxis /= 2;
           }
-          else if (justifyContent === 'space-between') {
-            remainingSpaceMainAxis = remainingSpaceMainAxis / (lineNrOfChildren[currentLineIndex] - 1);
+          else if (justifyContent === SPACE_BETWEEN) {
+            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] - 1);
             previousChild = null;
           }
-          else if (justifyContent === 'space-around') {
-            remainingSpaceMainAxis = remainingSpaceMainAxis / (lineNrOfChildren[currentLineIndex] * 2);
+          else if (justifyContent === SPACE_AROUND) {
+            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] * 2);
             previousChild = null;
           }
         }
         currCrossSize += lineLengths[currentLineIndex];
       }
-      var isPositionAbsolute = childStyle.position === 'absolute';
+      var isPositionAbsolute = childStyle.position === ABSOLUTE;
 
       var remainingSpaceCrossAxisSelf = crossDimensionSize - additional;
 
@@ -1175,22 +1171,20 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
         flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
       }
       else {
-        justifyContentFn(child, previousChild, newMainAxisDirection, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
+        justifyContentFn(child, previousChild, mainAxis, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
       }
 
       if (isPositionAbsolute) {
-        absolutePosition(child, previousChild, xNewMainAxisDirection, xNewCrossAxisDirection);
+        absolutePosition(child, previousChild, mainAxis, crossAxis);
       }
       var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
-      var addSpace = crossLineLengths[currentLineIndex] - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING];
+      var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
       if (addSpace) {
         remainingSpaceCrossAxisSelf += addSpace;
       }
-      if (alignSelf === 'center') {
+      if (alignSelf === CENTER) {
         remainingSpaceCrossAxisSelf = (remainingSpaceCrossAxisSelf / 2);
       }
-
-
 
       // TODO: fix flexWrap line heights
       //if (lineLengths.length > 1) {
@@ -1199,12 +1193,12 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
       //  childLayout[xNewCrossAxisDirection.START] = foo - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING] - addSpace;
       //  childLayout[xNewCrossAxisDirection.END] = foo - addSpace;
       //}
-      alignItemsFn(child, previousChild, newCrossAxisDirection, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
+      alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
       if (isPositionAbsolute) {
-        _processChildren(child, xNewMainAxisDirection, xNewCrossAxisDirection, isPositionAbsolute);
+        processChildren(child, mainAxis, crossAxis, isPositionAbsolute);
       }
       else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
-        _correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, xNewMainAxisDirection, xNewCrossAxisDirection);
+        correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
       }
       if (!isPositionAbsolute){
         previousChild = child;
@@ -1214,14 +1208,14 @@ function _processChildren(node, xMainAxis, xCrossAxis, shouldProcessAbsolute) {
 }
 
 //window.testing = [];
-function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
+function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
 
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
 
   var parent = node.parent;
-  if (parent && parent.style.position === 'absolute' && !shouldProcessAbsolute) {
-    return;
+  if (parent && parent.style.position === ABSOLUTE && !shouldProcessAbsolute) {
+    return node;
   }
 
   //if (testing.indexOf(node) > -1) {
@@ -1233,13 +1227,10 @@ function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
 
-  var xMainAxis = AXIS[mainAxis];
-  var crossAxis = mainAxis === COLUMN ? ROW : COLUMN;
-  var xCrossAxis = AXIS[crossAxis];
 
-  if (previousSibling && nodeStyle.position !== 'absolute') {
-    nodeLayout[xMainAxis.START] = previousSibling.layout[xMainAxis.END] + previousSibling.style[xMainAxis.MARGIN_TRAILING];
-    nodeLayout[xCrossAxis.START] = parentLayout[xCrossAxis.START];
+  if (previousSibling && nodeStyle.position !== ABSOLUTE) {
+    nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
+    nodeLayout[crossAxis.START] = parentLayout[crossAxis.START];
 
   }
   else {
@@ -1256,8 +1247,8 @@ function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
 
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
-  if (nodeStyle.position !== 'absolute') {
-    _processChildren(node, xMainAxis, xCrossAxis, false);
+  if (nodeStyle.position !== ABSOLUTE) {
+    processChildren(node, mainAxis, crossAxis, false);
   }
 
   return node;
@@ -1265,7 +1256,7 @@ function layoutNode(node, previousSibling, mainAxis, shouldProcessAbsolute) {
 
 module.exports = layoutNode;
 
-},{}],13:[function(require,module,exports){
+},{"./AXIS":11}],14:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1313,7 +1304,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -1429,26 +1420,26 @@ function rerender(domElement,
   top,
   left) {
   return function() {
-    //render(domElement,
-    //  newElement,
-    //  oldElement,
-    //  parent,
-    //  position,
-    //  viewPortDimensions,
-    //  top,
-    //  left);
+    render(domElement,
+      newElement,
+      oldElement,
+      parent,
+      position,
+      viewPortDimensions,
+      top,
+      left);
   }
 }
 
 function renderImage(domElement, newComponentTree, oldComponentTree, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
   if (element.props && element.props.src) {
     if (!element.props.isLoaded) {
-      //loadImage(element.props.src)
-      //  .then(setLoaded(element), _rejectedImageLoad)
-      //  .then(rerender(domElement, newComponentTree, oldComponentTree, null, 0, viewPortDimensions, 0, 0));
+      loadImage(element.props.src)
+        .then(setLoaded(element), _rejectedImageLoad)
+        .then(rerender(domElement, newComponentTree, oldComponentTree, null, 0, viewPortDimensions, 0, 0));
     } else {
-      //var image = loadImageDirectly(element.props.src);
-      //_renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight);
+      var image = loadImageDirectly(element.props.src);
+      _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight);
     }
   }
 }
@@ -1686,7 +1677,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderView":15,"./temp-utils":16}],15:[function(require,module,exports){
+},{"./renderView":16,"./temp-utils":17}],16:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -1763,7 +1754,7 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
 
 module.exports = renderView;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2075,7 +2066,7 @@ module.exports = renderView;
 }());
 
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
