@@ -109,14 +109,14 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       alignItems: 'center'
   }, [
     View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'red', flexGrow: 4}, [Text('a')]),
+    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { fontSize: 100, fontFamily: 'San Francisco'})]),
     View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123')]),
-        View({}, sharedStyle, [Text('a')]),
+        View({}, sharedStyle, [Text('a', {textAlign: 'right'})]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
