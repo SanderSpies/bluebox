@@ -8,6 +8,8 @@ var Image = Bluebox.Components.Image;
 var Text = Bluebox.Components.Text;
 var View = Bluebox.Components.View;
 
+//var Transition = Bluebox.Animations.Transition;
+
 var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
 var sharedImageStyle = {width: 100, height: 100};
 /**
@@ -102,9 +104,9 @@ var sharedImageStyle = {width: 100, height: 100};
 
 function Transition(start, end, easing, node) {
   if (node.style.position === 'absolute') {
-    console.warn('register as absolute animation please...');
+    //Animator.registerAbsoluteTransition(start, end, opts, node);
   } else {
-    console.warn('register as relative animation please...');
+    //Animator.registerRelativeTransition(start, end, opts, node);
   }
   return node;
 }
@@ -193,25 +195,13 @@ var Bluebox = require('./../../lib/index');
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
 var i = 0;
 
-//console.profile('rendering');
-function renderMe() {
-  if (i === 2) {
-    i = 0;
-  }
-
+function continuousRendering() {
   Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-
-  //setTimeout(function(){
-  //  console.log('again!');
-  //  Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-  //},2000);
-
-  i++;
+  requestAnimationFrame(continuousRendering);
 }
 
+requestAnimationFrame(continuousRendering);
 
-
-renderMe();
 
 },{"./../../lib/index":10,"./CategoriesView":1}],3:[function(require,module,exports){
 'use strict';
@@ -769,6 +759,11 @@ var Bluebox = {
     View: null
   },
 
+  Animations: {
+    Transition: null,
+    Spring: null
+  },
+
   update: function(component) {
     return withProperties(component);
   },
@@ -793,7 +788,7 @@ var Bluebox = {
       newComponentTree = layoutNode(newComponentTree, null, AXIS.column, AXIS.row, false);
     }
 
-    console.log(newComponentTree);
+    //console.log(newComponentTree);
     //console.log(toDOMString(newComponentTree));
 
     if (newComponentTree !== oldComponentTree || hasChanged) {
@@ -813,7 +808,8 @@ module.exports = Bluebox;
 Bluebox.Components.View = require('./components/View');
 Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
-
+Bluebox.Animations.Transition = function(){};
+Bluebox.Animations.Spring = function(){};
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/AXIS":11,"./layout/layoutNode":13,"./layout/layoutNode-tests/utils/toDOMString":12,"./renderers/DOM/ViewPortHelper":14,"./renderers/GL/render":15,"_process":21}],11:[function(require,module,exports){
 var AXIS = {
@@ -1356,98 +1352,6 @@ function isVisible(node, viewPortDimensions) {
 }
 
 
-
-var loadedImages = {
-
-};
-
-function loadImage(src) {
-  return new Promise(function(resolve, reject){
-    // TODO: pool this
-    var image = new Image();
-
-    image.onload = function image$onload() {
-      loadedImages[src] = image;
-      resolve(image);
-    };
-    image.onerror = function image$onerror() {
-      reject(image);
-    };
-    image.src = src;
-  });
-}
-
-function loadImageDirectly(src) {
-  return loadedImages[src];
-}
-
-function _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
-  //return function(image) {
-    webGLContext.useProgram(imageProgram);
-
-    iTextLocation = webGLContext.getAttribLocation(imageProgram, "a_position");
-    webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
-    var texCoordBuffer = webGLContext.createBuffer();
-    webGLContext.uniform4f(webGLContext.getUniformLocation(imageProgram, 'u_dimensions'), parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
-    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
-    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
-      0.0,  0.0,
-      1.0,  0.0,
-      0.0,  1.0,
-      0.0,  1.0,
-      1.0,  0.0,
-      1.0,  1.0]), webGLContext.STATIC_DRAW);
-    webGLContext.enableVertexAttribArray(iTextLocation);
-    webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
-
-
-    // Create a texture.
-    var texture = webGLContext.createTexture();
-    webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
-    // Upload the image into the texture.
-    webGLContext.texImage2D(webGLContext.TEXTURE_2D, 0, webGLContext.RGBA, webGLContext.RGBA, webGLContext.UNSIGNED_BYTE, image);
-    //webGLContext.activeTexture(webGLContext.TEXTURE0);
-    // Set the parameters so we can render any size image.
-    webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_S, webGLContext.CLAMP_TO_EDGE);
-    webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_T, webGLContext.CLAMP_TO_EDGE);
-    webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MIN_FILTER, webGLContext.NEAREST);
-
-    webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MAG_FILTER, webGLContext.NEAREST);
-
-    var dstX = left;
-    var dstY = top;
-    var dstWidth = width;
-    var dstHeight = height;
-
-    // convert dst pixel coords to clipspace coords
-    var clipX = dstX / webGLContext.canvas.width  *  2 - 1;
-    var clipY = dstY / webGLContext.canvas.height * -2 + 1;
-    var clipWidth = dstWidth  / webGLContext.canvas.width  *  2;
-    var clipHeight = dstHeight / webGLContext.canvas.height * -2;
-
-    // build a matrix that will stretch our
-    // unit quad to our desired size and location
-    webGLContext.uniformMatrix3fv(u_matrixLoc, false, [
-      clipWidth, 0, 0,
-      0, clipHeight, 0,
-      clipX, clipY, 1
-    ]);
-
-    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
-
- // }
-}
-
-function _rejectedImageLoad() {
-  // TODO
-}
-
-function setLoaded(element) {
-  return function() {
-    element.props.isLoaded = true;
-  }
-}
-
 function rerender(domElement,
   newElement,
   oldElement,
@@ -1467,6 +1371,110 @@ function rerender(domElement,
       left);
   }
 }
+
+
+
+var loadedImages = {
+
+};
+
+function loadImageDirectly(src) {
+  return loadedImages[src];
+}
+
+
+function loadImage(src) {
+  return new Promise(function(resolve, reject){
+    // TODO: pool this
+    var image = new Image();
+
+    image.onload = function image$onload() {
+      loadedImages[src] = image;
+      resolve(image);
+    };
+    image.onerror = function image$onerror() {
+      reject(image);
+    };
+    image.src = src;
+  });
+}
+
+
+var existingImageTextures = {};
+
+function getImageTexture(image, element) {
+  if (existingImageTextures[element.props.src]) {
+    return existingImageTextures[element.props.src];
+  }
+  webGLContext.useProgram(imageProgram);
+  var texture = webGLContext.createTexture();
+  webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
+  webGLContext.texImage2D(webGLContext.TEXTURE_2D, 0, webGLContext.RGBA, webGLContext.RGBA, webGLContext.UNSIGNED_BYTE, image);
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_S, webGLContext.CLAMP_TO_EDGE);
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_T, webGLContext.CLAMP_TO_EDGE);
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MIN_FILTER, webGLContext.NEAREST);
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MAG_FILTER, webGLContext.NEAREST);
+  existingImageTextures[element.props.src] = texture;
+  return texture;
+}
+
+function _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
+  //return function(image) {
+  webGLContext.useProgram(imageProgram);
+
+   webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+    var texCoordBuffer = webGLContext.createBuffer();
+    webGLContext.uniform4f(u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
+  webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
+  webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
+    0.0,  0.0,
+    1.0,  0.0,
+    0.0,  1.0,
+    0.0,  1.0,
+    1.0,  0.0,
+    1.0,  1.0]), webGLContext.STATIC_DRAW);
+  webGLContext.enableVertexAttribArray(iTextLocation);
+  webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
+
+
+  // Create a texture.
+  var texture = getImageTexture(image, element);
+  webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
+
+  var dstX = left;
+  var dstY = top;
+  var dstWidth = width;
+  var dstHeight = height;
+
+  // convert dst pixel coords to clipspace coords
+  var clipX = dstX / webGLContext.canvas.width  *  2 - 1;
+  var clipY = dstY / webGLContext.canvas.height * -2 + 1;
+  var clipWidth = dstWidth  / webGLContext.canvas.width  *  2;
+  var clipHeight = dstHeight / webGLContext.canvas.height * -2;
+
+  // build a matrix that will stretch our
+  // unit quad to our desired size and location
+  webGLContext.uniformMatrix3fv(u_matrixLoc, false, [
+    clipWidth, 0, 0,
+    0, clipHeight, 0,
+    clipX, clipY, 1
+  ]);
+
+  webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+
+  // }
+}
+
+function _rejectedImageLoad() {
+  // TODO
+}
+
+function setLoaded(element) {
+  return function() {
+    element.props.isLoaded = true;
+  }
+}
+
 
 function renderImage(domElement, newComponentTree, oldComponentTree, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
   if (element.props && element.props.src) {
@@ -1489,15 +1497,19 @@ var imageProgram;
 var viewProgram;
 var colorLocation;
 var positionLocation;
-var iPositionLocation;
+//var iPositionLocation;
 var iResolutionLocation;
 var resolutionLocation;
 var textCoord;
 var iTextLocation;
 var u_matrixLoc;
+var view_u_dimensions;
 var topElement;
 var topOldElement;
 var topDOMElement;
+var u_dimensions;
+var viewBuffer;
+var texCoordBuffer;
 function render(domElement,
   newElement,
   oldElement,
@@ -1533,20 +1545,23 @@ function render(domElement,
 
 
     webGLContext.useProgram(viewProgram);
+    viewBuffer = webGLContext.createBuffer();
 
     positionLocation = webGLContext.getAttribLocation(viewProgram, "a_position");
     textCoord = webGLContext.getAttribLocation(viewProgram, "a_textCoord");
     resolutionLocation = webGLContext.getUniformLocation(viewProgram, "u_resolution");
     colorLocation = webGLContext.getUniformLocation(viewProgram, "u_color");
+    view_u_dimensions = webGLContext.getUniformLocation(viewProgram, 'u_dimensions')
+    u_dimensions = webGLContext.getUniformLocation(imageProgram, 'u_dimensions');
+
 
     webGLContext.uniform4f(webGLContext.getUniformLocation(viewProgram, 'u_dimensions'), parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
     webGLContext.uniform2f(resolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
 
     webGLContext.useProgram(imageProgram);
-
-    var u_imageLoc = webGLContext.getUniformLocation(imageProgram, "u_image");
+    texCoordBuffer = webGLContext.createBuffer();
+    iTextLocation = webGLContext.getAttribLocation(imageProgram, "a_position");
     u_matrixLoc = webGLContext.getUniformLocation(imageProgram, "u_matrix");
-    iPositionLocation = webGLContext.getAttribLocation(imageProgram, "a_position");
 
     iResolutionLocation = webGLContext.getUniformLocation(imageProgram, "u_resolution");
 
@@ -1577,7 +1592,7 @@ function render(domElement,
   }
 
   if (newElement === oldElement) {
-    return;
+    //return;
   }
  // fixme: if (newElement && !oldElement) {
     if (!newElement.layout) {
@@ -1586,7 +1601,7 @@ function render(domElement,
 
     if (newElement.type === 'view') {
 
-      renderView(webGLContext, viewProgram, newElement, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
+      renderView(webGLContext, viewProgram, view_u_dimensions, viewBuffer,  newElement, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
         var style = newElement.style;
         if ('opacity' in style) {
           inheritedOpacity = (inheritedOpacity || 1) * style.opacity;
@@ -1626,7 +1641,7 @@ function render(domElement,
     }
     else if (newElement.type === 'text') {
 
-      renderText(webGLContext, imageProgram, iTextLocation, newElement, inheritedOpacity || 1, inheritedColor);
+      renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
     }
     else if (newElement.type === 'image') {
       renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
@@ -1639,19 +1654,35 @@ function render(domElement,
 module.exports = render;
 
 },{"./renderText":16,"./renderView":17,"./temp-utils":18,"promise":22}],16:[function(require,module,exports){
+/**
+ * Text caching:
+ * - create canvas for each new text elements for performance
+ * - only remove text elements when not rendering text to the screen anymore
+ */
+
+var textCaching = {};
 var textCanvas = document.createElement('canvas');
 var textCanvasCtx = textCanvas.getContext('2d');
+function drawTextOnCanvas(webgl, newElement, width, height, inheritedOpacity, inheritedColor) {
+  var text = newElement.children[0];
+  var font = newElement.style.fontStyle + ' ' + newElement.style.fontWeight + ' ' + newElement.style.fontSize + 'px ' + newElement.style.fontFamily;
+  var textAlign = newElement.style.textAlign;
+  var textBaseLine = 'middle';
+  var fillStyle = inheritedColor || "black";
 
-function drawTextOnCanvas(newElement, width, height, inheritedOpacity, inheritedColor) {
+  var uniqueKey = text + font + width + height + textAlign + textBaseLine + fillStyle;
+  if(textCaching[uniqueKey]){
+    return textCaching[uniqueKey];
+  }
+
+
   textCanvasCtx.clearRect(0, 0, width, height);
   textCanvasCtx.canvas.width = width;
   textCanvasCtx.canvas.height = height;
-
-  textCanvasCtx.font = newElement.style.fontStyle + ' ' +newElement.style.fontWeight + ' ' + newElement.style.fontSize + 'px ' + newElement.style.fontFamily;
-  var textAlign = newElement.style.textAlign;
+  textCanvasCtx.font = font;
   textCanvasCtx.textAlign = newElement.style.textAlign;
-  textCanvasCtx.textBaseline = "middle";
-  textCanvasCtx.fillStyle = inheritedColor || "black";
+  textCanvasCtx.textBaseline = textBaseLine;
+  textCanvasCtx.fillStyle = fillStyle;
   var left = 0;
   if (textAlign === 'right') {
     left = width;
@@ -1659,12 +1690,24 @@ function drawTextOnCanvas(newElement, width, height, inheritedOpacity, inherited
   else if (textAlign === 'center') {
     left = width / 2;
   }
-  textCanvasCtx.fillText(newElement.children[0], left, newElement.style.fontSize / 2);
-  return textCanvasCtx.canvas;
+  textCanvasCtx.fillText(text, left, newElement.style.fontSize / 2);
+  var canvas = textCanvasCtx.canvas;
+  var texture = webgl.createTexture();
+  webgl.bindTexture(webgl.TEXTURE_2D, texture);
+  webgl.pixelStorei(webgl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.CLAMP_TO_EDGE);
+  webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.CLAMP_TO_EDGE);
+  webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
+  webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, webgl.NEAREST);
+
+  webgl.texImage2D(webgl.TEXTURE_2D, 0, webgl.RGBA, webgl.RGBA, webgl.UNSIGNED_BYTE, textCanvas);
+  textCaching[uniqueKey] = texture;
+
+  return texture;
 }
 
 var u_matrixLoc;
-function renderText(webGLContext, imageProgram, iTextLocation, newElement, inheritedOpacity, inheritedColor) {
+function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity, inheritedColor) {
   var layout = newElement.layout;
   var top = layout.top;
   var left = layout.left;
@@ -1679,40 +1722,30 @@ function renderText(webGLContext, imageProgram, iTextLocation, newElement, inher
   var parentRight = parentLayout.right;
   var parentBottom = parentLayout.bottom;
 
-  webGLContext.useProgram(imageProgram);
-  u_matrixLoc = webGLContext.getUniformLocation(imageProgram, "u_matrix");
-  var foo = drawTextOnCanvas(newElement, parentWidth, parentHeight, inheritedOpacity, inheritedColor);
+  webgl.useProgram(imageProgram);
 
-
-  var texCoordBuffer = webGLContext.createBuffer();
-  webGLContext.uniform4f(webGLContext.getUniformLocation(imageProgram, 'u_dimensions'), parentLeft, parentTop, parentRight, parentBottom);
-  webGLContext.pixelStorei(webGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-  webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
-  webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
-  webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
+  
+  webgl.uniform4f(u_dimensions, parentLeft, parentTop, parentRight, parentBottom);
+  webgl.blendFunc(webgl.ONE, webgl.ONE_MINUS_SRC_ALPHA);
+  webgl.bindBuffer(webgl.ARRAY_BUFFER, texCoordBuffer);
+  webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array([
     0.0,  0.0,
     1.0,  0.0,
     0.0,  1.0,
     0.0,  1.0,
     1.0,  0.0,
-    1.0,  1.0]), webGLContext.STATIC_DRAW);
-  webGLContext.enableVertexAttribArray(iTextLocation);
-  webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
+    1.0,  1.0]), webgl.STATIC_DRAW);
+  webgl.enableVertexAttribArray(iTextLocation);
+  webgl.vertexAttribPointer(iTextLocation, 2, webgl.FLOAT, false, 0, 0);
 
-
+  var texture = drawTextOnCanvas(webgl, newElement, parentWidth, parentHeight, inheritedOpacity, inheritedColor);
   // Create a texture.
-  var texture = webGLContext.createTexture();
 
-  webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
+  webgl.bindTexture(webgl.TEXTURE_2D, texture);
   // Upload the image into the texture.
-  webGLContext.texImage2D(webGLContext.TEXTURE_2D, 0, webGLContext.RGBA, webGLContext.RGBA, webGLContext.UNSIGNED_BYTE, foo);
+
   //webGLContext.activeTexture(webGLContext.TEXTURE0);
   // Set the parameters so we can render any size image.
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_S, webGLContext.CLAMP_TO_EDGE);
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_T, webGLContext.CLAMP_TO_EDGE);
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MIN_FILTER, webGLContext.NEAREST);
-
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MAG_FILTER, webGLContext.NEAREST);
 
   var dstX = parentLeft;
   var dstY = parentTop;
@@ -1720,23 +1753,36 @@ function renderText(webGLContext, imageProgram, iTextLocation, newElement, inher
   var dstHeight = parentHeight;
 
   // convert dst pixel coords to clipspace coords
-  var clipX = dstX / webGLContext.canvas.width  *  2 - 1;
-  var clipY = dstY / webGLContext.canvas.height * -2 + 1;
-  var clipWidth = dstWidth  / webGLContext.canvas.width  *  2;
-  var clipHeight = dstHeight / webGLContext.canvas.height * -2;
+  var clipX = dstX / webgl.canvas.width  *  2 - 1;
+  var clipY = dstY / webgl.canvas.height * -2 + 1;
+  var clipWidth = dstWidth  / webgl.canvas.width  *  2;
+  var clipHeight = dstHeight / webgl.canvas.height * -2;
 
   // build a matrix that will stretch our
   // unit quad to our desired size and location
-  webGLContext.uniformMatrix3fv(u_matrixLoc, false, [
+  webgl.uniformMatrix3fv(u_matrixLoc, false, [
     clipWidth, 0, 0,
     0, clipHeight, 0,
     clipX, clipY, 1
   ]);
 
-  webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+  webgl.drawArrays(webgl.TRIANGLES, 0, 6);
 }
 
+var TextRenderer = {
+
+  renderText: function() {
+
+  },
+
+  cleanTextCaching: function() {
+
+  }
+
+};
+
 module.exports = renderText;
+
 },{}],17:[function(require,module,exports){
 'use strict';
 
@@ -1788,7 +1834,7 @@ function isViewVisible(element) {
     element.style && element.style.border;
 }
 
-function renderView(webGLContext, viewProgram, element, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity) {
+function renderView(webGLContext, viewProgram, u_view_dimensions, buffer, element, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity) {
   if (isViewVisible(element)) {
 
     webGLContext.useProgram(viewProgram);
@@ -1796,12 +1842,12 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
     //webGLContext.blend
     webGLContext.blendFuncSeparate(webGLContext.SRC_ALPHA, webGLContext.ONE_MINUS_SRC_ALPHA, webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
 
-    var buffer = webGLContext.createBuffer();
+
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, buffer);
     webGLContext.enableVertexAttribArray(positionLocation);
     webGLContext.vertexAttribPointer(positionLocation, 2, webGLContext.FLOAT, false, 0, 0);
 
-    webGLContext.uniform4f(webGLContext.getUniformLocation(viewProgram, 'u_dimensions'), parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
+    webGLContext.uniform4f(u_view_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
 
     var x1 = element.layout.left;
     var x2 = element.layout.right;

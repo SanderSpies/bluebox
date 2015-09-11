@@ -7,6 +7,8 @@ var Image = Bluebox.Components.Image;
 var Text = Bluebox.Components.Text;
 var View = Bluebox.Components.View;
 
+//var Transition = Bluebox.Animations.Transition;
+
 var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
 var sharedImageStyle = {width: 100, height: 100};
 /**
@@ -101,9 +103,9 @@ var sharedImageStyle = {width: 100, height: 100};
 
 function Transition(start, end, easing, node) {
   if (node.style.position === 'absolute') {
-    console.warn('register as absolute animation please...');
+    //Animator.registerAbsoluteTransition(start, end, opts, node);
   } else {
-    console.warn('register as relative animation please...');
+    //Animator.registerRelativeTransition(start, end, opts, node);
   }
   return node;
 }
