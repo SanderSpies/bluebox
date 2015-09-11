@@ -99,8 +99,18 @@ var sharedImageStyle = {width: 100, height: 100};
 //
 //return;
 
+function Transition(start, end, easing, node) {
+  if (node.style.position === 'absolute') {
+    console.warn('register as absolute animation please...');
+  } else {
+    console.warn('register as relative animation please...');
+  }
+  return node;
+}
+
+
 module.exports = View({}, {backgroundColor: 'red'}, [
-  View({},{
+  View({}, {
       height: 300,
       justifyContent: 'space-around',
       flexDirection: 'row',
@@ -109,15 +119,17 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       alignItems: 'center'
   }, [
     View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { fontSize: 100, fontFamily: 'San Francisco'})]),
+    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { textAlign:'center', fontSize: 50, fontWeight: 'bold', fontFamily: 'San Francisco'})]),
     View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({}, sharedStyle, [Text('foobar123')]),
-        View({}, sharedStyle, [Text('a', {textAlign: 'right'})]),
+        View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
+        Transition({left: 100, top: 50}, {left: 50, top: 100}, {duration: 2000, easing: 'ease-in'},
+          View({}, {width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
+        ),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -131,7 +143,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Image({src: 'images/foo.png'},sharedImageStyle)]),
-        View({}, sharedStyle, [Text('foobar')]),
+        View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
         View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg'}, sharedImageStyle)]),

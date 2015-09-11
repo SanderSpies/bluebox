@@ -100,8 +100,18 @@ var sharedImageStyle = {width: 100, height: 100};
 //
 //return;
 
+function Transition(start, end, easing, node) {
+  if (node.style.position === 'absolute') {
+    console.warn('register as absolute animation please...');
+  } else {
+    console.warn('register as relative animation please...');
+  }
+  return node;
+}
+
+
 module.exports = View({}, {backgroundColor: 'red'}, [
-  View({},{
+  View({}, {
       height: 300,
       justifyContent: 'space-around',
       flexDirection: 'row',
@@ -110,15 +120,17 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       alignItems: 'center'
   }, [
     View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { fontSize: 100, fontFamily: 'San Francisco'})]),
+    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { textAlign:'center', fontSize: 50, fontWeight: 'bold', fontFamily: 'San Francisco'})]),
     View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({}, sharedStyle, [Text('foobar123')]),
-        View({}, sharedStyle, [Text('a', {textAlign: 'right'})]),
+        View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
+        Transition({left: 100, top: 50}, {left: 50, top: 100}, {duration: 2000, easing: 'ease-in'},
+          View({}, {width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
+        ),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -132,7 +144,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Image({src: 'images/foo.png'},sharedImageStyle)]),
-        View({}, sharedStyle, [Text('foobar')]),
+        View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
         View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg'}, sharedImageStyle)]),
@@ -250,7 +262,9 @@ function Component(type, props, style, children) {
       bottom: UNDEFINED,
       fontSize: 12,
       fontFamily: 'Arial',
-      textAlign: 'left'
+      textAlign: 'left',
+      fontWeight: '',
+      fontStyle: 'normal'
     }, style || {}),
     parent: null,
     type: type,
@@ -294,7 +308,8 @@ var Bluebox = require('./../../lib/index');
 var C = require('./C');
 
 var Text = Bluebox.create('text', function(props, style, children) {
-    return C('text', {}, style, [props]);
+  //TODO: add calculated text width and cache it or something...
+  return C('text', {}, style, [props]);
 });
 
 module.exports = Text;
@@ -673,24 +688,43 @@ function rerenderComponent(type, props, style, children) {
   return componentType(props, style, children);
 }
 
+function clone(obj) {
+  var newObj = {};
+  var properties = keys(obj);
+  for (var i = 0, l = properties.length; i < l; i++) {
+    var property = properties[i];
+    newObj[property] = obj[property];
+  }
+  return newObj;
+}
+
+
 function updateTree(component, newComponent) {
   // go up the tree and replace all the nodes
   var parent = component.parent;
   if (parent) {
-    var parentChildren = parent.children;
-    for (var i = 0, l = parentChildren.length; i < l; i++) {
-      var child = parentChildren[i];
-      if (child === component) {
-        parent.children[i] = newComponent;
-        break;
+    //debugger;
+    // recreate the parents
+    newComponent.layout = component.layout;
+    while(parent) {
+      var index = parent.children.indexOf(component);
+      var newParent = clone(parent);
+      newParent.children[index] = newComponent;
+      newComponent.parent = newParent;
+
+      if (!component.parent){
+        return newComponent;
       }
+      newComponent = newComponent.parent;
+      component = component.parent;
+      parent = component.parent;
     }
-    // TODO: recreate the parents in an optimal way + return the parent
+
+    return newComponent;
   }
   else {
     return newComponent;
   }
-
 }
 
 function mergeProperties(newProps, existingProps) {
@@ -756,9 +790,7 @@ var Bluebox = {
       hasChanged = true;
     }
     if (newComponentTree.layout.width === undefined) {
-      console.log('foo:', AXIS);
       newComponentTree = layoutNode(newComponentTree, null, AXIS.column, AXIS.row, false);
-      // oldComponentTree, true, viewPortDimensions.width, viewPortDimensions.height, 'ltr');
     }
 
     console.log(newComponentTree);
@@ -783,7 +815,7 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/AXIS":11,"./layout/layoutNode":13,"./layout/layoutNode-tests/utils/toDOMString":12,"./renderers/DOM/ViewPortHelper":14,"./renderers/GL/render":15,"_process":20}],11:[function(require,module,exports){
+},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/AXIS":11,"./layout/layoutNode":13,"./layout/layoutNode-tests/utils/toDOMString":12,"./renderers/DOM/ViewPortHelper":14,"./renderers/GL/render":15,"_process":21}],11:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1313,6 +1345,7 @@ module.exports = ViewPortHelper;
 var webGLContext;
 require('./temp-utils');
 var renderView = require('./renderView');
+var renderText = require('./renderText');
 var Promise = require('promise');
 
 function isVisible(node, viewPortDimensions) {
@@ -1448,95 +1481,6 @@ function renderImage(domElement, newComponentTree, oldComponentTree, element, to
   }
 }
 
-var textCanvas = document.createElement('canvas');
-var textCanvasCtx = textCanvas.getContext('2d');
-function drawTextOnCanvas(newElement, width, height, inheritedOpacity, inheritedColor) {
-  //textCanvasCtx.clearRect(0, 0, 1000, 1000);
-  textCanvasCtx.canvas.width = width;
-  textCanvasCtx.canvas.height = height;
-  textCanvasCtx.font = newElement.style.fontSize + 'px ' + newElement.style.fontFamily;
-  textCanvasCtx.textAlign = newElement.style.textAlign;
-  textCanvasCtx.textBaseline = "middle";
-  textCanvasCtx.fillStyle = inheritedColor || "black";
-  textCanvasCtx.fillText(newElement.children[0], 2, 12);
-  return textCanvasCtx.canvas;
-}
-
-function renderText(newElement, inheritedOpacity, inheritedColor) {
-  var layout = newElement.layout;
-  var top = layout.top;
-  var left = layout.left;
-  var width = layout.width;
-  var height = layout.height;
-  var parent = newElement.parent;
-  var parentLayout = parent.layout;
-  var parentTop = parentLayout.top;
-  var parentLeft = parentLayout.left;
-  var parentWidth = parentLayout.width;
-  var parentHeight = parentLayout.height;
-  var parentRight = parentLayout.right;
-  var parentBottom = parentLayout.bottom;
-
-  webGLContext.useProgram(imageProgram);
-  u_matrixLoc = webGLContext.getUniformLocation(imageProgram, "u_matrix");
-  var foo = drawTextOnCanvas(newElement, parentWidth, parentHeight, inheritedOpacity, inheritedColor);
-
-
-  var texCoordBuffer = webGLContext.createBuffer();
-  webGLContext.uniform4f(webGLContext.getUniformLocation(imageProgram, 'u_dimensions'), parentLeft, parentTop, parentRight, parentBottom);
-  webGLContext.pixelStorei(webGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-  webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
-  webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
-  webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
-    0.0,  0.0,
-    1.0,  0.0,
-    0.0,  1.0,
-    0.0,  1.0,
-    1.0,  0.0,
-    1.0,  1.0]), webGLContext.STATIC_DRAW);
-  webGLContext.enableVertexAttribArray(iTextLocation);
-  webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
-
-
-  // Create a texture.
-  var texture = webGLContext.createTexture();
-
-  webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
-  // Upload the image into the texture.
-  webGLContext.texImage2D(webGLContext.TEXTURE_2D, 0, webGLContext.RGBA, webGLContext.RGBA, webGLContext.UNSIGNED_BYTE, foo);
-  //webGLContext.activeTexture(webGLContext.TEXTURE0);
-  // Set the parameters so we can render any size image.
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_S, webGLContext.CLAMP_TO_EDGE);
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_T, webGLContext.CLAMP_TO_EDGE);
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MIN_FILTER, webGLContext.NEAREST);
-
-  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MAG_FILTER, webGLContext.NEAREST);
-
-  var dstX = parentLeft;
-  var dstY = parentTop;
-  var dstWidth = parentWidth;
-  var dstHeight = parentHeight;
-
-  // convert dst pixel coords to clipspace coords
-  var clipX = dstX / webGLContext.canvas.width  *  2 - 1;
-  var clipY = dstY / webGLContext.canvas.height * -2 + 1;
-  var clipWidth = dstWidth  / webGLContext.canvas.width  *  2;
-  var clipHeight = dstHeight / webGLContext.canvas.height * -2;
-
-  // build a matrix that will stretch our
-  // unit quad to our desired size and location
-  webGLContext.uniformMatrix3fv(u_matrixLoc, false, [
-    clipWidth, 0, 0,
-    0, clipHeight, 0,
-    clipX, clipY, 1
-  ]);
-
-  webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
-}
-
-function calculatePosition(scale, px) {
-  return -1 + (2 / scale * px);
-}
 var vertexShader;
 var vertexShader2;
 var fragmentShader;
@@ -1682,7 +1626,7 @@ function render(domElement,
     }
     else if (newElement.type === 'text') {
 
-      renderText(newElement, inheritedOpacity || 1, inheritedColor);
+      renderText(webGLContext, imageProgram, iTextLocation, newElement, inheritedOpacity || 1, inheritedColor);
     }
     else if (newElement.type === 'image') {
       renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
@@ -1694,7 +1638,106 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderView":16,"./temp-utils":17,"promise":21}],16:[function(require,module,exports){
+},{"./renderText":16,"./renderView":17,"./temp-utils":18,"promise":22}],16:[function(require,module,exports){
+var textCanvas = document.createElement('canvas');
+var textCanvasCtx = textCanvas.getContext('2d');
+
+function drawTextOnCanvas(newElement, width, height, inheritedOpacity, inheritedColor) {
+  textCanvasCtx.clearRect(0, 0, width, height);
+  textCanvasCtx.canvas.width = width;
+  textCanvasCtx.canvas.height = height;
+
+  textCanvasCtx.font = newElement.style.fontStyle + ' ' +newElement.style.fontWeight + ' ' + newElement.style.fontSize + 'px ' + newElement.style.fontFamily;
+  var textAlign = newElement.style.textAlign;
+  textCanvasCtx.textAlign = newElement.style.textAlign;
+  textCanvasCtx.textBaseline = "middle";
+  textCanvasCtx.fillStyle = inheritedColor || "black";
+  var left = 0;
+  if (textAlign === 'right') {
+    left = width;
+  }
+  else if (textAlign === 'center') {
+    left = width / 2;
+  }
+  textCanvasCtx.fillText(newElement.children[0], left, newElement.style.fontSize / 2);
+  return textCanvasCtx.canvas;
+}
+
+var u_matrixLoc;
+function renderText(webGLContext, imageProgram, iTextLocation, newElement, inheritedOpacity, inheritedColor) {
+  var layout = newElement.layout;
+  var top = layout.top;
+  var left = layout.left;
+  var width = layout.width;
+  var height = layout.height;
+  var parent = newElement.parent;
+  var parentLayout = parent.layout;
+  var parentTop = parentLayout.top;
+  var parentLeft = parentLayout.left;
+  var parentWidth = parentLayout.width;
+  var parentHeight = parentLayout.height;
+  var parentRight = parentLayout.right;
+  var parentBottom = parentLayout.bottom;
+
+  webGLContext.useProgram(imageProgram);
+  u_matrixLoc = webGLContext.getUniformLocation(imageProgram, "u_matrix");
+  var foo = drawTextOnCanvas(newElement, parentWidth, parentHeight, inheritedOpacity, inheritedColor);
+
+
+  var texCoordBuffer = webGLContext.createBuffer();
+  webGLContext.uniform4f(webGLContext.getUniformLocation(imageProgram, 'u_dimensions'), parentLeft, parentTop, parentRight, parentBottom);
+  webGLContext.pixelStorei(webGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+  webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
+  webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
+    0.0,  0.0,
+    1.0,  0.0,
+    0.0,  1.0,
+    0.0,  1.0,
+    1.0,  0.0,
+    1.0,  1.0]), webGLContext.STATIC_DRAW);
+  webGLContext.enableVertexAttribArray(iTextLocation);
+  webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
+
+
+  // Create a texture.
+  var texture = webGLContext.createTexture();
+
+  webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
+  // Upload the image into the texture.
+  webGLContext.texImage2D(webGLContext.TEXTURE_2D, 0, webGLContext.RGBA, webGLContext.RGBA, webGLContext.UNSIGNED_BYTE, foo);
+  //webGLContext.activeTexture(webGLContext.TEXTURE0);
+  // Set the parameters so we can render any size image.
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_S, webGLContext.CLAMP_TO_EDGE);
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_WRAP_T, webGLContext.CLAMP_TO_EDGE);
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MIN_FILTER, webGLContext.NEAREST);
+
+  webGLContext.texParameteri(webGLContext.TEXTURE_2D, webGLContext.TEXTURE_MAG_FILTER, webGLContext.NEAREST);
+
+  var dstX = parentLeft;
+  var dstY = parentTop;
+  var dstWidth = parentWidth;
+  var dstHeight = parentHeight;
+
+  // convert dst pixel coords to clipspace coords
+  var clipX = dstX / webGLContext.canvas.width  *  2 - 1;
+  var clipY = dstY / webGLContext.canvas.height * -2 + 1;
+  var clipWidth = dstWidth  / webGLContext.canvas.width  *  2;
+  var clipHeight = dstHeight / webGLContext.canvas.height * -2;
+
+  // build a matrix that will stretch our
+  // unit quad to our desired size and location
+  webGLContext.uniformMatrix3fv(u_matrixLoc, false, [
+    clipWidth, 0, 0,
+    0, clipHeight, 0,
+    clipX, clipY, 1
+  ]);
+
+  webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+}
+
+module.exports = renderText;
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -1783,7 +1826,7 @@ function renderView(webGLContext, viewProgram, element, viewPortDimensions, top,
 
 module.exports = renderView;
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2095,7 +2138,7 @@ module.exports = renderView;
 }());
 
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -2163,7 +2206,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":19}],19:[function(require,module,exports){
+},{"events":20}],20:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2466,7 +2509,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2558,12 +2601,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":26}],22:[function(require,module,exports){
+},{"./lib":27}],23:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -2749,7 +2792,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":30}],23:[function(require,module,exports){
+},{"asap/raw":31}],24:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -2764,7 +2807,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":22}],24:[function(require,module,exports){
+},{"./core.js":23}],25:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -2873,7 +2916,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":22}],25:[function(require,module,exports){
+},{"./core.js":23}],26:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -2891,7 +2934,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":22}],26:[function(require,module,exports){
+},{"./core.js":23}],27:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -2900,7 +2943,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":22,"./done.js":23,"./es6-extensions.js":24,"./finally.js":25,"./node-extensions.js":27}],27:[function(require,module,exports){
+},{"./core.js":23,"./done.js":24,"./es6-extensions.js":25,"./finally.js":26,"./node-extensions.js":28}],28:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -2973,7 +3016,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":22,"asap":28}],28:[function(require,module,exports){
+},{"./core.js":23,"asap":29}],29:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3041,7 +3084,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":29}],29:[function(require,module,exports){
+},{"./raw":30}],30:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -3265,7 +3308,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -3370,4 +3413,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":20,"domain":18}]},{},[2]);
+},{"_process":21,"domain":19}]},{},[2]);
