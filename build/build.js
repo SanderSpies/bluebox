@@ -1623,7 +1623,15 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
     clipX, clipY, 1
   ]);
 
-  webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+  return [
+    0.0,  0.0,
+    1.0,  0.0,
+    0.0,  1.0,
+    0.0,  1.0,
+    1.0,  0.0,
+    1.0,  1.0];
+
+  //webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
 
   // }
 }
@@ -1680,14 +1688,6 @@ function switchToImageRendering() {
 
     webGLContext.useProgram(imageProgram);
 
-    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
-      0.0,  0.0,
-      1.0,  0.0,
-      0.0,  1.0,
-      0.0,  1.0,
-      1.0,  0.0,
-      1.0,  1.0]), webGLContext.STATIC_DRAW);
-
     webGLContext.pixelStorei(webGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
 
@@ -1716,7 +1716,7 @@ var topDOMElement;
 var u_dimensions;
 var viewBuffer;
 var texCoordBuffer;
-var totalNrCount = 0;
+var bigArray = [];
 function render(domElement,
   newElement,
   oldElement,
@@ -1786,6 +1786,7 @@ function render(domElement,
   if (!newElement.parentReference.parent) {
     topElement = newElement;
     topOldElement = oldElement;
+    bigArray = [];
   }
 
   //webGLContext.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set clear color to black, fully opaque
@@ -1816,7 +1817,10 @@ function render(domElement,
 
       switchToViewRendering();
 
-      renderView(webGLContext, view_u_dimensions, newElement, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
+      var data = renderView(webGLContext, view_u_dimensions, newElement, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
+      if (data) {
+        bigArray = bigArray.concat(data);
+      }
 
         var style = newElement.style;
         if ('opacity' in style) {
@@ -1856,16 +1860,23 @@ function render(domElement,
       }
     }
     else if (newElement.type === 'text') {
-      switchToImageRendering();
-      renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
+     switchToImageRendering();
+     var data = renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
+      if (data) {
+        bigArray = bigArray.concat(data);
+      }
     }
     else if (newElement.type === 'image') {
-      switchToImageRendering();
-      renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
+     switchToImageRendering();
+     var data = renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
+      if (data) {
+        bigArray = bigArray.concat(data);
+      }
     }
-  //}
   if (!newElement.parentReference.parent) {
-    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+    // TODO: set image information here :-/
+    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(bigArray), webGLContext.STATIC_DRAW);
+    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, bigArray.length / 2);
   }
 }
 
@@ -1947,13 +1958,7 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
 
 
   webgl.uniform4f(u_dimensions, parentLeft, parentTop, parentRight, parentBottom);
-  webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array([
-    0.0,  0.0,
-    1.0,  0.0,
-    0.0,  1.0,
-    0.0,  1.0,
-    1.0,  0.0,
-    1.0,  1.0]), webgl.STATIC_DRAW);
+  //webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array(), webgl.STATIC_DRAW);
 
 
   var texture = drawTextOnCanvas(webgl, newElement, parentWidth, parentHeight, inheritedOpacity, inheritedColor);
@@ -1984,8 +1989,15 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
     clipX, clipY, 1
   ]);
 
-  webgl.drawArrays(webgl.TRIANGLES, 0, 6);
+  //webgl.drawArrays(webgl.TRIANGLES, 0, 6);
   //return 6;
+  return [
+    0.0,  0.0,
+    1.0,  0.0,
+    0.0,  1.0,
+    0.0,  1.0,
+    1.0,  0.0,
+    1.0,  1.0];
 }
 
 var TextRenderer = {
@@ -2063,19 +2075,20 @@ function renderView(webGLContext, u_view_dimensions, element, colorLocation, par
     var y1 = element.layout.top;
     var y2 = element.layout.bottom;
 
+
+
     setBackgroundColor(webGLContext, element, colorLocation, inheritedOpacity);
     setBorder(element);
-
-    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
+    
+    return [
       x1, y1,
       x2, y1,
       x1, y2,
       x1, y2,
       x2, y1,
-      x2, y2]), webGLContext.STATIC_DRAW);
-
-    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+      x2, y2];
   }
+  return null;
 }
 
 module.exports = renderView;
