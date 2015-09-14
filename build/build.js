@@ -1597,18 +1597,12 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
   //console.info(element.style);
   //return function(image) {
 
-  webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
-    0.0,  0.0,
-    1.0,  0.0,
-    0.0,  1.0,
-    0.0,  1.0,
-    1.0,  0.0,
-    1.0,  1.0]), webGLContext.STATIC_DRAW);
-
 
   // Create a texture.
   var texture = getImageTexture(image, element);
   webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
+
+  webGLContext.uniform4f(u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
 
   var dstX = left;
   var dstY = top;
@@ -1671,12 +1665,13 @@ function switchToViewRendering() {
     webGLContext.useProgram(viewProgram);
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, viewBuffer);
     webGLContext.blendFuncSeparate(webGLContext.SRC_ALPHA, webGLContext.ONE_MINUS_SRC_ALPHA, webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+
     webGLContext.enableVertexAttribArray(positionLocation);
     webGLContext.vertexAttribPointer(positionLocation, 2, webGLContext.FLOAT, false, 0, 0);
   }
 }
 
-function switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight) {
+function switchToImageRendering() {
   if (!isImageRendering) {
     isImageRendering = true;
     isViewRendering = false;
@@ -1685,30 +1680,18 @@ function switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight
 
     webGLContext.useProgram(imageProgram);
 
-    webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
-    webGLContext.uniform4f(u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
-    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
-    webGLContext.enableVertexAttribArray(iTextLocation);
-    webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
-
-  }
-}
-
-function switchToTextRendering() {
-  if (!isTextRendering) {
-    isTextRendering = true;
-    isImageRendering = false;
-    isViewRendering = false;
+    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
+      0.0,  0.0,
+      1.0,  0.0,
+      0.0,  1.0,
+      0.0,  1.0,
+      1.0,  0.0,
+      1.0,  1.0]), webGLContext.STATIC_DRAW);
 
     webGLContext.pixelStorei(webGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-
     webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
-
-    webGLContext.enableVertexAttribArray(iTextLocation);
-    webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
-
-
   }
 }
 
@@ -1733,6 +1716,7 @@ var topDOMElement;
 var u_dimensions;
 var viewBuffer;
 var texCoordBuffer;
+var totalNrCount = 0;
 function render(domElement,
   newElement,
   oldElement,
@@ -1751,7 +1735,7 @@ function render(domElement,
   inheritedColor,
   inheritedFilter) {
 
-  if (!webGLContext) {
+  if (!webGLContext)  {
     topDOMElement = domElement;
     webGLContext = domElement.getContext('webgl');
     if(webGLContext == null){
@@ -1786,12 +1770,20 @@ function render(domElement,
     texCoordBuffer = webGLContext.createBuffer();
     iTextLocation = webGLContext.getAttribLocation(imageProgram, "a_position");
     u_matrixLoc = webGLContext.getUniformLocation(imageProgram, "u_matrix");
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
+    webGLContext.enableVertexAttribArray(iTextLocation);
+    webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
 
     iResolutionLocation = webGLContext.getUniformLocation(imageProgram, "u_resolution");
 
     webGLContext.uniform2f(iResolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
+
+    domElement.width = viewPortDimensions.width;
+    domElement.height = viewPortDimensions.height;
+    webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
+    webGLContext.enable(webGLContext.BLEND);
   }
-  if (!newElement.parentReference) {
+  if (!newElement.parentReference.parent) {
     topElement = newElement;
     topOldElement = oldElement;
   }
@@ -1800,10 +1792,7 @@ function render(domElement,
   //webGLContext.enable(webGLContext.DEPTH_TEST);                               // Enable depth testing
   //webGLContext.depthFunc(webGLContext.LEQUAL);                                // Near things obscure far things
   //  webGLContext.clear(webGLContext.COLOR_BUFFER_BIT|webGLContext.DEPTH_BUFFER_BIT);
-  domElement.width = viewPortDimensions.width;
-  domElement.height = viewPortDimensions.height;
-  webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
-  webGLContext.enable(webGLContext.BLEND);
+
   if (!parentWidth) {
     parentWidth = viewPortDimensions.width;
     parentLeft = 0;
@@ -1828,6 +1817,7 @@ function render(domElement,
       switchToViewRendering();
 
       renderView(webGLContext, view_u_dimensions, newElement, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
+
         var style = newElement.style;
         if ('opacity' in style) {
           inheritedOpacity = (inheritedOpacity || 1) * style.opacity;
@@ -1866,14 +1856,17 @@ function render(domElement,
       }
     }
     else if (newElement.type === 'text') {
-      switchToTextRendering();
+      switchToImageRendering();
       renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
     }
     else if (newElement.type === 'image') {
-      switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight);
+      switchToImageRendering();
       renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
     }
   //}
+  if (!newElement.parentReference.parent) {
+    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
+  }
 }
 
 
@@ -1992,6 +1985,7 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
   ]);
 
   webgl.drawArrays(webgl.TRIANGLES, 0, 6);
+  //return 6;
 }
 
 var TextRenderer = {
