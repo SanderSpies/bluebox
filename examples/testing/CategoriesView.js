@@ -153,9 +153,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg'}, sharedImageStyle)]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg'}, sharedImageStyle)]),
-        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'}, sharedImageStyle)]),
         View({},{
           width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
         }, [])

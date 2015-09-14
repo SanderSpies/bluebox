@@ -154,9 +154,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy2.jpg'}, sharedImageStyle)]),
-        View({}, sharedStyle, [Image({src: 'images/grumpy1.jpg'}, sharedImageStyle)]),
-        View({}, sharedStyle, [Image({src: 'images/cat_tardis.jpg'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'}, sharedImageStyle)]),
+        View({}, sharedStyle, [Image({src: 'images/foo.png'}, sharedImageStyle)]),
         View({},{
           width: 210, height: 100, backgroundColor: 'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 1
         }, [])
@@ -269,7 +269,7 @@ function reconstructTree(node) {
     if (child.isAnimating) {
       // and now...
       newNode.children[i] = child.newRef;
-     // child.newRef = null;
+      child.newRef = null;
       //TODO: properly clean up: child.parentReference = null;
     }
     if (child.isChildAnimating) {
@@ -1582,7 +1582,6 @@ function getImageTexture(image, element) {
   if (existingImageTextures[element.props.src]) {
     return existingImageTextures[element.props.src];
   }
-  webGLContext.useProgram(imageProgram);
   var texture = webGLContext.createTexture();
   webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
   webGLContext.texImage2D(webGLContext.TEXTURE_2D, 0, webGLContext.RGBA, webGLContext.RGBA, webGLContext.UNSIGNED_BYTE, image);
@@ -1597,12 +1596,7 @@ function getImageTexture(image, element) {
 function _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
   //console.info(element.style);
   //return function(image) {
-  webGLContext.useProgram(imageProgram);
 
-   webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
-    var texCoordBuffer = webGLContext.createBuffer();
-    webGLContext.uniform4f(u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
-  webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
   webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array([
     0.0,  0.0,
     1.0,  0.0,
@@ -1610,8 +1604,6 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
     0.0,  1.0,
     1.0,  0.0,
     1.0,  1.0]), webGLContext.STATIC_DRAW);
-  webGLContext.enableVertexAttribArray(iTextLocation);
-  webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
 
 
   // Create a texture.
@@ -1664,6 +1656,38 @@ function renderImage(domElement, newComponentTree, oldComponentTree, element, to
       var image = loadImageDirectly(element.props.src);
       _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight);
     }
+  }
+}
+
+var isViewRendering = false;
+var isImageRendering = false;
+function switchToViewRendering() {
+  if (!isViewRendering) {
+    isViewRendering = true;
+    isImageRendering = false;
+
+    webGLContext.useProgram(viewProgram);
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, viewBuffer);
+    webGLContext.blendFuncSeparate(webGLContext.SRC_ALPHA, webGLContext.ONE_MINUS_SRC_ALPHA, webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+    webGLContext.enableVertexAttribArray(positionLocation);
+    webGLContext.vertexAttribPointer(positionLocation, 2, webGLContext.FLOAT, false, 0, 0);
+  }
+}
+
+function switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight) {
+  if (!isImageRendering) {
+    isImageRendering = true;
+    isViewRendering = false;
+
+
+    webGLContext.useProgram(imageProgram);
+
+    webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+    webGLContext.uniform4f(u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
+    webGLContext.enableVertexAttribArray(iTextLocation);
+    webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
+
   }
 }
 
@@ -1780,7 +1804,9 @@ function render(domElement,
 
     if (newElement.type === 'view') {
 
-      renderView(webGLContext, viewProgram, view_u_dimensions, viewBuffer,  newElement, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
+      switchToViewRendering();
+
+      renderView(webGLContext, view_u_dimensions, newElement, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
         var style = newElement.style;
         if ('opacity' in style) {
           inheritedOpacity = (inheritedOpacity || 1) * style.opacity;
@@ -1819,10 +1845,11 @@ function render(domElement,
       }
     }
     else if (newElement.type === 'text') {
-
+      isViewRendering = false;
       renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
     }
     else if (newElement.type === 'image') {
+      switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight);
       renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
     }
   //}
@@ -2013,18 +2040,8 @@ function isViewVisible(element) {
     element.style && element.style.border;
 }
 
-function renderView(webGLContext, viewProgram, u_view_dimensions, buffer, element, viewPortDimensions, top, left, colorLocation, positionLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity) {
+function renderView(webGLContext, u_view_dimensions, element, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity) {
   if (isViewVisible(element)) {
-
-    webGLContext.useProgram(viewProgram);
-    //webGLContext.blendEquationSeparate(webGLContext.FUNC_ADD, webGLContext.FUNC_ADD);
-    //webGLContext.blend
-    webGLContext.blendFuncSeparate(webGLContext.SRC_ALPHA, webGLContext.ONE_MINUS_SRC_ALPHA, webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
-
-
-    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, buffer);
-    webGLContext.enableVertexAttribArray(positionLocation);
-    webGLContext.vertexAttribPointer(positionLocation, 2, webGLContext.FLOAT, false, 0, 0);
 
     webGLContext.uniform4f(u_view_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
 

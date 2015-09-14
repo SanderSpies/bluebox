@@ -29,4 +29,9 @@ Current idea:
 - update parent references via special parentReference node -> change all parent nodes at once if needed
 
 - what about garbage?!
-- 
+
+
+Optimize further:
+- try to bundle drawArrays calls - but how?!
+- try to minimize program switching
+- reduce bind buffer calls
