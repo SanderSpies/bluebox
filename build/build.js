@@ -1661,10 +1661,12 @@ function renderImage(domElement, newComponentTree, oldComponentTree, element, to
 
 var isViewRendering = false;
 var isImageRendering = false;
+var isTextRendering = false;
 function switchToViewRendering() {
   if (!isViewRendering) {
     isViewRendering = true;
     isImageRendering = false;
+    isTextRendering = false;
 
     webGLContext.useProgram(viewProgram);
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, viewBuffer);
@@ -1678,6 +1680,7 @@ function switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight
   if (!isImageRendering) {
     isImageRendering = true;
     isViewRendering = false;
+    isTextRendering = false;
 
 
     webGLContext.useProgram(imageProgram);
@@ -1687,6 +1690,24 @@ function switchToImageRendering(parentLeft, parentWidth, parentTop, parentHeight
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
     webGLContext.enableVertexAttribArray(iTextLocation);
     webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
+
+  }
+}
+
+function switchToTextRendering() {
+  if (!isTextRendering) {
+    isTextRendering = true;
+    isImageRendering = false;
+    isViewRendering = false;
+
+    webGLContext.pixelStorei(webGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+
+    webGLContext.blendFunc(webGLContext.ONE, webGLContext.ONE_MINUS_SRC_ALPHA);
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
+
+    webGLContext.enableVertexAttribArray(iTextLocation);
+    webGLContext.vertexAttribPointer(iTextLocation, 2, webGLContext.FLOAT, false, 0, 0);
+
 
   }
 }
@@ -1845,7 +1866,7 @@ function render(domElement,
       }
     }
     else if (newElement.type === 'text') {
-      isViewRendering = false;
+      switchToTextRendering();
       renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
     }
     else if (newElement.type === 'image') {
@@ -1900,7 +1921,7 @@ function drawTextOnCanvas(webgl, newElement, width, height, inheritedOpacity, in
   var canvas = textCanvasCtx.canvas;
   var texture = webgl.createTexture();
   webgl.bindTexture(webgl.TEXTURE_2D, texture);
-  webgl.pixelStorei(webgl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+
   webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, webgl.CLAMP_TO_EDGE);
   webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, webgl.CLAMP_TO_EDGE);
   webgl.texParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, webgl.NEAREST);
@@ -1931,9 +1952,8 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
   webgl.useProgram(imageProgram);
 
 
+
   webgl.uniform4f(u_dimensions, parentLeft, parentTop, parentRight, parentBottom);
-  webgl.blendFunc(webgl.ONE, webgl.ONE_MINUS_SRC_ALPHA);
-  webgl.bindBuffer(webgl.ARRAY_BUFFER, texCoordBuffer);
   webgl.bufferData(webgl.ARRAY_BUFFER, new Float32Array([
     0.0,  0.0,
     1.0,  0.0,
@@ -1941,8 +1961,7 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
     0.0,  1.0,
     1.0,  0.0,
     1.0,  1.0]), webgl.STATIC_DRAW);
-  webgl.enableVertexAttribArray(iTextLocation);
-  webgl.vertexAttribPointer(iTextLocation, 2, webgl.FLOAT, false, 0, 0);
+
 
   var texture = drawTextOnCanvas(webgl, newElement, parentWidth, parentHeight, inheritedOpacity, inheritedColor);
   // Create a texture.
@@ -2048,7 +2067,6 @@ function renderView(webGLContext, u_view_dimensions, element, colorLocation, par
     var x1 = element.layout.left;
     var x2 = element.layout.right;
     var y1 = element.layout.top;
-
     var y2 = element.layout.bottom;
 
     setBackgroundColor(webGLContext, element, colorLocation, inheritedOpacity);
