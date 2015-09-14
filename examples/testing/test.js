@@ -5,7 +5,7 @@ var i = 0;
 
 function continuousRendering() {
   Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-  requestAnimationFrame(continuousRendering);
+  //requestAnimationFrame(continuousRendering);
 }
 
 requestAnimationFrame(continuousRendering);

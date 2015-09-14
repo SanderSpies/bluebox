@@ -8,6 +8,8 @@ var Image = Bluebox.Components.Image;
 var Text = Bluebox.Components.Text;
 var View = Bluebox.Components.View;
 
+var Animator = require('../../lib/animation/Animator');
+
 //var Transition = Bluebox.Animations.Transition;
 
 var sharedStyle = {backgroundColor: 'green', opacity: 1, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5};
@@ -102,14 +104,17 @@ var sharedImageStyle = {width: 100, height: 100};
 //
 //return;
 
-function Transition(start, end, easing, node) {
+function Transition(start, end, opts, node) {
   if (node.style.position === 'absolute') {
-    //Animator.registerAbsoluteTransition(start, end, opts, node);
+    Animator.registerAbsoluteTransition(start, end, opts, node);
   } else {
     //Animator.registerRelativeTransition(start, end, opts, node);
   }
+  node.isAnimating = true;
   return node;
 }
+
+setTimeout(Animator._startAnimating, 300);
 
 
 module.exports = View({}, {backgroundColor: 'red'}, [
@@ -130,8 +135,8 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
-        Transition({left: 100, top: 50}, {left: 50, top: 100}, {duration: 2000, easing: 'ease-in'},
-          View({}, {width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
+        Transition({left: 100}, {left: 50}, {duration: 2000, easing: 'linear'},
+          View({}, {left: 0, top: 0, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
         ),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -145,7 +150,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')])
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        View({}, sharedStyle, [Image({src: 'images/foo.png'},sharedImageStyle)]),
+        Transition({left: 100}, {left: 50}, {duration: 2000, easing: 'linear'},View({}, {backgroundColor:'white', left: 0, top: 0, width: 100, height: 100, position: 'absolute'}, [Image({src: 'images/foo.png'},sharedImageStyle)])),
         View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
@@ -189,7 +194,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ])
 ]);
-},{"./../../lib/components/C":3,"./../../lib/index":10}],2:[function(require,module,exports){
+},{"../../lib/animation/Animator":3,"./../../lib/components/C":4,"./../../lib/index":11}],2:[function(require,module,exports){
 var Bluebox = require('./../../lib/index');
 
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
@@ -197,13 +202,167 @@ var i = 0;
 
 function continuousRendering() {
   Bluebox.renderFromTop(doms[0], document.getElementById('canvas'));
-  requestAnimationFrame(continuousRendering);
+  //requestAnimationFrame(continuousRendering);
 }
 
 requestAnimationFrame(continuousRendering);
 
 
-},{"./../../lib/index":10,"./CategoriesView":1}],3:[function(require,module,exports){
+},{"./../../lib/index":11,"./CategoriesView":1}],3:[function(require,module,exports){
+'use strict';
+
+var Bluebox = require('../index');
+var toDOMString = require('../layout/layoutNode-tests/utils/toDOMString');
+var keys = Object.keys;
+var isArray = Array.isArray;
+
+var registeredAbsoluteTransitions = [];
+var registeredAbsoluteSprings = [];
+
+var easings = {
+
+  linear: function(t, b, _c, d) {
+    var c = _c - b;
+    var result = t * c / d + b;
+    if (t > d) {
+      result = _c;
+    }
+    return result;
+  }
+
+};
+
+function setAnimationValues(newChild, oldChild) {
+
+}
+
+function clone(node) {
+  var newNode = {};
+  var _keys = keys(node);
+  for (var i = 0, l = _keys.length; i < l; i++) {
+    var _key = _keys[i];
+    newNode[_key] = node[_key];
+  }
+  if (node.children) {
+    newNode.children = [];
+  }
+  return newNode;
+}
+
+function cloneWithClonedStyle(node) {
+  var newNode = clone(node);
+  newNode.style = clone(newNode.style);
+  return newNode;
+}
+
+function reconstructTree(node) {
+  var currentNode = node;
+  var newNode = clone(currentNode);
+  var children = currentNode.children;
+  if (children.length) {
+    // set all parent references at once
+    children[0].parentReference.parent = newNode;
+  }
+
+  for (var i = 0, l = children.length; i < l; i++) {
+    var child = children[i];
+    if (child.isAnimating) {
+      // and now...
+      newNode.children[i] = child.newRef;
+     // child.newRef = null;
+      //TODO: properly clean up: child.parentReference = null;
+    }
+    if (child.isChildAnimating) {
+      newNode.children[i] = reconstructTree(child);
+      //TODO: properly clean up: child.parentReference = null;
+      //child.parentReference = null;
+    }
+    if (!child.isAnimating && !child.isChildAnimating) {
+      newNode.children[i] = child;
+    }
+  }
+  return newNode;
+}
+
+var availableValues = [];
+var rootNode;
+function onAnimate() {
+  var i, j, l, l2;
+  var currentTime = 200;
+  for (i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
+    var absoluteTransition = registeredAbsoluteTransitions[i];
+    var node = absoluteTransition.node;
+    var start = absoluteTransition.start;
+    var end = absoluteTransition.end;
+    var keys = absoluteTransition.keys;
+    var opts = absoluteTransition.opts;
+    var duration = opts.duration;
+    var easing = opts.easing || 'linear';
+    // perform calculations here
+    var newNode = cloneWithClonedStyle(node);
+    for (j = 0, l2 = keys.length; j < l2; j++) {
+      var key = keys[j];
+      newNode.style[key] = newNode.style[key] + 1;
+      //console.info(newNode.style[key]);
+      node.newRef = newNode;
+    }
+    absoluteTransition.node = newNode;
+  }
+
+  if (!rootNode) {
+    if (registeredAbsoluteTransitions.length) {
+      rootNode = registeredAbsoluteTransitions[0].node;
+      while (rootNode.parentReference.parent) {
+        rootNode = rootNode.parentReference.parent;
+      }
+    }
+  }
+
+  var newRootNode = reconstructTree(rootNode);
+
+  //  debugger;
+
+  rootNode = newRootNode;
+  Bluebox.renderFromTop(rootNode);
+
+  requestAnimationFrame(onAnimate);
+}
+
+var Animator = {
+
+  isAnimating: false,
+
+  registerAbsoluteTransition: function(start, end, opts, node) {
+    registeredAbsoluteTransitions.push({
+      keys: keys(start),
+      start: start,
+      end: end,
+      opts: opts,
+      node: node,
+      startTime: Date.now()
+    });
+  },
+
+  registerRelativeTransition: function() {
+
+  },
+
+  registerSpring: function() {
+
+  },
+
+  _startAnimating: function() {
+    if (!Animator.isAnimating) {
+      Animator.isAnimating = true;
+      requestAnimationFrame(onAnimate);
+    }
+  }
+
+};
+
+module.exports = Animator;
+
+},{"../index":11,"../layout/layoutNode-tests/utils/toDOMString":13}],4:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -215,7 +374,7 @@ function merge(parent, child) {
   return parent;
 }
 var UNDEFINED = 7000;
-var __DEV__ = true;
+var __DEV__ = false;
 function Component(type, props, style, children) {
   var component = {
     customType: null,
@@ -256,29 +415,41 @@ function Component(type, props, style, children) {
       fontWeight: '',
       fontStyle: 'normal'
     }, style || {}),
-    parent: null,
+    parentReference: {
+      parent: null
+    },
     type: type,
     props: props,
     children: children,
-    lineIndex: 0
+    lineIndex: 0,
+    isAnimating: false,
+    isChildAnimating: false,
+    newRef: null
   };
   if (__DEV__) {
     Object.freeze(component.style);
     Object.seal(component.layout)
   }
-
+  var parentReference = {
+    parent: component
+  };
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.type) {
-      child.parent = component;
+      child.parentReference = parentReference;
+    }
+    if (!component.isChildAnimating && (child.isAnimating || child.isChildAnimating)) {
+      component.isChildAnimating = true;
     }
   }
+
+
   return component;
 }
 
 module.exports = Component;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -291,7 +462,7 @@ var Image = Bluebox.create('image', function render(props, style, children) {
 
 module.exports = Image;
 
-},{"./../../lib/index":10,"./C":3}],5:[function(require,module,exports){
+},{"./../../lib/index":11,"./C":4}],6:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -304,7 +475,7 @@ var Text = Bluebox.create('text', function(props, style, children) {
 
 module.exports = Text;
 
-},{"./../../lib/index":10,"./C":3}],6:[function(require,module,exports){
+},{"./../../lib/index":11,"./C":4}],7:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -316,7 +487,7 @@ var View = Bluebox.create('view', function render(props, style, children) {
 
 module.exports = View;
 
-},{"./../../lib/index":10,"./C":3}],7:[function(require,module,exports){
+},{"./../../lib/index":11,"./C":4}],8:[function(require,module,exports){
 /**
  * @flow
  */
@@ -388,7 +559,7 @@ function handleChildItem(oldNode, newValue, k, oldValue, isDifferent, skipKeys, 
 
 function handleProperty(newNode, oldNode, newNodeKeys, i, isDifferent, parent, oldParent) {
   var key = newNodeKeys[i];
-  if (key !== 'layout' && key !== 'parent') {
+  if (key !== 'layout' && key !== 'parentReference') {
     var newValue = newNode[key];
     var oldValue = oldNode[key];
     if (newNode.props) {
@@ -486,7 +657,7 @@ function diff(newNode, oldNode, parent, oldParent) {
 
 module.exports = diff;
 
-},{"../events/EventHandling":8}],8:[function(require,module,exports){
+},{"../events/EventHandling":9}],9:[function(require,module,exports){
 'use strict';
 
 var handleEvents = require('../events/handleEvents');
@@ -533,7 +704,7 @@ module.exports = {
   setEventListeners: setEventListeners
 };
 
-},{"../events/handleEvents":9}],9:[function(require,module,exports){
+},{"../events/handleEvents":10}],10:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
@@ -651,7 +822,7 @@ module.exports = {
   handleEvent: handleEvent,
   updateComponents: updateComponents
 };
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 (function (process,global){
 'use strict';
 
@@ -691,23 +862,23 @@ function clone(obj) {
 
 function updateTree(component, newComponent) {
   // go up the tree and replace all the nodes
-  var parent = component.parent;
-  if (parent) {
+  var parentReference = component.parentReference;
+  if (parentReference) {
     //debugger;
     // recreate the parents
     newComponent.layout = component.layout;
-    while(parent) {
-      var index = parent.children.indexOf(component);
-      var newParent = clone(parent);
+    while(parentReference) {
+      var index = parentReference.parent.children.indexOf(component);
+      var newParent = clone(parentReference.parent);
       newParent.children[index] = newComponent;
-      newComponent.parent = newParent;
+      newComponent.parentReference.parent = newParent;
 
-      if (!component.parent){
+      if (!component.parentReference){
         return newComponent;
       }
-      newComponent = newComponent.parent;
-      component = component.parent;
-      parent = component.parent;
+      newComponent = newComponent.parentReference.parent;
+      component = component.parentReference.parent;
+      parentReference = component.parentReference;
     }
 
     return newComponent;
@@ -731,8 +902,10 @@ function mergeProperties(newProps, existingProps) {
 function withProperties(component) {
   return {
     withProperties: function(props) {
-      props = mergeProperties(props, component.props);
-      var newComponent = rerenderComponent(component.customType, props, component.style, component.children);
+
+
+      var newProps = mergeProperties(props, component.props);
+      var newComponent = rerenderComponent(component.customType, newProps, component.style, component.children);
       var newComponentTree = updateTree(component, newComponent);
 
       Bluebox.renderFromTop(newComponentTree);
@@ -768,7 +941,11 @@ var Bluebox = {
     return withProperties(component);
   },
 
-  renderFromTop: function(componentTree, domElement) {
+  renderOnly: function(c) {
+    render(oldDOMElement, c, null, null, 0, viewPortDimensions, 0, 0);
+  },
+
+  renderFromTop: function(componentTree, domElement, noDiff) {
     if (!componentTree) {
       componentTree = oldComponentTree;
     }
@@ -776,26 +953,25 @@ var Bluebox = {
       domElement = oldDOMElement;
     }
     oldDOMElement = domElement;
-    var newComponentTree = diff(componentTree, oldComponentTree, null, 'ltr');
-
+    var newComponentTree = noDiff ? componentTree : diff(componentTree, oldComponentTree, null, null);
 
     var hasChanged = false;
     if (viewPortDimensions !== ViewPortHelper.getDimensions()) {
       viewPortDimensions = ViewPortHelper.getDimensions();
       hasChanged = true;
     }
-    if (newComponentTree.layout.width === undefined) {
+   // if (newComponentTree.layout.width === undefined) {
       newComponentTree = layoutNode(newComponentTree, null, AXIS.column, AXIS.row, false);
-    }
+   // }
 
-    //console.log(newComponentTree);
+      //console.log(newComponentTree);
     //console.log(toDOMString(newComponentTree));
 
     if (newComponentTree !== oldComponentTree || hasChanged) {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
 
-    render(domElement, newComponentTree, oldComponentTree, null, 0, viewPortDimensions, 0, 0);
+    render(domElement, newComponentTree, null, null, 0, viewPortDimensions, 0, 0);
 
     oldComponentTree = newComponentTree;
     return newComponentTree;
@@ -811,7 +987,7 @@ Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":4,"./components/Text":5,"./components/View":6,"./diff/diff":7,"./layout/AXIS":11,"./layout/layoutNode":13,"./layout/layoutNode-tests/utils/toDOMString":12,"./renderers/DOM/ViewPortHelper":14,"./renderers/GL/render":15,"_process":21}],11:[function(require,module,exports){
+},{"./components/Image":5,"./components/Text":6,"./components/View":7,"./diff/diff":8,"./layout/AXIS":12,"./layout/layoutNode":14,"./layout/layoutNode-tests/utils/toDOMString":13,"./renderers/DOM/ViewPortHelper":15,"./renderers/GL/render":16,"_process":22}],12:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -834,7 +1010,7 @@ var AXIS = {
 };
 
 module.exports = AXIS;
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 var UNDEFINED = 7000;
@@ -882,7 +1058,7 @@ function toDOMString(node, indent) {
 
 module.exports = toDOMString;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = true;
@@ -944,7 +1120,7 @@ function justifyContentFn(child, previousChild, mainAxis, justifyContentX, remai
 }
 
 function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
-  var parent = node.parent;
+  var parent = node.parentReference.parent;
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var parentLayout = parent.layout;
@@ -1049,7 +1225,7 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
   }
 }
 function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
-  var parent = node.parent;
+  var parent = node.parentReference.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
   var parentHeight = parentLayout ? parentLayout.height : document.body.clientHeight;
@@ -1244,7 +1420,7 @@ function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbs
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
 
-  var parent = node.parent;
+  var parent = node.parentReference.parent;
   if (parent && parent.style.position === ABSOLUTE && !shouldProcessAbsolute) {
     return node;
   }
@@ -1287,7 +1463,7 @@ function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbs
 
 module.exports = layoutNode;
 
-},{"./AXIS":11}],14:[function(require,module,exports){
+},{"./AXIS":12}],15:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1335,7 +1511,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -1419,6 +1595,7 @@ function getImageTexture(image, element) {
 }
 
 function _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
+  //console.info(element.style);
   //return function(image) {
   webGLContext.useProgram(imageProgram);
 
@@ -1483,6 +1660,7 @@ function renderImage(domElement, newComponentTree, oldComponentTree, element, to
         .then(setLoaded(element), _rejectedImageLoad)
         .then(rerender(domElement, newComponentTree, oldComponentTree, null, 0, viewPortDimensions, 0, 0));
     } else {
+      //console.info('YUP');
       var image = loadImageDirectly(element.props.src);
       _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight);
     }
@@ -1527,6 +1705,7 @@ function render(domElement,
   inheritedFontSize,
   inheritedColor,
   inheritedFilter) {
+
   if (!webGLContext) {
     topDOMElement = domElement;
     webGLContext = domElement.getContext('webgl');
@@ -1551,7 +1730,7 @@ function render(domElement,
     textCoord = webGLContext.getAttribLocation(viewProgram, "a_textCoord");
     resolutionLocation = webGLContext.getUniformLocation(viewProgram, "u_resolution");
     colorLocation = webGLContext.getUniformLocation(viewProgram, "u_color");
-    view_u_dimensions = webGLContext.getUniformLocation(viewProgram, 'u_dimensions')
+    view_u_dimensions = webGLContext.getUniformLocation(viewProgram, 'u_dimensions');
     u_dimensions = webGLContext.getUniformLocation(imageProgram, 'u_dimensions');
 
 
@@ -1567,7 +1746,7 @@ function render(domElement,
 
     webGLContext.uniform2f(iResolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
   }
-  if (!newElement.parent) {
+  if (!newElement.parentReference) {
     topElement = newElement;
     topOldElement = oldElement;
   }
@@ -1588,12 +1767,12 @@ function render(domElement,
   }
 
   if (typeof newElement === 'string' || !isVisible(newElement, viewPortDimensions))  {
-    return;
+//    return;
   }
 
-  if (newElement === oldElement) {
+  //if (newElement === oldElement) {
     //return;
-  }
+ // }
  // fixme: if (newElement && !oldElement) {
     if (!newElement.layout) {
       return;
@@ -1653,7 +1832,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderText":16,"./renderView":17,"./temp-utils":18,"promise":22}],16:[function(require,module,exports){
+},{"./renderText":17,"./renderView":18,"./temp-utils":19,"promise":23}],17:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -1713,7 +1892,7 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
   var left = layout.left;
   var width = layout.width;
   var height = layout.height;
-  var parent = newElement.parent;
+  var parent = newElement.parentReference.parent;
   var parentLayout = parent.layout;
   var parentTop = parentLayout.top;
   var parentLeft = parentLayout.left;
@@ -1724,7 +1903,7 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
 
   webgl.useProgram(imageProgram);
 
-  
+
   webgl.uniform4f(u_dimensions, parentLeft, parentTop, parentRight, parentBottom);
   webgl.blendFunc(webgl.ONE, webgl.ONE_MINUS_SRC_ALPHA);
   webgl.bindBuffer(webgl.ARRAY_BUFFER, texCoordBuffer);
@@ -1783,7 +1962,7 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -1872,7 +2051,7 @@ function renderView(webGLContext, viewProgram, u_view_dimensions, buffer, elemen
 
 module.exports = renderView;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2184,7 +2363,7 @@ module.exports = renderView;
 }());
 
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -2252,7 +2431,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":20}],20:[function(require,module,exports){
+},{"events":21}],21:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2555,7 +2734,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2647,12 +2826,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":27}],23:[function(require,module,exports){
+},{"./lib":28}],24:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -2838,7 +3017,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":31}],24:[function(require,module,exports){
+},{"asap/raw":32}],25:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -2853,7 +3032,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":23}],25:[function(require,module,exports){
+},{"./core.js":24}],26:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -2962,7 +3141,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":23}],26:[function(require,module,exports){
+},{"./core.js":24}],27:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -2980,7 +3159,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":23}],27:[function(require,module,exports){
+},{"./core.js":24}],28:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -2989,7 +3168,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":23,"./done.js":24,"./es6-extensions.js":25,"./finally.js":26,"./node-extensions.js":28}],28:[function(require,module,exports){
+},{"./core.js":24,"./done.js":25,"./es6-extensions.js":26,"./finally.js":27,"./node-extensions.js":29}],29:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3062,7 +3241,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":23,"asap":29}],29:[function(require,module,exports){
+},{"./core.js":24,"asap":30}],30:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3130,7 +3309,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":30}],30:[function(require,module,exports){
+},{"./raw":31}],31:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -3354,7 +3533,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -3459,4 +3638,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":21,"domain":19}]},{},[2]);
+},{"_process":22,"domain":20}]},{},[2]);
