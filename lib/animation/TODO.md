@@ -32,6 +32,7 @@ Current idea:
 
 
 Optimize further:
-- try to bundle drawArrays calls - but how?!
+- optimize layoutNode further - seems like the biggest bottleneck at the moment
+  - how? by using immutability (+ has layout changed test) to check if layout calculations need to happen
 - try to minimize program switching
 - reduce bind buffer calls

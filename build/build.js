@@ -164,22 +164,25 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         }, [])
       ])
     ]),
-    View({}, {backgroundColor:'blue', height: 200, width: 300, alignSelf: 'center', marginLeft: 50, flexWrap: 'wrap', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, [
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 120
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []),// 190
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []), // 230
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 270
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 50
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []), // 120
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 220
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 270
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []), // 290
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 100
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 150
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []), // 220
-      View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 100
-      View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []) // 170
-    ])
+      View({}, {backgroundColor:'blue', height: 200, width: 300, alignSelf: 'center', marginLeft: 50, flexWrap: 'wrap', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}, [
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 120
+        View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []),// 190
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []), // 230
+        View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 270
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 50
+        View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []), // 120
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 220
+        Transition({width: 50}, {width: 200}, {duration: 2000, easing: 'ease-in'},
+          View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []) // 270
+        ),
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 20, height: 10}, []), // 290
+        View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 100
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 50, height: 10}, []), // 150
+        View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []), // 220
+        View({}, {backgroundColor: 'white', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 100, height: 10}, []), // 100
+        View({}, {backgroundColor: 'red', marginTop: 10, marginBottom: 10, marginLeft: 10, marginRight: 10, width: 70, height: 10}, []) // 170
+      ])
+
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
     Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
@@ -1006,7 +1009,7 @@ var Bluebox = {
       hasChanged = true;
     }
    // if (newComponentTree.layout.width === undefined) {
-      newComponentTree = layoutNode(newComponentTree, null, AXIS.column, AXIS.row, false);
+      newComponentTree = layoutNode(newComponentTree, oldComponentTree, null, AXIS.column, AXIS.row, false);
    // }
 
       //console.log(newComponentTree);
@@ -1269,7 +1272,39 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
     childLayout.bottom = childLayout.top + childLayout.height;
   }
 }
-function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
+
+function isSameStyle(node, oldNode) {
+  var nodeStyle = node.layout;
+  var oldNodeStyle = oldNode.layout;
+  return nodeStyle.position === oldNodeStyle.position &&
+    nodeStyle.width === oldNodeStyle.width &&
+    nodeStyle.height === oldNodeStyle.height &&
+    nodeStyle.top === oldNodeStyle.top &&
+    nodeStyle.left === oldNodeStyle.left &&
+    nodeStyle.right === oldNodeStyle.right &&
+    nodeStyle.bottom === oldNodeStyle.bottom &&
+    nodeStyle.marginBottom === oldNodeStyle.marginBottom &&
+    nodeStyle.marginTop === oldNodeStyle.marginTop &&
+    nodeStyle.marginRight === oldNodeStyle.marginRight &&
+    nodeStyle.marginLeft === oldNodeStyle.marginLeft &&
+    nodeStyle.paddingBottom === oldNodeStyle.paddingBottom &&
+    nodeStyle.paddingTop === oldNodeStyle.paddingTop &&
+    nodeStyle.paddingRight === oldNodeStyle.paddingRight &&
+    nodeStyle.paddingLeft === oldNodeStyle.paddingLeft &&
+    nodeStyle.justifyContent === oldNodeStyle.justifyContent &&
+    nodeStyle.alignItems === oldNodeStyle.alignItems &&
+    nodeStyle.alignSelf === oldNodeStyle.alignSelf &&
+    nodeStyle.flexGrow === oldNodeStyle.flexGrow &&
+    nodeStyle.flexWrap === oldNodeStyle.flexWrap;
+}
+
+function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
+  if (oldNode && node.style === oldNode.style) {
+    console.info('can we optimize this?!');
+  }
+  else {
+    console.info('changed...');
+  }
   var parent = node.parentReference.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
@@ -1299,11 +1334,13 @@ function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbs
     var childLayout;
     var i;
     var l;
+    var oldChild;
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
+      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i]: null;
       childStyle = child.style;
       childLayout = child.layout;
-      layoutNode(child, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
+      layoutNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
 
       var skipPrevious = false;
 
@@ -1376,6 +1413,10 @@ function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbs
     var newParentHeight = nodeLayout.height;
     var newParentWidth = nodeLayout.width;
 
+    if (oldNode && oldNode.children === node.children) {
+      //console.info('Should be able to optimize this:', oldNode);
+    }
+
 
     var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
     var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
@@ -1392,6 +1433,7 @@ function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbs
 
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
+      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i]: null;
       childStyle = child.style;
       childLayout = child.layout;
       if (currentLineIndex !== childLayout.lineIndex) {
@@ -1447,7 +1489,7 @@ function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbs
       //}
       alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
       if (isPositionAbsolute) {
-        processChildren(child, mainAxis, crossAxis, isPositionAbsolute);
+        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute);
       }
       else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
         correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
@@ -1460,7 +1502,7 @@ function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbs
 }
 
 //window.testing = [];
-function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
+function layoutNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
 
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
@@ -1470,11 +1512,6 @@ function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbs
     return node;
   }
 
-  //if (testing.indexOf(node) > -1) {
-  //  console.warn('duplicate layoutNode call:', node, testing.indexOf(node));
-  //  console.trace();
-  //}
-  //testing.push(node);
 
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
@@ -1500,7 +1537,12 @@ function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbs
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
   if (nodeStyle.position !== ABSOLUTE) {
-    processChildren(node, mainAxis, crossAxis, false);
+    //if (node !== oldNode) {
+      processChildren(node, oldNode, mainAxis, crossAxis, false);
+    //}
+    //else {
+      //console.info('saved something here I guess...');
+    //}
   }
 
   return node;
@@ -1848,11 +1890,6 @@ function render(domElement,
     colorsArray = []
   }
 
-  //webGLContext.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set clear color to black, fully opaque
-  //webGLContext.enable(webGLContext.DEPTH_TEST);                               // Enable depth testing
-  //webGLContext.depthFunc(webGLContext.LEQUAL);                                // Near things obscure far things
-  //  webGLContext.clear(webGLContext.COLOR_BUFFER_BIT|webGLContext.DEPTH_BUFFER_BIT);
-
   if (!parentWidth) {
     parentWidth = viewPortDimensions.width;
     parentLeft = 0;
@@ -1861,12 +1898,12 @@ function render(domElement,
   }
 
   if (typeof newElement === 'string' || !isVisible(newElement, viewPortDimensions))  {
-//    return;
+    return;
   }
 
-  //if (newElement === oldElement) {
-    //return;
- // }
+  if (newElement === oldElement) {
+    return;
+  }
  // fixme: if (newElement && !oldElement) {
     if (!newElement.layout) {
       return;
@@ -1942,7 +1979,7 @@ function render(domElement,
     webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(verticesArray), webGLContext.STATIC_DRAW);
     webGLContext.drawArrays(webGLContext.TRIANGLES, 0, verticesArray.length / 2);
 
-    switchToImageRendering();
+    //switchToImageRendering();
 
     // TODO: render all images at once here...
 
