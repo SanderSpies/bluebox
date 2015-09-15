@@ -1716,7 +1716,9 @@ var topDOMElement;
 var u_dimensions;
 var viewBuffer;
 var texCoordBuffer;
-var bigArray = [];
+var colorsBuffer;
+var verticesArray = [];
+var colorsArray = [];
 function render(domElement,
   newElement,
   oldElement,
@@ -1751,14 +1753,19 @@ function render(domElement,
     viewProgram = createProgram(webGLContext, [vertexShader, fragmentShader]);
     imageProgram = createProgram(webGLContext, [vertexShader2, imageShader]);
 
+    // remove shaders (not needed anymore after linking)
+    webGLContext.deleteShader(vertexShader);
+    webGLContext.deleteShader(vertexShader2);
+    webGLContext.deleteShader(fragmentShader);
+    webGLContext.deleteShader(imageShader);
 
     webGLContext.useProgram(viewProgram);
     viewBuffer = webGLContext.createBuffer();
-
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, viewBuffer);
     positionLocation = webGLContext.getAttribLocation(viewProgram, "a_position");
-    textCoord = webGLContext.getAttribLocation(viewProgram, "a_textCoord");
+    webGLContext.enableVertexAttribArray(positionLocation);
     resolutionLocation = webGLContext.getUniformLocation(viewProgram, "u_resolution");
-    colorLocation = webGLContext.getUniformLocation(viewProgram, "u_color");
+
     view_u_dimensions = webGLContext.getUniformLocation(viewProgram, 'u_dimensions');
     u_dimensions = webGLContext.getUniformLocation(imageProgram, 'u_dimensions');
 
@@ -1768,6 +1775,7 @@ function render(domElement,
 
     webGLContext.useProgram(imageProgram);
     texCoordBuffer = webGLContext.createBuffer();
+
     iTextLocation = webGLContext.getAttribLocation(imageProgram, "a_position");
     u_matrixLoc = webGLContext.getUniformLocation(imageProgram, "u_matrix");
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, texCoordBuffer);
@@ -1778,6 +1786,11 @@ function render(domElement,
 
     webGLContext.uniform2f(iResolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
 
+    colorsBuffer = webGLContext.createBuffer();
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, colorsBuffer);
+    colorLocation = webGLContext.getAttribLocation(viewProgram, "aVertexColor");
+    webGLContext.enableVertexAttribArray(colorLocation);
+
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
     webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
@@ -1786,7 +1799,8 @@ function render(domElement,
   if (!newElement.parentReference.parent) {
     topElement = newElement;
     topOldElement = oldElement;
-    bigArray = [];
+    verticesArray = [];
+    colorsArray = []
   }
 
   //webGLContext.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set clear color to black, fully opaque
@@ -1817,20 +1831,17 @@ function render(domElement,
 
       switchToViewRendering();
 
-      var data = renderView(webGLContext, view_u_dimensions, newElement, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1);
-      if (data) {
-        bigArray = bigArray.concat(data);
-      }
+      renderView(verticesArray, colorsArray, newElement, inheritedOpacity || 1.0);
 
         var style = newElement.style;
         if ('opacity' in style) {
-          inheritedOpacity = (inheritedOpacity || 1) * style.opacity;
+          inheritedOpacity = (inheritedOpacity || 1.0) * style.opacity;
         }
         if (style.fontSize) {
           inheritedFontSize = style.fontSize;
         }
         if (style.zoom) {
-          inheritedZoom = (inheritedZoom || 1) * style.zoom;
+          inheritedZoom = (inheritedZoom || 1.0) * style.zoom;
         }
         if (style.color) {
           inheritedColor = style.color;
@@ -1860,23 +1871,40 @@ function render(domElement,
       }
     }
     else if (newElement.type === 'text') {
-     switchToImageRendering();
-     var data = renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
-      if (data) {
-        bigArray = bigArray.concat(data);
-      }
+     //switchToImageRendering();
+     //var data = renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
+     // if (data) {
+     //   bigArray = bigArray.concat(data);
+     // }
     }
     else if (newElement.type === 'image') {
-     switchToImageRendering();
-     var data = renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
-      if (data) {
-        bigArray = bigArray.concat(data);
-      }
+     //switchToImageRendering();
+     //var data = renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
+     // if (data) {
+     //   bigArray = bigArray.concat(data);
+     // }
     }
   if (!newElement.parentReference.parent) {
     // TODO: set image information here :-/
-    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(bigArray), webGLContext.STATIC_DRAW);
-    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, bigArray.length / 2);
+
+
+    // render all the views at once...
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, colorsBuffer);
+    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(colorsArray), webGLContext.STATIC_DRAW);
+    webGLContext.vertexAttribPointer(colorLocation, 4, webGLContext.FLOAT, false, 0, 0);
+
+    webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, viewBuffer);
+    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(verticesArray), webGLContext.STATIC_DRAW);
+    webGLContext.drawArrays(webGLContext.TRIANGLES, 0, verticesArray.length / 2);
+
+    switchToImageRendering();
+
+    // TODO: render all images at once here...
+
+    //var verticesBuffer = webGLContext.createBuffer();
+    //webGLContext.bindBuffer(webGLContext.ELEMENT_ARRAY_BUFFER, verticesBuffer);
+    //webGLContext.bufferData(webGLContext.ELEMENT_ARRAY_BUFFER, new Uint16Array(verticesArray), webGLContext.STATIC_DRAW);
+    //webGLContext.drawElements(webGLContext.TRIANGLES, verticesArray.length / 2, webGLContext.UNSIGNED_SHORT, 0);
   }
 }
 
@@ -2018,30 +2046,30 @@ module.exports = renderText;
 'use strict';
 
 var WebGLColors = {
-  black: [0, 0, 0],
+  black: [0.0, 0.0, 0.0],
   silver: [],
   gray: [],
-  white: [1, 1, 1],
+  white: [1.0, 1.0, 1.0],
   maroon: [],
-  red: [1, 0, 0],
+  red: [1.0, 0.0, 0.0],
   purple: [],
   fuchsia: [],
-  green: [0, .5, 0],
+  green: [0.0, 0.5, 0.0],
   lime: [],
   olive: [],
   yellow: [],
   navy: [],
-  blue: [0, 0, 1],
+  blue: [0.0, 0.0, 1.0],
   teal: [],
   acqua: []
 
 };
 
 
-function setBackgroundColor(webGLContext, element, colorLocation, inheritedOpacity) {
+function setBackgroundColor(colorsArray, element, inheritedOpacity) {
   if (element.style.backgroundColor !== '') {
     var backgroundColor = WebGLColors[element.style.backgroundColor];
-    var opacity = 1;
+    var opacity = 1.0;
     var opacityProp = element.style.opacity;
     if (!isNaN(opacityProp)) {
       opacity = opacityProp * inheritedOpacity;
@@ -2050,7 +2078,31 @@ function setBackgroundColor(webGLContext, element, colorLocation, inheritedOpaci
       opacity = inheritedOpacity;
     }
 
-    webGLContext.uniform4f(colorLocation, backgroundColor[0], backgroundColor[1], backgroundColor[2], opacity);
+    colorsArray[colorsArray.length] = backgroundColor[0];
+    colorsArray[colorsArray.length] = backgroundColor[1];
+    colorsArray[colorsArray.length] = backgroundColor[2];
+    colorsArray[colorsArray.length] = opacity;
+    colorsArray[colorsArray.length] = backgroundColor[0];
+    colorsArray[colorsArray.length] = backgroundColor[1];
+    colorsArray[colorsArray.length] = backgroundColor[2];
+    colorsArray[colorsArray.length] = opacity;
+    colorsArray[colorsArray.length] = backgroundColor[0];
+    colorsArray[colorsArray.length] = backgroundColor[1];
+    colorsArray[colorsArray.length] = backgroundColor[2];
+    colorsArray[colorsArray.length] = opacity;
+    colorsArray[colorsArray.length] = backgroundColor[0];
+    colorsArray[colorsArray.length] = backgroundColor[1];
+    colorsArray[colorsArray.length] = backgroundColor[2];
+    colorsArray[colorsArray.length] = opacity;
+    colorsArray[colorsArray.length] = backgroundColor[0];
+    colorsArray[colorsArray.length] = backgroundColor[1];
+    colorsArray[colorsArray.length] = backgroundColor[2];
+    colorsArray[colorsArray.length] = opacity;
+    colorsArray[colorsArray.length] = backgroundColor[0];
+    colorsArray[colorsArray.length] = backgroundColor[1];
+    colorsArray[colorsArray.length] = backgroundColor[2];
+    colorsArray[colorsArray.length] = opacity;
+
   }
 }
 
@@ -2065,30 +2117,36 @@ function isViewVisible(element) {
     element.style && element.style.border;
 }
 
-function renderView(webGLContext, u_view_dimensions, element, colorLocation, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity) {
+function renderView(verticesArray, colorsArray, element, inheritedOpacity) {
   if (isViewVisible(element)) {
 
-    webGLContext.uniform4f(u_view_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
+  //  webGLContext.uniform4f(u_view_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
 
     var x1 = element.layout.left;
     var x2 = element.layout.right;
     var y1 = element.layout.top;
     var y2 = element.layout.bottom;
 
-
-
-    setBackgroundColor(webGLContext, element, colorLocation, inheritedOpacity);
+    setBackgroundColor(colorsArray, element, inheritedOpacity);
     setBorder(element);
-    
-    return [
-      x1, y1,
-      x2, y1,
-      x1, y2,
-      x1, y2,
-      x2, y1,
-      x2, y2];
+
+    verticesArray[verticesArray.length] = x1;
+    verticesArray[verticesArray.length] = y1;
+    verticesArray[verticesArray.length] = x2;
+
+    verticesArray[verticesArray.length] = y1;
+    verticesArray[verticesArray.length] = x1;
+    verticesArray[verticesArray.length] = y2;
+
+    verticesArray[verticesArray.length] = x1;
+    verticesArray[verticesArray.length] = y2;
+    verticesArray[verticesArray.length] = x2;
+
+    verticesArray[verticesArray.length] = y1;
+    verticesArray[verticesArray.length] = x2;
+    verticesArray[verticesArray.length] = y2;
+
   }
-  return null;
 }
 
 module.exports = renderView;

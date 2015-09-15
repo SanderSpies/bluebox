@@ -41,9 +41,11 @@
     </canvas>
     <script id="2d-vertex-shader" type="x-shader/x-vertex">
     attribute vec2 a_position;
-    attribute vec2 a_texCoord;
+    attribute vec4 aVertexColor;
 
     uniform vec2 u_resolution;
+
+    varying vec4 vColor;
 
     void main() {
        // convert the rectangle from pixels to 0.0 to 1.0
@@ -56,6 +58,8 @@
        vec2 clipSpace = zeroToTwo - 1.0;
 
        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+       vColor = aVertexColor;
     }
     </script>
     <script id="2d-vertex-shader2" type="x-shader/x-vertex">
@@ -76,9 +80,9 @@
     </script>
     <!-- fragment shader -->
     <script id="2d-fragment-shader" type="x-shader/x-fragment">
-        precision mediump float;
+        precision lowp float;
 
-        uniform vec4 u_color;
+        varying vec4 vColor;
         uniform vec4 u_dimensions;
 
         void main() {
@@ -86,16 +90,17 @@
             float parentHeight = u_dimensions[3];
             float parentLeft = u_dimensions[0];
             float parentWidth = u_dimensions[2];
-            if (gl_FragCoord.x < parentWidth && gl_FragCoord.x > parentLeft &&
-                gl_FragCoord.y < parentHeight && gl_FragCoord.y > parentTop) {
-                gl_FragColor = u_color;
-            } else {
-                gl_FragColor = vec4(0,0,0,0);
-            }
+            // TODO: fix clipping...
+//            if (gl_FragCoord.x < parentWidth && gl_FragCoord.x > parentLeft &&
+//                gl_FragCoord.y < parentHeight && gl_FragCoord.y > parentTop) {
+                gl_FragColor = vColor;
+            //} else {
+            //    gl_FragColor = vec4(0,1,0,0);
+            //}
         }
     </script>
     <script id="2d-image-shader" type="x-shader/x-fragment">
-        precision mediump float;
+        precision lowp float;
 
         // our texture
         uniform sampler2D u_image;
