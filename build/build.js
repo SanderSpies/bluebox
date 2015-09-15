@@ -105,11 +105,11 @@ var sharedImageStyle = {width: 100, height: 100};
 //return;
 
 function Transition(start, end, opts, node) {
-  if (node.style.position === 'absolute') {
+  //if (node.style.position === 'absolute') {
     Animator.registerAbsoluteTransition(start, end, opts, node);
-  } else {
-    //Animator.registerRelativeTransition(start, end, opts, node);
-  }
+  //} else {
+  //  //Animator.registerRelativeTransition(start, end, opts, node);
+  //}
   node.isAnimating = true;
   return node;
 }
@@ -135,7 +135,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
-        Transition({left: 100}, {left: 50}, {duration: 2000, easing: 'linear'},
+        Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
           View({}, {left: 0, top: 0, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
         ),
         View({}, sharedStyle, [Text('a')]),
@@ -150,7 +150,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')])
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        Transition({left: 100}, {left: 50}, {duration: 2000, easing: 'linear'},View({}, {backgroundColor:'white', left: 0, top: 0, width: 100, height: 100, position: 'absolute'}, [Image({src: 'images/foo.png'},sharedImageStyle)])),
+        Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
+          View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
+        ),
         View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
@@ -180,18 +182,20 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
-      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
-      View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
-      View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
-        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
-        View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
-        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
+    Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
+      View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
+        View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
+        View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
+        View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
+          View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
+          View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
+          View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
 
 
+          ])
         ])
       ])
-    ])
+    )
   ])
 ]);
 },{"../../lib/animation/Animator":3,"./../../lib/components/C":4,"./../../lib/index":11}],2:[function(require,module,exports){
@@ -228,6 +232,45 @@ var easings = {
       result = _c;
     }
     return result;
+  },
+
+  'ease-in': function(t, b, _c, d) {
+    var c = _c - b;
+    var _t = t / d;
+    var result = c * (_t) * _t + b;
+
+    if (t > d) {
+      result = _c;
+    }
+    return result;
+  },
+
+  'ease-in-elastic': function(t, b, _c, d) {
+    if (t > d) {
+      return _c;
+    }
+
+    var c = _c - b;
+    var s = 1.70158;
+    var p = 0;
+    var a = c;
+    if (t == 0) {
+      return b;
+    }
+    if ((t /= d) == 1) {
+      return b + c;
+    }
+    if (!p) {
+      p = d * .3;
+    }
+    if (a < Math.abs(c)) {
+      a = c;
+      var s = p / 4;
+    }
+    else {
+      var s = p / (2 * Math.PI) * Math.asin(c / a);
+    }
+    return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
   }
 
 };
@@ -271,11 +314,12 @@ function reconstructTree(node) {
       newNode.children[i] = child.newRef;
       child.newRef = null;
       //TODO: properly clean up: child.parentReference = null;
+
     }
     if (child.isChildAnimating) {
       newNode.children[i] = reconstructTree(child);
       //TODO: properly clean up: child.parentReference = null;
-      //child.parentReference = null;
+      child.parentReference = null;
     }
     if (!child.isAnimating && !child.isChildAnimating) {
       newNode.children[i] = child;
@@ -284,12 +328,14 @@ function reconstructTree(node) {
   return newNode;
 }
 
-var availableValues = [];
+
 var rootNode;
+var startTime = Date.now();
 function onAnimate() {
   var i, j, l, l2;
-  var currentTime = 200;
+  var currentTime = Date.now() - startTime;
   for (i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
+
     var absoluteTransition = registeredAbsoluteTransitions[i];
     var node = absoluteTransition.node;
     var start = absoluteTransition.start;
@@ -300,10 +346,12 @@ function onAnimate() {
     var easing = opts.easing || 'linear';
     // perform calculations here
     var newNode = cloneWithClonedStyle(node);
+    newNode.children = node.children.slice(0);
+    //console.info('new node:', newNode);
     for (j = 0, l2 = keys.length; j < l2; j++) {
       var key = keys[j];
-      newNode.style[key] = newNode.style[key] + 1;
-      //console.info(newNode.style[key]);
+      //console.info(currentTime, start[key], end[key], duration);
+      newNode.style[key] = easings[easing](currentTime, start[key], end[key], duration);
       node.newRef = newNode;
     }
     absoluteTransition.node = newNode;
@@ -317,10 +365,7 @@ function onAnimate() {
       }
     }
   }
-
   var newRootNode = reconstructTree(rootNode);
-
-  //  debugger;
 
   rootNode = newRootNode;
   Bluebox.renderFromTop(rootNode, null, true);

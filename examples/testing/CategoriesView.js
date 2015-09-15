@@ -104,11 +104,11 @@ var sharedImageStyle = {width: 100, height: 100};
 //return;
 
 function Transition(start, end, opts, node) {
-  if (node.style.position === 'absolute') {
+  //if (node.style.position === 'absolute') {
     Animator.registerAbsoluteTransition(start, end, opts, node);
-  } else {
-    //Animator.registerRelativeTransition(start, end, opts, node);
-  }
+  //} else {
+  //  //Animator.registerRelativeTransition(start, end, opts, node);
+  //}
   node.isAnimating = true;
   return node;
 }
@@ -134,7 +134,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
-        Transition({left: 100}, {left: 50}, {duration: 2000, easing: 'linear'},
+        Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
           View({}, {left: 0, top: 0, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
         ),
         View({}, sharedStyle, [Text('a')]),
@@ -149,7 +149,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')])
       ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
-        Transition({left: 100}, {left: 50}, {duration: 2000, easing: 'linear'},View({}, {backgroundColor:'white', left: 0, top: 0, width: 100, height: 100, position: 'absolute'}, [Image({src: 'images/foo.png'},sharedImageStyle)])),
+        Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
+          View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
+        ),
         View({}, sharedStyle, [Text('Text that might or might not wrap...')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, {width: 300, height: 100, backgroundColor: 'red', color:'white', marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, opacity: 0.8}, [Text('a')]),
@@ -179,17 +181,19 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     ])
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
-      View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
-      View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
-      View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
-        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
-        View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
-        View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
+    Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
+      View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
+        View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
+        View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
+        View({}, {flexGrow: 1, height: 100, backgroundColor: 'green', flexDirection: 'column'}, [
+          View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, []),
+          View({}, {flexGrow: 2, width: 10, backgroundColor: 'red'}, []),
+          View({}, {flexGrow: 1, width: 10, backgroundColor: 'green'}, [
 
 
+          ])
         ])
       ])
-    ])
+    )
   ])
 ]);
