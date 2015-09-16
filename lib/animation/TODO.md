@@ -36,3 +36,6 @@ Optimize further:
   - how? by using immutability (+ has layout changed test) to check if layout calculations need to happen
 - try to minimize program switching
 - reduce bind buffer calls
+- should be able to support multiple image sources for one image component:
+  - especially necessary for compressed images support to reduce overall memory footprint
+  - img({src: 'default_fallback', etc1Src: '', s3tcSrc: '', etc.}

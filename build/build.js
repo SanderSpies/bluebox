@@ -316,6 +316,7 @@ function reconstructTree(node) {
       // and now...
       newNode.children[i] = child.newRef;
       child.newRef = null;
+      child.parentReference = null;
       //TODO: properly clean up: child.parentReference = null;
 
     }
@@ -1009,7 +1010,7 @@ var Bluebox = {
       hasChanged = true;
     }
    // if (newComponentTree.layout.width === undefined) {
-      newComponentTree = layoutNode(newComponentTree, oldComponentTree, null, AXIS.column, AXIS.row, false);
+      newComponentTree = layoutNode(newComponentTree, oldComponentTree, false, null, AXIS.column, AXIS.row, false);
    // }
 
       //console.log(newComponentTree);
@@ -1273,38 +1274,10 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
   }
 }
 
-function isSameStyle(node, oldNode) {
-  var nodeStyle = node.layout;
-  var oldNodeStyle = oldNode.layout;
-  return nodeStyle.position === oldNodeStyle.position &&
-    nodeStyle.width === oldNodeStyle.width &&
-    nodeStyle.height === oldNodeStyle.height &&
-    nodeStyle.top === oldNodeStyle.top &&
-    nodeStyle.left === oldNodeStyle.left &&
-    nodeStyle.right === oldNodeStyle.right &&
-    nodeStyle.bottom === oldNodeStyle.bottom &&
-    nodeStyle.marginBottom === oldNodeStyle.marginBottom &&
-    nodeStyle.marginTop === oldNodeStyle.marginTop &&
-    nodeStyle.marginRight === oldNodeStyle.marginRight &&
-    nodeStyle.marginLeft === oldNodeStyle.marginLeft &&
-    nodeStyle.paddingBottom === oldNodeStyle.paddingBottom &&
-    nodeStyle.paddingTop === oldNodeStyle.paddingTop &&
-    nodeStyle.paddingRight === oldNodeStyle.paddingRight &&
-    nodeStyle.paddingLeft === oldNodeStyle.paddingLeft &&
-    nodeStyle.justifyContent === oldNodeStyle.justifyContent &&
-    nodeStyle.alignItems === oldNodeStyle.alignItems &&
-    nodeStyle.alignSelf === oldNodeStyle.alignSelf &&
-    nodeStyle.flexGrow === oldNodeStyle.flexGrow &&
-    nodeStyle.flexWrap === oldNodeStyle.flexWrap;
-}
 
-function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
-  if (oldNode && node.style === oldNode.style) {
-    console.info('can we optimize this?!');
-  }
-  else {
-    console.info('changed...');
-  }
+function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
+
+
   var parent = node.parentReference.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
@@ -1340,7 +1313,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i]: null;
       childStyle = child.style;
       childLayout = child.layout;
-      layoutNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
+      layoutNode(child, oldChild, isParentStyleInvalidated, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
 
       var skipPrevious = false;
 
@@ -1413,11 +1386,6 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     var newParentHeight = nodeLayout.height;
     var newParentWidth = nodeLayout.width;
 
-    if (oldNode && oldNode.children === node.children) {
-      //console.info('Should be able to optimize this:', oldNode);
-    }
-
-
     var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
     var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
 
@@ -1489,7 +1457,10 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       //}
       alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
       if (isPositionAbsolute) {
-        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute);
+        isParentStyleInvalidated = isParentStyleInvalidated || !oldChild || child.style !== oldChild.style || child.children.length !== oldChild.children.length;
+        if (!isParentStyleInvalidated) {
+          processChildren(child, oldChild, isParentStyleInvalidated, mainAxis, crossAxis, isPositionAbsolute);
+        }
       }
       else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
         correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
@@ -1502,8 +1473,10 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
 }
 
 //window.testing = [];
-function layoutNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
-
+function layoutNode(node, oldNode, isParentStyleInvalidated, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
+  if (node === oldNode && !isParentStyleInvalidated) {
+    //return oldNode;
+  }
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
 
@@ -1537,12 +1510,10 @@ function layoutNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldP
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
   if (nodeStyle.position !== ABSOLUTE) {
-    //if (node !== oldNode) {
-      processChildren(node, oldNode, mainAxis, crossAxis, false);
-    //}
-    //else {
-      //console.info('saved something here I guess...');
-    //}
+    isParentStyleInvalidated = isParentStyleInvalidated || !oldNode || node.style !== oldNode.style;
+    if (!isParentStyleInvalidated) {
+      processChildren(node, oldNode, isParentStyleInvalidated, mainAxis, crossAxis, false);
+    }
   }
 
   return node;
@@ -1897,7 +1868,7 @@ function render(domElement,
     parentTop = 0;
   }
 
-  if (typeof newElement === 'string' || !isVisible(newElement, viewPortDimensions))  {
+  if (typeof newElement === 'string')  {
     return;
   }
 
