@@ -132,7 +132,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+      Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
         Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
@@ -148,7 +148,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')])
-      ]),
+      ])),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
           View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
@@ -201,7 +201,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     )
   ])
 ]);
-},{"../../lib/animation/Animator":3,"./../../lib/components/C":4,"./../../lib/index":11}],2:[function(require,module,exports){
+},{"../../lib/animation/Animator":3,"./../../lib/components/C":4,"./../../lib/index":12}],2:[function(require,module,exports){
 var Bluebox = require('./../../lib/index');
 
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
@@ -215,17 +215,16 @@ function continuousRendering() {
 requestAnimationFrame(continuousRendering);
 
 
-},{"./../../lib/index":11,"./CategoriesView":1}],3:[function(require,module,exports){
+},{"./../../lib/index":12,"./CategoriesView":1}],3:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('../index');
-var requestStyleRecalculation = require('../layout/requestStyleRecalculation');
 
 var keys = Object.keys;
 var isArray = Array.isArray;
 var registeredAbsoluteTransitions = [];
 var registeredAbsoluteSprings = [];
-
+var ensureTreeCorrectness = require('../diff/ensureTreeCorrectness');
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -295,46 +294,53 @@ function quickClone(node) {
 
 function clone(node) {
   var newNode = quickClone(node);
-  if (node.children) {
-    newNode.children = [];
+  newNode.children = [];
+  return newNode;
+}
+
+function cloneWithChildren(node) {
+  var newNode = clone(node);
+  for (var i = 0, l = node.children.length; i < l; i++) {
+    var child = node.children[i];
+    newNode.children[i] = child;
+    child.parent = newNode;
   }
   return newNode;
 }
 
 function cloneWithClonedStyle(node) {
-  var newNode = clone(node);
+  var newNode = quickClone(node);
   newNode.style = quickClone(newNode.style);
   return newNode;
 }
 
-function reconstructTree(node) {
+
+var recalculationQueue = [];
+function reconstructTree(node, skip) {
   var currentNode = node;
-  var newNode = clone(currentNode);
   var children = currentNode.children;
+  if (children) {
+    var newNode = cloneWithChildren(currentNode);
 
-  for (var i = 0, l = children.length; i < l; i++) {
-    var child = children[i];
-    if (child.isAnimating) {
-      // and now...
-      newNode.children[i] = child.newRef;
-      // this could probably be done smarter
-      requestStyleRecalculation(child.newRef, child);
-      //child.parentReference = null;
-      child.parent = newNode;
-      child.newRef = null;
+    for (var i = 0, l = newNode.children.length; i < l; i++) {
+      var child = newNode.children[i];
+      if (child.isAnimating && !skip) {
+        newNode.children[i] = reconstructTree(child.newRef, skip || true);
+        child.newRef = newNode.children[i];
+        newNode.children[i].parent = newNode;
+        newNode.children[i].oldRef = child;
+        recalculationQueue.push(newNode.children[i]);
+      }
+
+      if (child.isChildAnimating) {
+        newNode.children[i] = reconstructTree(child, skip);
+        newNode.children[i].parent = newNode;
+      }
 
     }
-    if (child.isChildAnimating) {
-      newNode.children[i] = reconstructTree(child);
-      child.parent = newNode;
-      //TODO: properly clean up: child.parentReference = null;
-      //child.parentReference = null;
-    }
-    if (!child.isAnimating && !child.isChildAnimating) {
-      newNode.children[i] = child;
-    }
+    return newNode;
   }
-  return newNode;
+  return node;
 }
 
 
@@ -354,16 +360,18 @@ function onAnimate() {
     var duration = opts.duration;
     var easing = opts.easing || 'linear';
     // perform calculations here
-    var newNode = cloneWithClonedStyle(node);
-    newNode.children = node.children.slice(0);
-    //console.info('new node:', newNode);
+    //var newNode = cloneWithClonedStyle(node);
+    //newNode.children = node.children.slice(0);
     for (j = 0, l2 = keys.length; j < l2; j++) {
       var key = keys[j];
-      //console.info(currentTime, start[key], end[key], duration);
-      newNode.style[key] = easings[easing](currentTime, start[key], end[key], duration);
-      node.newRef = newNode;
+      node.style[key] = easings[easing](currentTime, start[key], end[key], duration);
+
     }
-    absoluteTransition.node = newNode;
+    if (node.newRef) {
+      //debugger;
+    }
+    //node.newRef = newNode;
+    absoluteTransition.node = node;
   }
 
   if (!rootNode) {
@@ -374,11 +382,24 @@ function onAnimate() {
       }
     }
   }
-  var newRootNode = reconstructTree(rootNode);
 
-  rootNode = newRootNode;
-  Bluebox.renderFromTop(rootNode, null, true);
+ // var newRootNode = reconstructTree(rootNode, false);
 
+  // todo: make an assert (for dev purposes only)
+
+
+  //rootNode = newRootNode;
+  Bluebox.relayout(rootNode);
+  recalculationQueue = [];
+  //oldRecalculationQueue = [];
+  //console.info('A1');
+
+  //ensureTreeCorrectness(newRootNode);
+
+  //for (i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
+  //  var absoluteTransition = registeredAbsoluteTransitions[i];
+  //  absoluteTransition.node = absoluteTransition.node.newRef;
+  //}
   requestAnimationFrame(onAnimate);
 }
 
@@ -416,7 +437,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../index":11,"../layout/requestStyleRecalculation":15}],4:[function(require,module,exports){
+},{"../diff/ensureTreeCorrectness":9,"../index":12}],4:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -428,7 +449,7 @@ function merge(parent, child) {
   return parent;
 }
 var UNDEFINED = 7000;
-var __DEV__ = false;
+var __DEV__ = true;
 function Component(type, props, style, children) {
   var component = {
     customType: null,
@@ -470,6 +491,7 @@ function Component(type, props, style, children) {
       fontStyle: 'normal'
     }, style || {}),
     parent: null,
+    oldRef: null,
     type: type,
     props: props,
     children: children,
@@ -481,8 +503,8 @@ function Component(type, props, style, children) {
   };
 
   if (__DEV__) {
-    Object.freeze(component.style);
-    Object.seal(component.layout)
+    //Object.freeze(component.style);
+    //Object.seal(component.layout)
   }
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
@@ -513,7 +535,7 @@ var Image = Bluebox.create('image', function render(props, style, children) {
 
 module.exports = Image;
 
-},{"./../../lib/index":11,"./C":4}],6:[function(require,module,exports){
+},{"./../../lib/index":12,"./C":4}],6:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -526,7 +548,7 @@ var Text = Bluebox.create('text', function(props, style, children) {
 
 module.exports = Text;
 
-},{"./../../lib/index":11,"./C":4}],7:[function(require,module,exports){
+},{"./../../lib/index":12,"./C":4}],7:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -538,7 +560,7 @@ var View = Bluebox.create('view', function render(props, style, children) {
 
 module.exports = View;
 
-},{"./../../lib/index":11,"./C":4}],8:[function(require,module,exports){
+},{"./../../lib/index":12,"./C":4}],8:[function(require,module,exports){
 /**
  * @flow
  */
@@ -708,7 +730,28 @@ function diff(newNode, oldNode, parent, oldParent) {
 
 module.exports = diff;
 
-},{"../events/EventHandling":9}],9:[function(require,module,exports){
+},{"../events/EventHandling":10}],9:[function(require,module,exports){
+'use strict';
+
+function ensureTreeCorrectness(node) {
+  return;
+  var children = node.children;
+  for (var i = 0, l = children.length; i < l; i++) {
+    var child = children[i];
+    if (child.type) {
+      if (child.parent !== node) {
+        console.warn('PARENT CHILD MISMATCH');
+        debugger;
+        return false;
+      }
+      return ensureTreeCorrectness(child);
+    }
+  }
+  return true;
+}
+
+module.exports = ensureTreeCorrectness;
+},{}],10:[function(require,module,exports){
 'use strict';
 
 var handleEvents = require('../events/handleEvents');
@@ -755,7 +798,7 @@ module.exports = {
   setEventListeners: setEventListeners
 };
 
-},{"../events/handleEvents":10}],10:[function(require,module,exports){
+},{"../events/handleEvents":11}],11:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
@@ -873,7 +916,7 @@ module.exports = {
   handleEvent: handleEvent,
   updateComponents: updateComponents
 };
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 (function (process,global){
 'use strict';
 
@@ -881,7 +924,9 @@ var diff            = require('./diff/diff');
 var layoutNode      = require('./layout/layoutNode');
 var render        = require('./renderers/GL/render');
 var ViewPortHelper  = require('./renderers/DOM/ViewPortHelper');
-var toDOMString = require('./layout/layoutNode-tests/utils/toDOMString');
+var requestStyleRecalculation = require('./layout/requestStyleRecalculation');
+var ensureTreeCorrectness = require('./diff/ensureTreeCorrectness');
+//var toDOMString = require('./layout/layoutNode-tests/utils/toDOMString');
 var oldComponentTree    = null;
 var oldDOMElement       = null;
 var viewPortDimensions  = null;
@@ -1012,10 +1057,10 @@ var Bluebox = {
       hasChanged = true;
     }
    // if (newComponentTree.layout.width === undefined) {
-      newComponentTree = layoutNode(newComponentTree, oldComponentTree, false, null, AXIS.column, AXIS.row, false);
+      newComponentTree = layoutNode(newComponentTree, null, AXIS.column, AXIS.row, false);
    // }
 
-      console.log(newComponentTree);
+      //console.log(newComponentTree);
     //console.log(toDOMString(newComponentTree));
 
     if (newComponentTree !== oldComponentTree || hasChanged) {
@@ -1026,6 +1071,18 @@ var Bluebox = {
 
     oldComponentTree = newComponentTree;
     return newComponentTree;
+  },
+
+
+  relayout: function(componentTree) {
+    var domElement = oldDOMElement;
+    componentTree = layoutNode(componentTree, null, AXIS.column, AXIS.row, false);
+
+    render(domElement, componentTree, null, null, 0, viewPortDimensions, 0, 0);
+
+    oldComponentTree = componentTree;
+
+    return componentTree;
   }
 
 };
@@ -1038,7 +1095,7 @@ Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":5,"./components/Text":6,"./components/View":7,"./diff/diff":8,"./layout/AXIS":12,"./layout/layoutNode":14,"./layout/layoutNode-tests/utils/toDOMString":13,"./renderers/DOM/ViewPortHelper":16,"./renderers/GL/render":17,"_process":23}],12:[function(require,module,exports){
+},{"./components/Image":5,"./components/Text":6,"./components/View":7,"./diff/diff":8,"./diff/ensureTreeCorrectness":9,"./layout/AXIS":13,"./layout/layoutNode":14,"./layout/requestStyleRecalculation":15,"./renderers/DOM/ViewPortHelper":16,"./renderers/GL/render":17,"_process":23}],13:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1061,54 +1118,6 @@ var AXIS = {
 };
 
 module.exports = AXIS;
-},{}],13:[function(require,module,exports){
-'use strict';
-
-var UNDEFINED = 7000;
-function toDOMString(node, indent) {
-  indent = indent || 0;
-  var result = '';
-  var children = node.children;
-  var spaceBefore = '  ';
-  result += spaceBefore + '<div ';
-  result += '  style="';
-  var styleKeys = Object.keys(node.style);
-  for(var i = 0, l = styleKeys.length; i < l; i++) {
-    var styleKey = styleKeys[i];
-    var value = node.style[styleKey];
-    styleKey = styleKey.replace(/([A-Z])/g, '-$1').toLowerCase();
-    if (!isNaN(value) || value) {
-      if (!isNaN(value) && styleKey !== 'opacity' && styleKey !== 'flex-grow') {
-        if (value === UNDEFINED) {
-          value = '';
-        }
-        else if (value > 0) {
-          value = value + 'px';
-        }
-        else if(styleKey === 'width' && value === 0) {
-          value = 'initial';
-        }
-
-      }
-
-      result += styleKey + ':' + value + ';';
-    }
-  }
-  result +='">';
-  indent++;
-  for (var i = 0, l = children.length; i < l; i++) {
-    var child = children[i];
-    if (typeof child !== 'string') {
-      result += toDOMString(child, indent);
-    }
-  }
-  result += spaceBefore + '</div>\n';
-  return result;
-}
-
-
-module.exports = toDOMString;
-
 },{}],14:[function(require,module,exports){
 'use strict';
 
@@ -1190,6 +1199,7 @@ function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
   }
 
+
   if (nodeStyle[crossAxis.START] !== UNDEFINED) {
     nodeLayout[crossAxis.START] += nodeStyle[crossAxis.START];
     nodeLayout[crossAxis.END] += nodeStyle[crossAxis.START];
@@ -1210,6 +1220,7 @@ function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
     nodeLayout[crossAxis.END] = parentLayout[crossAxis.END] - nodeStyle[crossAxis.END];
     nodeLayout[crossAxis.DIMENSION] = nodeLayout[crossAxis.END] - nodeLayout[crossAxis.START];
   }
+
 
   if (!nodeLayout.height && nodeStyle.height !== UNDEFINED) {
     nodeLayout.height = nodeStyle.height;
@@ -1248,7 +1259,6 @@ function correctChildren(node, top, left, mainAxis, crossAxis) {
         childLayout.right += left;
         childLayout.top += top;
         childLayout.bottom += top;
-
         correctChildren(child, top, left, mainAxis, crossAxis);
       }
       previousChild = child;
@@ -1274,9 +1284,7 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
     childLayout.bottom = childLayout.top + childLayout.height;
   }
 }
-
-function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
-
+function processChildren(node, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
   var parent = node.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
@@ -1306,30 +1314,24 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
     var childLayout;
     var i;
     var l;
-    var oldChild;
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
-      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i] : null;
       childStyle = child.style;
       childLayout = child.layout;
-
-      //if (node !== oldNode) {
-        layoutNode(child, oldChild, isParentStyleInvalidated, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
-      //}
+      layoutNode(child, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
 
       var skipPrevious = false;
 
       if (childStyle.position !== ABSOLUTE) {
-      //  if (child !== oldChild) {
+
           if (i === 0) {
             childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
             childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
           }
-
           childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
           childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
           childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
-       // }
+
         var newSize = childStyle[mainAxis.DIMENSION] !== UNDEFINED ? (childStyle[mainAxis.DIMENSION] + childStyle[crossAxis.MARGIN_LEADING] + childStyle[crossAxis.MARGIN_TRAILING]) || 0 : 0;
 
         if (isFlexWrap) {
@@ -1342,10 +1344,10 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
             currNrOfChildren = 0;
             additional += maxCrossDimension;
             maxCrossDimension = 0;
-          //  if (child !== oldChild) {
+
               childLayout[mainAxis.START] = nodeLayout[mainAxis.START] + childStyle[mainAxis.MARGIN_LEADING];
               childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
-          //  }
+
             totalChildrenSize = 0;
 
           }
@@ -1353,10 +1355,10 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
         }
         currNrOfChildren++;
         totalChildrenSize += newSize;
-       // if (child !== oldChild) {
+
           childLayout[crossAxis.START] += additional;
           childLayout[crossAxis.END] += additional;
-      //  }
+
         if (childLayout[parentMainAxis.END] > maxSize) {
           maxSize = childLayout[parentMainAxis.END] + childStyle[parentMainAxis.MARGIN_TRAILING];
         }
@@ -1390,8 +1392,10 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
     var newParentHeight = nodeLayout.height;
     var newParentWidth = nodeLayout.width;
 
+
     var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
     var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
+
 
     // correct the children position (justifyContent, alignItems, more?!)
     var justifyContent = nodeStyle.justifyContent;
@@ -1404,7 +1408,6 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
 
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
-      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i] : null;
       childStyle = child.style;
       childLayout = child.layout;
       if (currentLineIndex !== childLayout.lineIndex) {
@@ -1432,7 +1435,6 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
       var initialTop = childLayout.top;
       var initialLeft = childLayout.left;
 
-     // if (child !== oldChild) {
         if (totalFlexGrow) {
           flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
         }
@@ -1443,7 +1445,6 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
         if (isPositionAbsolute) {
           absolutePosition(child, previousChild, mainAxis, crossAxis);
         }
-
         var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
         var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
         if (addSpace) {
@@ -1462,14 +1463,11 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
         //}
         alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
         if (isPositionAbsolute) {
-          isParentStyleInvalidated = isParentStyleInvalidated || !oldNode || node.style !== oldNode.style;
-          processChildren(child, oldChild, isParentStyleInvalidated, mainAxis, crossAxis, isPositionAbsolute);
+        processChildren(child, mainAxis, crossAxis, isPositionAbsolute);
         }
         else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
           correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
         }
-   //   }
-
       if (!isPositionAbsolute) {
         previousChild = child;
       }
@@ -1477,43 +1475,48 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
   }
 }
 
-function layoutNode(node, oldNode, isParentStyleInvalidated, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
+//window.testing = [];
+function layoutNode(node, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
 
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
-
-  //if (node === oldNode) {
-  //  return oldNode;
-  //}
 
   var parent = node.parent;
   if (parent && parent.style.position === ABSOLUTE && !shouldProcessAbsolute) {
     return node;
   }
 
+  //if (testing.indexOf(node) > -1) {
+  //  console.warn('duplicate layoutNode call:', node, testing.indexOf(node));
+  //  console.trace();
+  //}
+  //testing.push(node);
+
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
+
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
     nodeLayout[crossAxis.START] = parentLayout[crossAxis.START];
+
   }
   else {
     nodeLayout.left = parent ? parentLayout.left : 0;
     nodeLayout.top = parent ? parentLayout.top : 0;
   }
 
+
   nodeLayout.left += nodeStyle.marginLeft;
   nodeLayout.top += nodeStyle.marginTop;
+
   nodeLayout.width = (nodeStyle.width !== UNDEFINED ? nodeStyle.width : 0) || (!nodeStyle.flexGrow ? parentWidth : 0) || 0;
   nodeLayout.height = (nodeStyle.height !== UNDEFINED ? nodeStyle.height : 0);
 
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
-
   if (nodeStyle.position !== ABSOLUTE) {
-    isParentStyleInvalidated = isParentStyleInvalidated || !oldNode || node.style !== oldNode.style;
-    processChildren(node, oldNode, isParentStyleInvalidated, mainAxis, crossAxis, false);
+    processChildren(node, mainAxis, crossAxis, false);
   }
 
   return node;
@@ -1521,73 +1524,54 @@ function layoutNode(node, oldNode, isParentStyleInvalidated, previousSibling, ma
 
 module.exports = layoutNode;
 
-},{"./AXIS":12}],15:[function(require,module,exports){
+},{"./AXIS":13}],15:[function(require,module,exports){
 'use strict';
-
-/*
-*  return nodeStyle.position !== oldNodeStyle.position ||
- nodeStyle.width !== oldNodeStyle.width &&
- nodeStyle.height !== oldNodeStyle.height &&
- nodeStyle.top !== oldNodeStyle.top &&
- nodeStyle.left !== oldNodeStyle.left &&
- nodeStyle.right !== oldNodeStyle.right &&
- nodeStyle.bottom !== oldNodeStyle.bottom &&
- nodeStyle.marginBottom !== oldNodeStyle.marginBottom &&
- nodeStyle.marginTop !== oldNodeStyle.marginTop &&
- nodeStyle.marginRight !== oldNodeStyle.marginRight &&
- nodeStyle.marginLeft !== oldNodeStyle.marginLeft &&
- nodeStyle.paddingBottom !== oldNodeStyle.paddingBottom &&
- nodeStyle.paddingTop !== oldNodeStyle.paddingTop &&
- nodeStyle.paddingRight !== oldNodeStyle.paddingRight &&
- nodeStyle.paddingLeft !== oldNodeStyle.paddingLeft &&
- nodeStyle.justifyContent !== oldNodeStyle.justifyContent &&
- nodeStyle.alignItems !== oldNodeStyle.alignItems &&
- nodeStyle.alignSelf !== oldNodeStyle.alignSelf &&
- nodeStyle.flexGrow !== oldNodeStyle.flexGrow &&
- nodeStyle.flexWrap !== oldNodeStyle.flexWrap;
-* */
-
 
 var UNDEFINED = 7000;
 function requestStyleRecalculation(node, oldNode) {
-  node.requireStyleRecalculation = true;
   var currentNode = node;
-  var currentOldNode = oldNode;
-  while(currentNode.requireStyleRecalculation) {
+ // var currentOldNode = oldNode;
+  var requireStyleRecalculation = true;
+  while(requireStyleRecalculation) {
+    requireStyleRecalculation = false;
     var parent = currentNode.parent;
-    var oldParent = currentOldNode.parent;
+   // var oldParent = currentOldNode.parent;
     var nodeStyle = currentNode.style;
-    var oldNodeStyle = currentOldNode.style;
-    if (!parent.requireStyleRecalculation &&
+  //  var oldNodeStyle = currentOldNode.style;
+    if (parent.requireStyleRecalculation || (
       (parent.style.width === UNDEFINED || parent.style.height === UNDEFINED) &&
-      (
-      (nodeStyle.position !== oldNodeStyle.position ||
-      nodeStyle.width !== oldNodeStyle.width ||
-      nodeStyle.height !== oldNodeStyle.height ||
-      nodeStyle.top !== oldNodeStyle.top ||
-      nodeStyle.left !== oldNodeStyle.left ||
-      nodeStyle.right !== oldNodeStyle.right ||
-      nodeStyle.bottom !== oldNodeStyle.bottom ||
-      nodeStyle.marginBottom !== oldNodeStyle.marginBottom ||
-      nodeStyle.marginTop !== oldNodeStyle.marginTop ||
-      nodeStyle.marginRight !== oldNodeStyle.marginRight ||
-      nodeStyle.marginLeft !== oldNodeStyle.marginLeft ||
-      nodeStyle.paddingBottom !== oldNodeStyle.paddingBottom ||
-      nodeStyle.paddingTop !== oldNodeStyle.paddingTop ||
-      nodeStyle.paddingRight !== oldNodeStyle.paddingRight ||
-      nodeStyle.paddingLeft !== oldNodeStyle.paddingLeft ||
-      nodeStyle.justifyContent !== oldNodeStyle.justifyContent ||
-      nodeStyle.alignItems !== oldNodeStyle.alignItems ||
-      nodeStyle.alignSelf !== oldNodeStyle.alignSelf ||
-      nodeStyle.flexGrow !== oldNodeStyle.flexGrow || nodeStyle.flexWrap !== oldNodeStyle.flexWrap)
-      )
-    ){
-      console.log(parent);
-      parent.requireStyleRecalculation = true;
+      currentNode.style.position !== 'absolute')){
+
+
+      //nodeStyle.position !== oldNodeStyle.position ||
+      //nodeStyle.width !== oldNodeStyle.width ||
+      //nodeStyle.height !== oldNodeStyle.height ||
+      //nodeStyle.top !== oldNodeStyle.top ||
+      //nodeStyle.left !== oldNodeStyle.left ||
+      //nodeStyle.right !== oldNodeStyle.right ||
+      //nodeStyle.bottom !== oldNodeStyle.bottom ||
+      //nodeStyle.marginBottom !== oldNodeStyle.marginBottom ||
+      //nodeStyle.marginTop !== oldNodeStyle.marginTop ||
+      //nodeStyle.marginRight !== oldNodeStyle.marginRight ||
+      //nodeStyle.marginLeft !== oldNodeStyle.marginLeft ||
+      //nodeStyle.paddingBottom !== oldNodeStyle.paddingBottom ||
+      //nodeStyle.paddingTop !== oldNodeStyle.paddingTop ||
+      //nodeStyle.paddingRight !== oldNodeStyle.paddingRight ||
+      //nodeStyle.paddingLeft !== oldNodeStyle.paddingLeft ||
+      //nodeStyle.justifyContent !== oldNodeStyle.justifyContent ||
+      //nodeStyle.alignItems !== oldNodeStyle.alignItems ||
+      //nodeStyle.alignSelf !== oldNodeStyle.alignSelf ||
+      //nodeStyle.flexGrow !== oldNodeStyle.flexGrow ||
+      //nodeStyle.flexWrap !== oldNodeStyle.flexWrap
+
+
+
+      requireStyleRecalculation = true;  //currentOldNode = oldParent;
     }
+
     currentNode = parent;
-    currentOldNode = oldParent;
   }
+  return currentNode;
 }
 
 module.exports = requestStyleRecalculation;
