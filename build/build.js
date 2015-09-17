@@ -219,10 +219,10 @@ requestAnimationFrame(continuousRendering);
 'use strict';
 
 var Bluebox = require('../index');
-var toDOMString = require('../layout/layoutNode-tests/utils/toDOMString');
+var requestStyleRecalculation = require('../layout/requestStyleRecalculation');
+
 var keys = Object.keys;
 var isArray = Array.isArray;
-
 var registeredAbsoluteTransitions = [];
 var registeredAbsoluteSprings = [];
 
@@ -282,13 +282,19 @@ function setAnimationValues(newChild, oldChild) {
 
 }
 
-function clone(node) {
+function quickClone(node) {
   var newNode = {};
   var _keys = keys(node);
   for (var i = 0, l = _keys.length; i < l; i++) {
     var _key = _keys[i];
     newNode[_key] = node[_key];
   }
+  return newNode;
+}
+
+
+function clone(node) {
+  var newNode = quickClone(node);
   if (node.children) {
     newNode.children = [];
   }
@@ -297,7 +303,7 @@ function clone(node) {
 
 function cloneWithClonedStyle(node) {
   var newNode = clone(node);
-  newNode.style = clone(newNode.style);
+  newNode.style = quickClone(newNode.style);
   return newNode;
 }
 
@@ -305,25 +311,24 @@ function reconstructTree(node) {
   var currentNode = node;
   var newNode = clone(currentNode);
   var children = currentNode.children;
-  if (children.length) {
-    // set all parent references at once
-    children[0].parentReference.parent = newNode;
-  }
 
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.isAnimating) {
       // and now...
       newNode.children[i] = child.newRef;
+      // this could probably be done smarter
+      requestStyleRecalculation(child.newRef, child);
+      //child.parentReference = null;
+      child.parent = newNode;
       child.newRef = null;
-      child.parentReference = null;
-      //TODO: properly clean up: child.parentReference = null;
 
     }
     if (child.isChildAnimating) {
       newNode.children[i] = reconstructTree(child);
+      child.parent = newNode;
       //TODO: properly clean up: child.parentReference = null;
-      child.parentReference = null;
+      //child.parentReference = null;
     }
     if (!child.isAnimating && !child.isChildAnimating) {
       newNode.children[i] = child;
@@ -364,8 +369,8 @@ function onAnimate() {
   if (!rootNode) {
     if (registeredAbsoluteTransitions.length) {
       rootNode = registeredAbsoluteTransitions[0].node;
-      while (rootNode.parentReference.parent) {
-        rootNode = rootNode.parentReference.parent;
+      while (rootNode.parent) {
+        rootNode = rootNode.parent;
       }
     }
   }
@@ -411,7 +416,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../index":11,"../layout/layoutNode-tests/utils/toDOMString":13}],4:[function(require,module,exports){
+},{"../index":11,"../layout/requestStyleRecalculation":15}],4:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -464,31 +469,28 @@ function Component(type, props, style, children) {
       fontWeight: '',
       fontStyle: 'normal'
     }, style || {}),
-    parentReference: {
-      parent: null
-    },
+    parent: null,
     type: type,
     props: props,
     children: children,
     lineIndex: 0,
     isAnimating: false,
     isChildAnimating: false,
-    newRef: null
+    newRef: null,
+    requireStyleRecalculation: false
   };
+
   if (__DEV__) {
     Object.freeze(component.style);
     Object.seal(component.layout)
   }
-  var parentReference = {
-    parent: component
-  };
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.type) {
-      child.parentReference = parentReference;
-    }
-    if (!component.isChildAnimating && (child.isAnimating || child.isChildAnimating)) {
-      component.isChildAnimating = true;
+      child.parent = component;
+      if (!component.isChildAnimating && (child.isAnimating || child.isChildAnimating)) {
+        component.isChildAnimating = true;
+      }
     }
   }
 
@@ -911,23 +913,23 @@ function clone(obj) {
 
 function updateTree(component, newComponent) {
   // go up the tree and replace all the nodes
-  var parentReference = component.parentReference;
-  if (parentReference) {
+  var parent = component.parent;
+  if (parent) {
     //debugger;
     // recreate the parents
     newComponent.layout = component.layout;
-    while(parentReference) {
-      var index = parentReference.parent.children.indexOf(component);
-      var newParent = clone(parentReference.parent);
+    while(parent) {
+      var index = parent.children.indexOf(component);
+      var newParent = clone(parent);
       newParent.children[index] = newComponent;
-      newComponent.parentReference.parent = newParent;
+      newComponent.parent = newParent;
 
-      if (!component.parentReference){
+      if (!component.parent){
         return newComponent;
       }
-      newComponent = newComponent.parentReference.parent;
-      component = component.parentReference.parent;
-      parentReference = component.parentReference;
+      newComponent = newComponent.parent;
+      component = component.parent;
+      parent = component.parent;
     }
 
     return newComponent;
@@ -1013,7 +1015,7 @@ var Bluebox = {
       newComponentTree = layoutNode(newComponentTree, oldComponentTree, false, null, AXIS.column, AXIS.row, false);
    // }
 
-      //console.log(newComponentTree);
+      console.log(newComponentTree);
     //console.log(toDOMString(newComponentTree));
 
     if (newComponentTree !== oldComponentTree || hasChanged) {
@@ -1036,7 +1038,7 @@ Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./components/Image":5,"./components/Text":6,"./components/View":7,"./diff/diff":8,"./layout/AXIS":12,"./layout/layoutNode":14,"./layout/layoutNode-tests/utils/toDOMString":13,"./renderers/DOM/ViewPortHelper":15,"./renderers/GL/render":16,"_process":22}],12:[function(require,module,exports){
+},{"./components/Image":5,"./components/Text":6,"./components/View":7,"./diff/diff":8,"./layout/AXIS":12,"./layout/layoutNode":14,"./layout/layoutNode-tests/utils/toDOMString":13,"./renderers/DOM/ViewPortHelper":16,"./renderers/GL/render":17,"_process":23}],12:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1169,7 +1171,7 @@ function justifyContentFn(child, previousChild, mainAxis, justifyContentX, remai
 }
 
 function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
-  var parent = node.parentReference.parent;
+  var parent = node.parent;
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var parentLayout = parent.layout;
@@ -1187,7 +1189,6 @@ function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
   else if (previousSibling) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
   }
-
 
   if (nodeStyle[crossAxis.START] !== UNDEFINED) {
     nodeLayout[crossAxis.START] += nodeStyle[crossAxis.START];
@@ -1210,11 +1211,10 @@ function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
     nodeLayout[crossAxis.DIMENSION] = nodeLayout[crossAxis.END] - nodeLayout[crossAxis.START];
   }
 
-
   if (!nodeLayout.height && nodeStyle.height !== UNDEFINED) {
     nodeLayout.height = nodeStyle.height;
-}
-  if (!nodeLayout.width && nodeStyle.width  !== UNDEFINED) {
+  }
+  if (!nodeLayout.width && nodeStyle.width !== UNDEFINED) {
     nodeLayout.width = nodeStyle.width;
   }
 
@@ -1248,6 +1248,7 @@ function correctChildren(node, top, left, mainAxis, crossAxis) {
         childLayout.right += left;
         childLayout.top += top;
         childLayout.bottom += top;
+
         correctChildren(child, top, left, mainAxis, crossAxis);
       }
       previousChild = child;
@@ -1274,11 +1275,9 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
   }
 }
 
-
 function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
 
-
-  var parent = node.parentReference.parent;
+  var parent = node.parent;
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
   var parentHeight = parentLayout ? parentLayout.height : document.body.clientHeight;
@@ -1310,23 +1309,27 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
     var oldChild;
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
-      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i]: null;
+      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i] : null;
       childStyle = child.style;
       childLayout = child.layout;
-      layoutNode(child, oldChild, isParentStyleInvalidated, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
+
+      //if (node !== oldNode) {
+        layoutNode(child, oldChild, isParentStyleInvalidated, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
+      //}
 
       var skipPrevious = false;
 
       if (childStyle.position !== ABSOLUTE) {
+      //  if (child !== oldChild) {
+          if (i === 0) {
+            childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
+            childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
+          }
 
-        if (i === 0) {
-          childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
-          childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
-        }
-        childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
-        childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
-        childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
-
+          childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
+          childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
+          childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
+       // }
         var newSize = childStyle[mainAxis.DIMENSION] !== UNDEFINED ? (childStyle[mainAxis.DIMENSION] + childStyle[crossAxis.MARGIN_LEADING] + childStyle[crossAxis.MARGIN_TRAILING]) || 0 : 0;
 
         if (isFlexWrap) {
@@ -1339,10 +1342,10 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
             currNrOfChildren = 0;
             additional += maxCrossDimension;
             maxCrossDimension = 0;
-
-            childLayout[mainAxis.START] = nodeLayout[mainAxis.START]  + childStyle[mainAxis.MARGIN_LEADING];
-            childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
-
+          //  if (child !== oldChild) {
+              childLayout[mainAxis.START] = nodeLayout[mainAxis.START] + childStyle[mainAxis.MARGIN_LEADING];
+              childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
+          //  }
             totalChildrenSize = 0;
 
           }
@@ -1350,10 +1353,10 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
         }
         currNrOfChildren++;
         totalChildrenSize += newSize;
-
-        childLayout[crossAxis.START] += additional;
-        childLayout[crossAxis.END] += additional;
-
+       // if (child !== oldChild) {
+          childLayout[crossAxis.START] += additional;
+          childLayout[crossAxis.END] += additional;
+      //  }
         if (childLayout[parentMainAxis.END] > maxSize) {
           maxSize = childLayout[parentMainAxis.END] + childStyle[parentMainAxis.MARGIN_TRAILING];
         }
@@ -1362,11 +1365,12 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
 
         if (skipPrevious) {
           previousChild = null;
-        } else {
+        }
+        else {
           previousChild = child;
         }
 
-        if ((childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING])> maxCrossDimension) {
+        if ((childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING]) > maxCrossDimension) {
           maxCrossDimension = childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING];
         }
       }
@@ -1378,7 +1382,7 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
     crossLineLengths.push(maxCrossDimension);
     lineNrOfChildren.push(currNrOfChildren);
 
-    if (nodeLayout[parentMainAxis.DIMENSION] === 0) {
+    if (/*node !== oldNode &&*/ nodeLayout[parentMainAxis.DIMENSION] === 0) {
       nodeLayout[parentMainAxis.END] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING];
       nodeLayout[parentMainAxis.DIMENSION] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING] - nodeLayout[parentMainAxis.START];
     }
@@ -1388,7 +1392,6 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
 
     var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
     var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
-
 
     // correct the children position (justifyContent, alignItems, more?!)
     var justifyContent = nodeStyle.justifyContent;
@@ -1401,7 +1404,7 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
 
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
-      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i]: null;
+      oldChild = oldNode && oldNode.children && oldNode.children.length ? oldNode.children[i] : null;
       childStyle = child.style;
       childLayout = child.layout;
       if (currentLineIndex !== childLayout.lineIndex) {
@@ -1429,91 +1432,88 @@ function processChildren(node, oldNode, isParentStyleInvalidated, parentMainAxis
       var initialTop = childLayout.top;
       var initialLeft = childLayout.left;
 
-      if (totalFlexGrow) {
-        flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
-      }
-      else {
-        justifyContentFn(child, previousChild, mainAxis, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
-      }
+     // if (child !== oldChild) {
+        if (totalFlexGrow) {
+          flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
+        }
+        else {
+          justifyContentFn(child, previousChild, mainAxis, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
+        }
 
-      if (isPositionAbsolute) {
-        absolutePosition(child, previousChild, mainAxis, crossAxis);
-      }
-      var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
-      var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
-      if (addSpace) {
-        remainingSpaceCrossAxisSelf += addSpace;
-      }
-      if (alignSelf === CENTER) {
-        remainingSpaceCrossAxisSelf = (remainingSpaceCrossAxisSelf / 2);
-      }
+        if (isPositionAbsolute) {
+          absolutePosition(child, previousChild, mainAxis, crossAxis);
+        }
 
-      // TODO: fix flexWrap line heights
-      //if (lineLengths.length > 1) {
-      //  var foo = node.layout[xNewCrossAxisDirection.START] + (crossDimensionSize / (lineLengths.length - 1) * currentLineIndex);
-      //
-      //  childLayout[xNewCrossAxisDirection.START] = foo - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING] - addSpace;
-      //  childLayout[xNewCrossAxisDirection.END] = foo - addSpace;
-      //}
-      alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
-      if (isPositionAbsolute) {
-        isParentStyleInvalidated = isParentStyleInvalidated || !oldChild || child.style !== oldChild.style || child.children.length !== oldChild.children.length;
-        if (!isParentStyleInvalidated) {
+        var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
+        var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
+        if (addSpace) {
+          remainingSpaceCrossAxisSelf += addSpace;
+        }
+        if (alignSelf === CENTER) {
+          remainingSpaceCrossAxisSelf = (remainingSpaceCrossAxisSelf / 2);
+        }
+
+        // TODO: fix flexWrap line heights
+        //if (lineLengths.length > 1) {
+        //  var foo = node.layout[xNewCrossAxisDirection.START] + (crossDimensionSize / (lineLengths.length - 1) * currentLineIndex);
+        //
+        //  childLayout[xNewCrossAxisDirection.START] = foo - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING] - addSpace;
+        //  childLayout[xNewCrossAxisDirection.END] = foo - addSpace;
+        //}
+        alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
+        if (isPositionAbsolute) {
+          isParentStyleInvalidated = isParentStyleInvalidated || !oldNode || node.style !== oldNode.style;
           processChildren(child, oldChild, isParentStyleInvalidated, mainAxis, crossAxis, isPositionAbsolute);
         }
-      }
-      else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
-        correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
-      }
-      if (!isPositionAbsolute){
+        else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
+          correctChildren(child, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
+        }
+   //   }
+
+      if (!isPositionAbsolute) {
         previousChild = child;
       }
     }
   }
 }
 
-//window.testing = [];
 function layoutNode(node, oldNode, isParentStyleInvalidated, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
-  if (node === oldNode && !isParentStyleInvalidated) {
-    //return oldNode;
-  }
+
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
 
-  var parent = node.parentReference.parent;
+  //if (node === oldNode) {
+  //  return oldNode;
+  //}
+
+  var parent = node.parent;
   if (parent && parent.style.position === ABSOLUTE && !shouldProcessAbsolute) {
     return node;
   }
 
-
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
-
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
     nodeLayout[crossAxis.START] = parentLayout[crossAxis.START];
-
   }
   else {
     nodeLayout.left = parent ? parentLayout.left : 0;
     nodeLayout.top = parent ? parentLayout.top : 0;
   }
 
-
   nodeLayout.left += nodeStyle.marginLeft;
   nodeLayout.top += nodeStyle.marginTop;
-
   nodeLayout.width = (nodeStyle.width !== UNDEFINED ? nodeStyle.width : 0) || (!nodeStyle.flexGrow ? parentWidth : 0) || 0;
   nodeLayout.height = (nodeStyle.height !== UNDEFINED ? nodeStyle.height : 0);
 
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
+
   if (nodeStyle.position !== ABSOLUTE) {
     isParentStyleInvalidated = isParentStyleInvalidated || !oldNode || node.style !== oldNode.style;
-    if (!isParentStyleInvalidated) {
-      processChildren(node, oldNode, isParentStyleInvalidated, mainAxis, crossAxis, false);
-    }
+    processChildren(node, oldNode, isParentStyleInvalidated, mainAxis, crossAxis, false);
   }
 
   return node;
@@ -1522,6 +1522,77 @@ function layoutNode(node, oldNode, isParentStyleInvalidated, previousSibling, ma
 module.exports = layoutNode;
 
 },{"./AXIS":12}],15:[function(require,module,exports){
+'use strict';
+
+/*
+*  return nodeStyle.position !== oldNodeStyle.position ||
+ nodeStyle.width !== oldNodeStyle.width &&
+ nodeStyle.height !== oldNodeStyle.height &&
+ nodeStyle.top !== oldNodeStyle.top &&
+ nodeStyle.left !== oldNodeStyle.left &&
+ nodeStyle.right !== oldNodeStyle.right &&
+ nodeStyle.bottom !== oldNodeStyle.bottom &&
+ nodeStyle.marginBottom !== oldNodeStyle.marginBottom &&
+ nodeStyle.marginTop !== oldNodeStyle.marginTop &&
+ nodeStyle.marginRight !== oldNodeStyle.marginRight &&
+ nodeStyle.marginLeft !== oldNodeStyle.marginLeft &&
+ nodeStyle.paddingBottom !== oldNodeStyle.paddingBottom &&
+ nodeStyle.paddingTop !== oldNodeStyle.paddingTop &&
+ nodeStyle.paddingRight !== oldNodeStyle.paddingRight &&
+ nodeStyle.paddingLeft !== oldNodeStyle.paddingLeft &&
+ nodeStyle.justifyContent !== oldNodeStyle.justifyContent &&
+ nodeStyle.alignItems !== oldNodeStyle.alignItems &&
+ nodeStyle.alignSelf !== oldNodeStyle.alignSelf &&
+ nodeStyle.flexGrow !== oldNodeStyle.flexGrow &&
+ nodeStyle.flexWrap !== oldNodeStyle.flexWrap;
+* */
+
+
+var UNDEFINED = 7000;
+function requestStyleRecalculation(node, oldNode) {
+  node.requireStyleRecalculation = true;
+  var currentNode = node;
+  var currentOldNode = oldNode;
+  while(currentNode.requireStyleRecalculation) {
+    var parent = currentNode.parent;
+    var oldParent = currentOldNode.parent;
+    var nodeStyle = currentNode.style;
+    var oldNodeStyle = currentOldNode.style;
+    if (!parent.requireStyleRecalculation &&
+      (parent.style.width === UNDEFINED || parent.style.height === UNDEFINED) &&
+      (
+      (nodeStyle.position !== oldNodeStyle.position ||
+      nodeStyle.width !== oldNodeStyle.width ||
+      nodeStyle.height !== oldNodeStyle.height ||
+      nodeStyle.top !== oldNodeStyle.top ||
+      nodeStyle.left !== oldNodeStyle.left ||
+      nodeStyle.right !== oldNodeStyle.right ||
+      nodeStyle.bottom !== oldNodeStyle.bottom ||
+      nodeStyle.marginBottom !== oldNodeStyle.marginBottom ||
+      nodeStyle.marginTop !== oldNodeStyle.marginTop ||
+      nodeStyle.marginRight !== oldNodeStyle.marginRight ||
+      nodeStyle.marginLeft !== oldNodeStyle.marginLeft ||
+      nodeStyle.paddingBottom !== oldNodeStyle.paddingBottom ||
+      nodeStyle.paddingTop !== oldNodeStyle.paddingTop ||
+      nodeStyle.paddingRight !== oldNodeStyle.paddingRight ||
+      nodeStyle.paddingLeft !== oldNodeStyle.paddingLeft ||
+      nodeStyle.justifyContent !== oldNodeStyle.justifyContent ||
+      nodeStyle.alignItems !== oldNodeStyle.alignItems ||
+      nodeStyle.alignSelf !== oldNodeStyle.alignSelf ||
+      nodeStyle.flexGrow !== oldNodeStyle.flexGrow || nodeStyle.flexWrap !== oldNodeStyle.flexWrap)
+      )
+    ){
+      console.log(parent);
+      parent.requireStyleRecalculation = true;
+    }
+    currentNode = parent;
+    currentOldNode = oldParent;
+  }
+}
+
+module.exports = requestStyleRecalculation;
+
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1569,7 +1640,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -1852,9 +1923,11 @@ function render(domElement,
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
     webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
+    webGLContext.disable(webGLContext.DEPTH_TEST);
+    webGLContext.disable(webGLContext.CULL_FACE);
     webGLContext.enable(webGLContext.BLEND);
   }
-  if (!newElement.parentReference.parent) {
+  if (!newElement.parent) {
     topElement = newElement;
     topOldElement = oldElement;
     verticesArray = [];
@@ -1872,9 +1945,7 @@ function render(domElement,
     return;
   }
 
-  if (newElement === oldElement) {
-    return;
-  }
+
  // fixme: if (newElement && !oldElement) {
     if (!newElement.layout) {
       return;
@@ -1937,7 +2008,7 @@ function render(domElement,
      //   bigArray = bigArray.concat(data);
      // }
     }
-  if (!newElement.parentReference.parent) {
+  if (!newElement.parent) {
     // TODO: set image information here :-/
 
 
@@ -1965,7 +2036,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderText":17,"./renderView":18,"./temp-utils":19,"promise":23}],17:[function(require,module,exports){
+},{"./renderText":18,"./renderView":19,"./temp-utils":20,"promise":24}],18:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2025,7 +2096,7 @@ function renderText(webgl, imageProgram, u_dimensions, u_matrixLoc, iTextLocatio
   var left = layout.left;
   var width = layout.width;
   var height = layout.height;
-  var parent = newElement.parentReference.parent;
+  var parent = newElement.parent;
   var parentLayout = parent.layout;
   var parentTop = parentLayout.top;
   var parentLeft = parentLayout.left;
@@ -2095,7 +2166,7 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -2204,7 +2275,7 @@ function renderView(verticesArray, colorsArray, element, inheritedOpacity) {
 
 module.exports = renderView;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2516,7 +2587,7 @@ module.exports = renderView;
 }());
 
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -2584,7 +2655,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":21}],21:[function(require,module,exports){
+},{"events":22}],22:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2887,7 +2958,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2979,12 +3050,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":28}],24:[function(require,module,exports){
+},{"./lib":29}],25:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3170,7 +3241,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":32}],25:[function(require,module,exports){
+},{"asap/raw":33}],26:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3185,7 +3256,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":24}],26:[function(require,module,exports){
+},{"./core.js":25}],27:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3294,7 +3365,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":24}],27:[function(require,module,exports){
+},{"./core.js":25}],28:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3312,7 +3383,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":24}],28:[function(require,module,exports){
+},{"./core.js":25}],29:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3321,7 +3392,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":24,"./done.js":25,"./es6-extensions.js":26,"./finally.js":27,"./node-extensions.js":29}],29:[function(require,module,exports){
+},{"./core.js":25,"./done.js":26,"./es6-extensions.js":27,"./finally.js":28,"./node-extensions.js":30}],30:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3394,7 +3465,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":24,"asap":30}],30:[function(require,module,exports){
+},{"./core.js":25,"asap":31}],31:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3462,7 +3533,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":31}],31:[function(require,module,exports){
+},{"./raw":32}],32:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -3686,7 +3757,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -3791,4 +3862,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":22,"domain":20}]},{},[2]);
+},{"_process":23,"domain":21}]},{},[2]);
