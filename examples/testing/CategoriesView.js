@@ -115,7 +115,6 @@ function Transition(start, end, opts, node) {
 
 setTimeout(Animator._startAnimating, 300);
 
-
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({}, {
       height: 300,
@@ -131,7 +130,8 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+      //Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
+        View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
         Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
@@ -147,7 +147,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')])
-      ])),
+      ]),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
           View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
