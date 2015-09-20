@@ -116,6 +116,7 @@ function Transition(start, end, opts, node) {
 
 setTimeout(Animator._startAnimating, 300);
 
+
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({}, {
       height: 300,
@@ -131,13 +132,12 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      //Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
-        View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
+      Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
         View({}, sharedStyle, [Text('a')]),
-        Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
-          View({}, {left: 0, top: 0, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')])
-        ),
+      //  Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
+          View({}, {left: 0, top: 0, width: 100, height: 100, marginTop: 5, marginBottom: 5, marginLeft: 5, marginRight: 5, backgroundColor: 'blue', position:'absolute'}, [Text('a')]),
+       // ),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
@@ -148,7 +148,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')]),
         View({}, sharedStyle, [Text('a')])
-      ]),
+      ])),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
           View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
@@ -218,13 +218,13 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":15,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = true; //process.env.NODE_ENV !== 'production';
+module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('../index');
-
+var __DEV__ = require('../__DEV__');
 var keys = Object.keys;
 var isArray = Array.isArray;
 var registeredAbsoluteTransitions = [];
@@ -299,7 +299,6 @@ function quickClone(node) {
   return newNode;
 }
 
-
 function clone(node) {
   var newNode = quickClone(node);
   newNode.children = [];
@@ -322,26 +321,33 @@ function cloneWithClonedStyle(node) {
   return newNode;
 }
 
-
 var recalculationQueue = [];
-function reconstructTree(node) {
+function reconstructTree(node, skipAddToQueue) {
   var currentNode = node;
   var children = currentNode.children;
   if (children) {
+
     var newNode = cloneWithChildren(currentNode);
 
     for (var i = 0, l = newNode.children.length; i < l; i++) {
       var child = newNode.children[i];
       if (child.isAnimating) {
-        newNode.children[i] = reconstructTree(child.newRef);
+        var newRef = child.newRef;
+        child.newRef = null;
+        newNode.children[i] = reconstructTree(newRef, true);
+        currentNode.children[i].newRef = null;
+        if (newNode.children[i].newRef) {
+          debugger;
+        }
         child.newRef = newNode.children[i];
         newNode.children[i].parent = newNode;
-        newNode.children[i].oldRef = child;
-        recalculationQueue.push(newNode.children[i]);
+        //nnewNode.children[i].oldRef = child;
+        if (!skipAddToQueue) {
+          recalculationQueue.push(newNode.children[i]);
+        }
       }
-
-      if (child.isChildAnimating) {
-        newNode.children[i] = reconstructTree(child);
+      else if (child.isChildAnimating) {
+        newNode.children[i] = reconstructTree(child, skipAddToQueue || false);
         newNode.children[i].parent = newNode;
       }
 
@@ -350,7 +356,6 @@ function reconstructTree(node) {
   }
   return node;
 }
-
 
 var rootNode;
 var startTime = Date.now();
@@ -375,8 +380,11 @@ function onAnimate() {
       newNode.style[key] = easings[easing](currentTime, start[key], end[key], duration);
 
     }
-
+  if (newNode.newRef) {
+    debugger;
+  }
     node.newRef = newNode;
+
     absoluteTransition.node = node;
   }
 
@@ -389,26 +397,41 @@ function onAnimate() {
     }
   }
 
- var newRootNode = reconstructTree(rootNode, false);
-
-  // todo: make an assert (for dev purposes only)
+  var newRootNode = reconstructTree(rootNode, false);
 
   for (i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
     var absoluteTransition = registeredAbsoluteTransitions[i];
-    if (!isInTree(newRootNode, absoluteTransition.node.newRef)) {
-      console.warn('absolute transition node CANNOT be found in the tree');
+    if (__DEV__) {
+
+      if (!isInTree(newRootNode, absoluteTransition.node.newRef)) {
+        console.warn('absolute transition node CANNOT be found in the tree');
+        console.log(absoluteTransition.node.newRef);
+      }
     }
     absoluteTransition.node = absoluteTransition.node.newRef;
+
+    absoluteTransition.node.newRef = null;
   }
 
+  //ensureNoNewRefInTree(newRootNode);
+
   rootNode = newRootNode;
+
+  if (__DEV__) {
+    for (i = 0, l = recalculationQueue.length; i < l; i++) {
+      var recalcNode = recalculationQueue[i];
+      if (!isInTree(rootNode, recalcNode)) {
+        console.warn('recalc node not found in the tree!');
+      }
+    }
+  }
+
   Bluebox.relayout(rootNode, recalculationQueue);
   recalculationQueue = [];
-  //oldRecalculationQueue = [];
-  //console.info('A1');
 
-  ensureTreeCorrectness(newRootNode);
-
+  if (__DEV__) {
+    ensureTreeCorrectness(newRootNode);
+  }
   requestAnimationFrame(onAnimate);
 }
 
@@ -446,7 +469,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../diff/ensureTreeCorrectness":11,"../diff/isInTree":12,"../index":15}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":11,"../diff/isInTree":12,"../index":15}],6:[function(require,module,exports){
 'use strict';
 
 var merge = require('../utils/merge');
@@ -746,10 +769,13 @@ function ensureTreeCorrectness(node) {
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.type) {
-      if (child.parent !== node) {
+      if (child.parent !== node ) {
         console.warn('PARENT CHILD MISMATCH');
         //debugger;
         return false;
+      }
+      if (child.newRef) {
+        console.warn('NEWREF LEAK FOUND');
       }
       return ensureTreeCorrectness(child);
     }
@@ -1100,9 +1126,37 @@ var Bluebox = {
   },
 
 
-  relayout: function(componentTree) {
+  relayout: function(componentTree, changedLayoutNodes) {
+    // TODO: remove this, shouldn't happen all the time - only once ideally
+    var optimizedQueue = [];
+    for (var i = 0, l = changedLayoutNodes.length; i < l; i++) {
+      var node = requestStyleRecalculation(changedLayoutNodes[i], changedLayoutNodes[i]);
+      if (optimizedQueue.indexOf(node) === -1) {
+        optimizedQueue.push(node);
+      }
+    }
+
+
+
     var domElement = oldDOMElement;
-    componentTree = layoutNode(componentTree, null, AXIS.column, AXIS.row, false);
+
+    for (var i = 0, l = optimizedQueue.length; i < l; i++) {
+      var changedLayoutNode = optimizedQueue[i];
+      var mainAxis = changedLayoutNode.parent ? AXIS[changedLayoutNode.parent.style.flexDirection] : AXIS.column;
+      var crossAxis = mainAxis === AXIS.column ? AXIS.row : AXIS.column;
+      var isAbsolute = changedLayoutNode.style.position === 'absolute';
+      var parent = changedLayoutNode.parent;
+      if (parent) {
+        var index = parent.children.indexOf(changedLayoutNode);
+        var previousSibling = null;
+
+        if (index > 0) {
+          previousSibling = parent.children[index - 1];
+        }
+
+        layoutNode(changedLayoutNode, previousSibling, mainAxis, crossAxis, isAbsolute);
+      }
+    }
 
     render(domElement, componentTree, null, null, 0, viewPortDimensions, 0, 0);
 
