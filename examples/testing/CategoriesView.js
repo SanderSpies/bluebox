@@ -131,7 +131,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
+      //Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
         View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
           View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
           View({}, sharedStyle, [Text('a')]),
@@ -148,8 +148,8 @@ module.exports = View({}, {backgroundColor: 'red'}, [
           View({}, sharedStyle, [Text('a')]),
           View({}, sharedStyle, [Text('a')]),
           View({}, sharedStyle, [Text('a')])
-        ])
-      ),
+        ]),
+      //),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
           View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
@@ -186,7 +186,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
 
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
+   // Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
       View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
         View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
         View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
@@ -199,6 +199,6 @@ module.exports = View({}, {backgroundColor: 'red'}, [
           ])
         ])
       ])
-    )
+  //  )
   ])
 ]);

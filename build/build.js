@@ -132,7 +132,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
-      Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
+      //Transition({left: 0}, {left: 500}, {duration: 1000, easing: 'linear'},
         View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
           View({}, sharedStyle, [Text('foobar123', {fontStyle: 'italic'})]),
           View({}, sharedStyle, [Text('a')]),
@@ -149,8 +149,8 @@ module.exports = View({}, {backgroundColor: 'red'}, [
           View({}, sharedStyle, [Text('a')]),
           View({}, sharedStyle, [Text('a')]),
           View({}, sharedStyle, [Text('a')])
-        ])
-      ),
+        ]),
+      //),
       View({}, {flexDirection: 'row', marginTop: 20, marginLeft: 20, marginRight: 20, marginBottom: 20}, [
         Transition({left: 0, top: 0}, {left: 200, top: -200}, {duration: 3000, easing: 'ease-in'},
           View({}, {position: 'absolute', backgroundColor:'white', top: 0, left: 0, width: 100, height: 100}, [Image({src: 'images/foo.png'},sharedImageStyle)])
@@ -187,7 +187,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
 
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-    Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
+   // Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
       View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
         View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
         View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
@@ -200,10 +200,10 @@ module.exports = View({}, {backgroundColor: 'red'}, [
           ])
         ])
       ])
-    )
+  //  )
   ])
 ]);
-},{"../../lib/animation/Animator":5,"./../../lib/components/C":6,"./../../lib/index":15}],2:[function(require,module,exports){
+},{"../../lib/animation/Animator":5,"./../../lib/components/C":7,"./../../lib/index":16}],2:[function(require,module,exports){
 var Bluebox = require('./../../lib/index');
 
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
@@ -217,10 +217,10 @@ function continuousRendering() {
 requestAnimationFrame(continuousRendering);
 
 
-},{"./../../lib/index":15,"./CategoriesView":1}],3:[function(require,module,exports){
+},{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = true; //process.env.NODE_ENV !== 'production';
+module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -235,57 +235,7 @@ var shallowClone = require('../utils/shallowClone');
 var ensureTreeCorrectness = require('../diff/ensureTreeCorrectness');
 var isInTree = require('../diff/isInTree');
 
-var easings = {
-
-  linear: function(t, b, _c, d) {
-    var c = _c - b;
-    var result = t * c / d + b;
-    if (t > d) {
-      result = _c;
-    }
-    return result;
-  },
-
-  'ease-in': function(t, b, _c, d) {
-    var c = _c - b;
-    var _t = t / d;
-    var result = c * (_t) * _t + b;
-
-    if (t > d) {
-      result = _c;
-    }
-    return result;
-  },
-
-  'ease-in-elastic': function(t, b, _c, d) {
-    if (t > d) {
-      return _c;
-    }
-
-    var c = _c - b;
-    var s = 1.70158;
-    var p = 0;
-    var a = c;
-    if (t == 0) {
-      return b;
-    }
-    if ((t /= d) == 1) {
-      return b + c;
-    }
-    if (!p) {
-      p = d * .3;
-    }
-    if (a < Math.abs(c)) {
-      a = c;
-      var s = p / 4;
-    }
-    else {
-      var s = p / (2 * Math.PI) * Math.asin(c / a);
-    }
-    return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-  }
-
-};
+var easings = require('./easings');
 
 function cloneWithEmptyChildren(node) {
   var newNode = shallowClone(node);
@@ -314,7 +264,7 @@ function cloneWithClonedStyle(node) {
 }
 
 var recalculationQueue = [];
-function reconstructTree(node, skipAddToQueue, onlyCloneChildren) {
+function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
   var currentNode = node;
   var children = currentNode.children;
   if (children) {
@@ -328,7 +278,7 @@ function reconstructTree(node, skipAddToQueue, onlyCloneChildren) {
         var newRef = newChild.newRef;
         newChild.newRef = null;
         currentNode.children[i].newRef = null;
-        newNodeChildren[i] = reconstructTree(newRef, true, true);
+        newNodeChildren[i] = reconstructTreeForAnimation(newRef, true, true);
         newChild.newRef = newNodeChildren[i];
         newNodeChildren[i].oldRef = currentNode.children[i];
 
@@ -337,7 +287,7 @@ function reconstructTree(node, skipAddToQueue, onlyCloneChildren) {
         }
       }
       else if (newChild.isChildAnimating) {
-        newNodeChildren[i] = reconstructTree(newChild, skipAddToQueue || false);
+        newNodeChildren[i] = reconstructTreeForAnimation(newChild, skipAddToQueue || false);
       }
       newNodeChildren[i].parent = newNode;
 
@@ -355,11 +305,11 @@ var startTime = Date.now();
 function processTransitions(currentTime) {
   for (var i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
     var absoluteTransition = registeredAbsoluteTransitions[i];
-    var node = absoluteTransition.node;
+    var node  = absoluteTransition.node;
     var start = absoluteTransition.start;
-    var end = absoluteTransition.end;
-    var keys = absoluteTransition.keys;
-    var opts = absoluteTransition.opts;
+    var end   = absoluteTransition.end;
+    var keys  = absoluteTransition.keys;
+    var opts  = absoluteTransition.opts;
     var duration = opts.duration;
     var easing = opts.easing || 'linear';
 
@@ -368,14 +318,12 @@ function processTransitions(currentTime) {
     for (var j = 0, l2 = keys.length; j < l2; j++) {
       var key = keys[j];
       newNode.style[key] = easings[easing](currentTime, start[key], end[key], duration);
-
     }
 
     node.newRef = newNode;
 
     absoluteTransition.node = node;
   }
-  return {i: i, l: l};
 }
 
 function addRootNode() {
@@ -393,7 +341,6 @@ function correctAnimationNodeReferences(newRootNode) {
   for (var i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
     var absoluteTransition = registeredAbsoluteTransitions[i];
     if (__DEV__) {
-
       if (!isInTree(newRootNode, absoluteTransition.node.newRef)) {
         console.warn('absolute transition node CANNOT be found in the tree');
         console.log(absoluteTransition.node.newRef);
@@ -403,7 +350,7 @@ function correctAnimationNodeReferences(newRootNode) {
     absoluteTransition.node.newRef = null;
     absoluteTransition.node = newRef;
   }
-  return {i: i, l: l};
+
 }
 function onAnimate() {
   var currentTime = Date.now() - startTime;
@@ -416,7 +363,7 @@ function onAnimate() {
     ensureTreeCorrectness(rootNode);
   }
 
-  var newRootNode = reconstructTree(rootNode, false);
+  var newRootNode = reconstructTreeForAnimation(rootNode, false);
 
   if (__DEV__) {
     ensureTreeCorrectness(newRootNode);
@@ -436,6 +383,7 @@ function onAnimate() {
   }
 
   Bluebox.relayout(rootNode, recalculationQueue);
+
   recalculationQueue = [];
 
   if (__DEV__) {
@@ -450,13 +398,36 @@ var Animator = {
   isAnimating: false,
 
   registerAbsoluteTransition: function(start, end, opts, node) {
+    var isPositionalChange = false;
+    var isInnerChange = false;
+    var animationProperties = keys(start);
+
+    if (('left' in start && !('right' in start)) ||
+      ('right' in start && !('left' in start)) ||
+      ('top' in start && !('bottom' in start)) ||
+      ('bottom' in start && !('top' in start))) {
+      isPositionalChange = true;
+    }
+    if (isPositionalChange) {
+      for (var i = 0, l = animationProperties.length; i < l; i++) {
+        var prop = animationProperties[i];
+        if (prop !== 'left' &&
+          prop !== 'right' &&
+          prop !== 'top' &&
+          prop !== 'bottom') {
+          isPositionalChange = false;
+        }
+      }
+    }
+
     registeredAbsoluteTransitions.push({
       keys: keys(start),
       start: start,
       end: end,
       opts: opts,
       node: node,
-      startTime: Date.now()
+      startTime: Date.now(),
+      isPositionalChange: isPositionalChange
     });
   },
 
@@ -479,7 +450,64 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":11,"../diff/isInTree":12,"../index":15,"../utils/shallowClone":26}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":28,"./easings":6}],6:[function(require,module,exports){
+'use strict';
+
+var easings = {
+
+  linear: function(t, b, _c, d) {
+    var c = _c - b;
+    var result = t * c / d + b;
+    if (t > d) {
+      result = _c;
+    }
+    return result;
+  },
+
+  'ease-in': function(t, b, _c, d) {
+  var c = _c - b;
+  var _t = t / d;
+  var result = c * (_t) * _t + b;
+
+  if (t > d) {
+    result = _c;
+  }
+  return result;
+},
+
+  'ease-in-elastic': function(t, b, _c, d) {
+  if (t > d) {
+    return _c;
+  }
+
+  var c = _c - b;
+  var s = 1.70158;
+  var p = 0;
+  var a = c;
+  if (t == 0) {
+    return b;
+  }
+  if ((t /= d) == 1) {
+    return b + c;
+  }
+  if (!p) {
+    p = d * .3;
+  }
+  if (a < Math.abs(c)) {
+    a = c;
+    var s = p / 4;
+  }
+  else {
+    var s = p / (2 * Math.PI) * Math.asin(c / a);
+  }
+  return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+}
+
+};
+
+module.exports = easings;
+
+},{}],7:[function(require,module,exports){
 'use strict';
 
 var merge = require('../utils/merge');
@@ -536,9 +564,8 @@ function Component(type, props, style, children) {
     children: children,
     lineIndex: 0,
     isAnimating: false,
-    isChildAnimating: false,
-    newRef: null,
-    requireStyleRecalculation: false
+    isChildAnimating: 0,
+    newRef: null
   };
   if (__DEV__) {
     seal(component);
@@ -550,7 +577,7 @@ function Component(type, props, style, children) {
     if (child.type) {
       child.parent = component;
       if (!component.isChildAnimating && (child.isAnimating || child.isChildAnimating)) {
-        component.isChildAnimating = true;
+        component.isChildAnimating++;
       }
     }
   }
@@ -562,7 +589,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../utils/deepSeal":24,"../utils/merge":25}],7:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../utils/deepSeal":26,"../utils/merge":27}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -575,7 +602,7 @@ var Image = Bluebox.create('image', function render(props, style, children) {
 
 module.exports = Image;
 
-},{"./../../lib/index":15,"./C":6}],8:[function(require,module,exports){
+},{"./../../lib/index":16,"./C":7}],9:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -588,7 +615,7 @@ var Text = Bluebox.create('text', function(props, style, children) {
 
 module.exports = Text;
 
-},{"./../../lib/index":15,"./C":6}],9:[function(require,module,exports){
+},{"./../../lib/index":16,"./C":7}],10:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -600,7 +627,7 @@ var View = Bluebox.create('view', function render(props, style, children) {
 
 module.exports = View;
 
-},{"./../../lib/index":15,"./C":6}],10:[function(require,module,exports){
+},{"./../../lib/index":16,"./C":7}],11:[function(require,module,exports){
 /**
  * @flow
  */
@@ -770,7 +797,7 @@ function diff(newNode, oldNode, parent, oldParent) {
 
 module.exports = diff;
 
-},{"../events/EventHandling":13}],11:[function(require,module,exports){
+},{"../events/EventHandling":14}],12:[function(require,module,exports){
 'use strict';
 
 function ensureTreeCorrectness(node) {
@@ -793,7 +820,7 @@ function ensureTreeCorrectness(node) {
 }
 
 module.exports = ensureTreeCorrectness;
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 function isInTree(rootNode, item) {
@@ -814,7 +841,7 @@ function isInTree(rootNode, item) {
 
 module.exports = isInTree;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var handleEvents = require('../events/handleEvents');
@@ -861,7 +888,7 @@ module.exports = {
   setEventListeners: setEventListeners
 };
 
-},{"../events/handleEvents":14}],14:[function(require,module,exports){
+},{"../events/handleEvents":15}],15:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
@@ -979,7 +1006,7 @@ module.exports = {
   handleEvent: handleEvent,
   updateComponents: updateComponents
 };
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var diff            = require('./diff/diff');
@@ -1152,23 +1179,20 @@ var Bluebox = {
       var changedLayoutNode = optimizedQueue[i];
       var mainAxis = changedLayoutNode.parent ? AXIS[changedLayoutNode.parent.style.flexDirection] : AXIS.column;
       var crossAxis = mainAxis === AXIS.column ? AXIS.row : AXIS.column;
-      var isAbsolute = changedLayoutNode.style.position === 'absolute';
       var parent = changedLayoutNode.parent;
+      var previousSibling = null;
       if (parent) {
         var index = parent.children.indexOf(changedLayoutNode);
-        var previousSibling = null;
 
         if (index > 0) {
           previousSibling = parent.children[index - 1];
         }
 
-        if (isAbsolute) {
-          LayoutEngine.layoutAbsoluteNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis);
-        } else {
-          LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false);
-        }
-        changedLayoutNode.oldRef = null;
       }
+      LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false);
+
+      changedLayoutNode.oldRef = null;
+
     }
 
     render(domElement, componentTree, null, null, 0, viewPortDimensions, 0, 0);
@@ -1187,7 +1211,7 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
-},{"./components/Image":7,"./components/Text":8,"./components/View":9,"./diff/diff":10,"./diff/ensureTreeCorrectness":11,"./layout/AXIS":16,"./layout/LayoutEngine":17,"./layout/requestStyleRecalculation":18,"./renderers/DOM/ViewPortHelper":19,"./renderers/GL/render":20}],16:[function(require,module,exports){
+},{"./components/Image":8,"./components/Text":9,"./components/View":10,"./diff/diff":11,"./diff/ensureTreeCorrectness":12,"./layout/AXIS":17,"./layout/LayoutEngine":18,"./layout/requestStyleRecalculation":19,"./renderers/DOM/ViewPortHelper":20,"./renderers/GL/render":22}],17:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1210,10 +1234,10 @@ var AXIS = {
 };
 
 module.exports = AXIS;
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 'use strict';
 
-var __DEV__ = true;
+var __DEV__ = require('../__DEV__');
 var COLUMN = 'column';
 var ROW = 'row';
 var FLEX_START = 'flex-start';
@@ -1626,7 +1650,7 @@ module.exports = {
   layoutAbsoluteNode: layoutAbsoluteNode
 };
 
-},{"../UNDEFINED":3,"./AXIS":16}],18:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"./AXIS":17}],19:[function(require,module,exports){
 'use strict';
 
 var UNDEFINED = require('../UNDEFINED');
@@ -1634,13 +1658,16 @@ function requestStyleRecalculation(node, oldNode) {
   var currentNode = node;
   var currentOldNode = oldNode;
   var requireStyleRecalculation = true;
+
   while(requireStyleRecalculation) {
     requireStyleRecalculation = false;
     var parent = currentNode.parent;
     var oldParent = currentOldNode.parent;
     var nodeStyle = currentNode.style;
     var oldNodeStyle = currentOldNode.style;
+
     if (parent &&
+      (nodeStyle.position === 'absolute' || parent.style.flexWrap === 'wrap' || nodeStyle.alignSelf !== '' ||
       (parent.style.width === UNDEFINED || parent.style.height === UNDEFINED) &&
       (nodeStyle.position !== nodeStyle.position ||
        nodeStyle.width !== oldNodeStyle.width ||
@@ -1661,7 +1688,7 @@ function requestStyleRecalculation(node, oldNode) {
        nodeStyle.alignItems !== oldNodeStyle.alignItems ||
        nodeStyle.alignSelf !== oldNodeStyle.alignSelf ||
        nodeStyle.flexGrow !== oldNodeStyle.flexGrow ||
-       nodeStyle.flexWrap !== oldNodeStyle.flexWrap)) {
+       nodeStyle.flexWrap !== oldNodeStyle.flexWrap))) {
       requireStyleRecalculation = true;
       currentOldNode = oldParent;
       currentNode = parent;
@@ -1672,7 +1699,7 @@ function requestStyleRecalculation(node, oldNode) {
 
 module.exports = requestStyleRecalculation;
 
-},{"../UNDEFINED":3}],19:[function(require,module,exports){
+},{"../UNDEFINED":3}],20:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1720,7 +1747,34 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
+'use strict';
+
+var Shaders = {
+  VertexShader2d :
+'attribute vec2 a_position;'+
+'attribute vec4 aVertexColor;'+
+'uniform vec2 u_resolution;'+
+'varying vec4 vColor;'+
+
+'void main() {'+
+'  // convert the rectangle from pixels to 0.0 to 1.0'+
+'  vec2 zeroToOne = a_position / u_resolution;'+
+
+'  // convert from 0->1 to 0->2'+
+'  vec2 zeroToTwo = zeroToOne * 2.0;'+
+
+'  // convert from 0->2 to -1->+1 (clipspace)'+
+'  vec2 clipSpace = zeroToTwo - 1.0;'+
+
+'  gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);'+
+
+'  vColor = aVertexColor;'+
+'}'
+};
+
+module.exports = Shaders;
+},{}],22:[function(require,module,exports){
 'use strict';
 
 var webGLContext;
@@ -1728,6 +1782,7 @@ require('./temp-utils');
 var renderView = require('./renderView');
 var renderText = require('./renderText');
 var Promise = require('promise');
+var Shaders = require('./Shaders');
 
 function isVisible(node, viewPortDimensions) {
   var nodeLayout = node.layout;
@@ -2116,7 +2171,7 @@ function render(domElement,
 
 module.exports = render;
 
-},{"./renderText":21,"./renderView":22,"./temp-utils":23,"promise":30}],21:[function(require,module,exports){
+},{"./Shaders":21,"./renderText":23,"./renderView":24,"./temp-utils":25,"promise":32}],23:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2246,7 +2301,7 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 'use strict';
 
 var WebGLColors = {
@@ -2355,7 +2410,7 @@ function renderView(verticesArray, colorsArray, element, inheritedOpacity) {
 
 module.exports = renderView;
 
-},{}],23:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2667,7 +2722,7 @@ module.exports = renderView;
 }());
 
 
-},{}],24:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../__DEV__');
@@ -2712,7 +2767,7 @@ function deepSeal(_obj) {
 
 module.exports = deepSeal;
 
-},{"../__DEV__":4}],25:[function(require,module,exports){
+},{"../__DEV__":4}],27:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -2726,7 +2781,7 @@ function merge(parent, child) {
 
 module.exports = merge;
 
-},{}],26:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 var keys = Object.keys;
@@ -2743,7 +2798,7 @@ function shallowClone(node) {
 
 module.exports = shallowClone;
 
-},{}],27:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -2811,7 +2866,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":28}],28:[function(require,module,exports){
+},{"events":30}],30:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3114,7 +3169,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],29:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3206,12 +3261,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],30:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":35}],31:[function(require,module,exports){
+},{"./lib":37}],33:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3397,7 +3452,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":39}],32:[function(require,module,exports){
+},{"asap/raw":41}],34:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3412,7 +3467,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":31}],33:[function(require,module,exports){
+},{"./core.js":33}],35:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3521,7 +3576,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":31}],34:[function(require,module,exports){
+},{"./core.js":33}],36:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3539,7 +3594,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":31}],35:[function(require,module,exports){
+},{"./core.js":33}],37:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3548,7 +3603,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":31,"./done.js":32,"./es6-extensions.js":33,"./finally.js":34,"./node-extensions.js":36}],36:[function(require,module,exports){
+},{"./core.js":33,"./done.js":34,"./es6-extensions.js":35,"./finally.js":36,"./node-extensions.js":38}],38:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3621,7 +3676,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":31,"asap":37}],37:[function(require,module,exports){
+},{"./core.js":33,"asap":39}],39:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3689,7 +3744,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":38}],38:[function(require,module,exports){
+},{"./raw":40}],40:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -3913,7 +3968,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],39:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4018,4 +4073,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":29,"domain":27}]},{},[2]);
+},{"_process":31,"domain":29}]},{},[2]);
