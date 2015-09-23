@@ -187,7 +187,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
 
   ]),
   View({}, {position: 'absolute', top: 10, left: 100, right: 100, bottom: 10, opacity: .6, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}, [
-   // Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
+    Transition({top: -100}, {top: 200}, {duration: 2000, easing: 'ease-in-elastic'},
       View({}, {backgroundColor:'blue', left: 0, right: 0, top: 100, height: 300, position: 'absolute', flexDirection: 'row', alignItems: 'flex-start'}, [
         View({}, {flexGrow: 1, height: 20, backgroundColor: 'green', alignSelf: 'center'}, []),
         View({}, {flexGrow: 2, height: 20, backgroundColor: 'red'}, []),
@@ -200,7 +200,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
           ])
         ])
       ])
-  //  )
+    )
   ])
 ]);
 },{"../../lib/animation/Animator":5,"./../../lib/components/C":7,"./../../lib/index":16}],2:[function(require,module,exports){
@@ -1606,7 +1606,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
         //}
         alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
         if (isPositionAbsolute) {
-          processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute);
+            processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute);
         }
         else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
           correctChildren(child, oldChild, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
