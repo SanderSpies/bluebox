@@ -235,7 +235,7 @@ var shallowClone = require('../utils/shallowClone');
 var ensureTreeCorrectness = require('../diff/ensureTreeCorrectness');
 var isInTree = require('../diff/isInTree');
 
-var easings = require('./easings');
+var easings = require('./_easings');
 
 function cloneWithEmptyChildren(node) {
   var newNode = shallowClone(node);
@@ -268,7 +268,6 @@ function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
   var currentNode = node;
   var children = currentNode.children;
   if (children) {
-    currentNode.newRef = null;
     var newNode = cloneWithChildren(currentNode);
 
     var newNodeChildren = newNode.children;
@@ -276,12 +275,12 @@ function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
       var newChild = newNodeChildren[i];
       if (newChild.isAnimating) {
         var newRef = newChild.newRef;
-        newChild.newRef = null;
-        currentNode.children[i].newRef = null;
         newNodeChildren[i] = reconstructTreeForAnimation(newRef, true, true);
         newChild.newRef = newNodeChildren[i];
+        if (currentNode.children[i].oldRef) {
+          currentNode.children[i].oldRef = null;
+        }
         newNodeChildren[i].oldRef = currentNode.children[i];
-
         if (!skipAddToQueue) {
           recalculationQueue.push(newNode.children[i]);
         }
@@ -450,9 +449,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":28,"./easings":6}],6:[function(require,module,exports){
-'use strict';
-
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":28,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -465,48 +462,47 @@ var easings = {
   },
 
   'ease-in': function(t, b, _c, d) {
-  var c = _c - b;
-  var _t = t / d;
-  var result = c * (_t) * _t + b;
+    var c = _c - b;
+    var _t = t / d;
+    var result = c * (_t) * _t + b;
 
-  if (t > d) {
-    result = _c;
-  }
-  return result;
-},
+    if (t > d) {
+      result = _c;
+    }
+    return result;
+  },
 
   'ease-in-elastic': function(t, b, _c, d) {
-  if (t > d) {
-    return _c;
-  }
+    if (t > d) {
+      return _c;
+    }
 
-  var c = _c - b;
-  var s = 1.70158;
-  var p = 0;
-  var a = c;
-  if (t == 0) {
-    return b;
+    var c = _c - b;
+    var s = 1.70158;
+    var p = 0;
+    var a = c;
+    if (t == 0) {
+      return b;
+    }
+    if ((t /= d) == 1) {
+      return b + c;
+    }
+    if (!p) {
+      p = d * .3;
+    }
+    if (a < Math.abs(c)) {
+      a = c;
+      var s = p / 4;
+    }
+    else {
+      var s = p / (2 * Math.PI) * Math.asin(c / a);
+    }
+    return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
   }
-  if ((t /= d) == 1) {
-    return b + c;
-  }
-  if (!p) {
-    p = d * .3;
-  }
-  if (a < Math.abs(c)) {
-    a = c;
-    var s = p / 4;
-  }
-  else {
-    var s = p / (2 * Math.PI) * Math.asin(c / a);
-  }
-  return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-}
 
 };
 
 module.exports = easings;
-
 },{}],7:[function(require,module,exports){
 'use strict';
 
@@ -1125,7 +1121,7 @@ var Bluebox = {
   },
 
   renderOnly: function(c) {
-    render(oldDOMElement, c, null, null, 0, viewPortDimensions, 0, 0);
+    render(oldDOMElement, c, null, viewPortDimensions);
   },
 
   renderFromTop: function(componentTree, domElement, noDiff) {
@@ -1155,7 +1151,7 @@ var Bluebox = {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
 
-    render(domElement, newComponentTree, null, null, 0, viewPortDimensions, 0, 0);
+    render(domElement, newComponentTree, null, viewPortDimensions);
 
     oldComponentTree = newComponentTree;
     return newComponentTree;
@@ -1195,7 +1191,36 @@ var Bluebox = {
 
     }
 
-    render(domElement, componentTree, null, null, 0, viewPortDimensions, 0, 0);
+    /**
+     * if (!parentWidth) {
+    console.info('YES');
+    parentWidth = viewPortDimensions.width;
+    parentLeft = 0;
+    parentHeight = viewPortDimensions.height;
+    parentTop = 0;
+  }
+
+     (domElement,
+     newElement,
+     oldElement,
+     parent,
+     position,
+     viewPortDimensions,
+     top,
+     left,
+     parentLeft,
+     parentWidth,
+     parentTop,
+     parentHeight,
+     inheritedOpacity,
+     inheritedZoom,
+     inheritedFontSize,
+     inheritedColor,
+     inheritedFilter)
+
+     */
+
+    render(domElement, componentTree, null, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
 
     oldComponentTree = componentTree;
 
@@ -1804,11 +1829,7 @@ function rerender(domElement,
     render(domElement,
       newElement,
       oldElement,
-      parent,
-      position,
-      viewPortDimensions,
-      top,
-      left);
+      viewPortDimensions);
   }
 }
 
@@ -1986,11 +2007,7 @@ var colorsArray = [];
 function render(domElement,
   newElement,
   oldElement,
-  parent,
-  position,
   viewPortDimensions,
-  top,
-  left,
   parentLeft,
   parentWidth,
   parentTop,
@@ -2069,13 +2086,6 @@ function render(domElement,
     colorsArray = []
   }
 
-  if (!parentWidth) {
-    parentWidth = viewPortDimensions.width;
-    parentLeft = 0;
-    parentHeight = viewPortDimensions.height;
-    parentTop = 0;
-  }
-
   if (typeof newElement === 'string')  {
     return;
   }
@@ -2121,7 +2131,8 @@ function render(domElement,
             parentHeight = newElement.layout.height;
             parentTop = newElement.layout.top;
           }
-          render(domElement, child, null, newElement, i, viewPortDimensions, newElement.layout.top, newElement.layout.left, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
+
+          render(domElement, child, null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
             inheritedZoom,
             inheritedFontSize,
             inheritedColor,
