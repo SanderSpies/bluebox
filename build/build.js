@@ -1816,7 +1816,6 @@ function isVisible(node, viewPortDimensions) {
     nodeLayout.top < viewPortDimensions.top && (nodeLayout.top + nodeLayout.height) > (viewPortDimensions.top + viewPortDimensions.height);
 }
 
-
 function rerender(domElement,
   newElement,
   oldElement,
@@ -1833,19 +1832,14 @@ function rerender(domElement,
   }
 }
 
-
-
-var loadedImages = {
-
-};
+var loadedImages = {};
 
 function loadImageDirectly(src) {
   return loadedImages[src];
 }
 
-
 function loadImage(src) {
-  return new Promise(function(resolve, reject){
+  return new Promise(function(resolve, reject) {
     // TODO: pool this
     var image = new Image();
 
@@ -1859,7 +1853,6 @@ function loadImage(src) {
     image.src = src;
   });
 }
-
 
 var existingImageTextures = {};
 
@@ -1882,7 +1875,6 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
   //console.info(element.style);
   //return function(image) {
 
-
   // Create a texture.
   var texture = getImageTexture(image, element);
   webGLContext.bindTexture(webGLContext.TEXTURE_2D, texture);
@@ -1895,9 +1887,9 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
   var dstHeight = height;
 
   // convert dst pixel coords to clipspace coords
-  var clipX = dstX / webGLContext.canvas.width  *  2 - 1;
+  var clipX = dstX / webGLContext.canvas.width * 2 - 1;
   var clipY = dstY / webGLContext.canvas.height * -2 + 1;
-  var clipWidth = dstWidth  / webGLContext.canvas.width  *  2;
+  var clipWidth = dstWidth / webGLContext.canvas.width * 2;
   var clipHeight = dstHeight / webGLContext.canvas.height * -2;
 
   // build a matrix that will stretch our
@@ -1909,12 +1901,12 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
   ]);
 
   return [
-    0.0,  0.0,
-    1.0,  0.0,
-    0.0,  1.0,
-    0.0,  1.0,
-    1.0,  0.0,
-    1.0,  1.0];
+    0.0, 0.0,
+    1.0, 0.0,
+    0.0, 1.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0];
 
   //webGLContext.drawArrays(webGLContext.TRIANGLES, 0, 6);
 
@@ -1931,14 +1923,14 @@ function setLoaded(element) {
   }
 }
 
-
 function renderImage(domElement, newComponentTree, oldComponentTree, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight) {
   if (element.props && element.props.src) {
     if (!element.props.isLoaded) {
       loadImage(element.props.src)
         .then(setLoaded(element), _rejectedImageLoad)
         .then(rerender(domElement, newComponentTree, oldComponentTree, null, 0, viewPortDimensions, 0, 0));
-    } else {
+    }
+    else {
       //console.info('YUP');
       var image = loadImageDirectly(element.props.src);
       _renderImage(image, element, top, left, width, height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight);
@@ -1969,7 +1961,6 @@ function switchToImageRendering() {
     isImageRendering = true;
     isViewRendering = false;
     isTextRendering = false;
-
 
     webGLContext.useProgram(imageProgram);
 
@@ -2004,6 +1995,29 @@ var texCoordBuffer;
 var colorsBuffer;
 var verticesArray = [];
 var colorsArray = [];
+var nrOfVertices = 0;
+
+function isViewVisible(element) {
+  return element.style && element.style.backgroundColor ||
+    element.style && element.style.border;
+}
+
+
+function getNrOfVertices(tree) {
+  var nrOfVertices = 0;
+  if (tree.type === 'view' && isViewVisible(tree)) {
+    nrOfVertices++;
+  }
+  for (var i = 0, l = tree.children.length; i < l; i++) {
+    var child = tree.children[i];
+    if (child.children) {
+      nrOfVertices += getNrOfVertices(child);
+    }
+  }
+
+  return nrOfVertices;
+}
+var vertexPosition = 0;
 function render(domElement,
   newElement,
   oldElement,
@@ -2018,13 +2032,12 @@ function render(domElement,
   inheritedColor,
   inheritedFilter) {
 
-  if (!webGLContext)  {
+  if (!webGLContext) {
     topDOMElement = domElement;
     webGLContext = domElement.getContext('webgl');
-    if(webGLContext == null){
+    if (webGLContext == null) {
       webGLContext = domElement.getContext('experimental-webgl');
     }
-
 
     vertexShader = createShaderFromScriptElement(webGLContext, "2d-vertex-shader");
     vertexShader2 = createShaderFromScriptElement(webGLContext, "2d-vertex-shader2");
@@ -2050,9 +2063,8 @@ function render(domElement,
     view_u_dimensions = webGLContext.getUniformLocation(viewProgram, 'u_dimensions');
     u_dimensions = webGLContext.getUniformLocation(imageProgram, 'u_dimensions');
 
-
     webGLContext.uniform4f(webGLContext.getUniformLocation(viewProgram, 'u_dimensions'), parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
-    webGLContext.uniform2f(resolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
+    webGLContext.uniform2f(resolutionLocation, 1 / viewPortDimensions.width, 1 / viewPortDimensions.height);
 
     webGLContext.useProgram(imageProgram);
     texCoordBuffer = webGLContext.createBuffer();
@@ -2080,91 +2092,95 @@ function render(domElement,
     webGLContext.enable(webGLContext.BLEND);
   }
   if (!newElement.parent) {
-    topElement = newElement;
-    topOldElement = oldElement;
-    verticesArray = [];
-    colorsArray = []
+    nrOfVertices = getNrOfVertices(newElement);
+    if (verticesArray.length !== nrOfVertices * 12) {
+      verticesArray   = new Float32Array(nrOfVertices * 12);
+      colorsArray     = new Float32Array(nrOfVertices * 24);
+
+      // can we allocate more here?!
+    }
+
+    vertexPosition = 0;
   }
 
-  if (typeof newElement === 'string')  {
+  if (typeof newElement === 'string') {
     return;
   }
 
+  // fixme: if (newElement && !oldElement) {
+  if (!newElement.layout) {
+    return;
+  }
 
- // fixme: if (newElement && !oldElement) {
-    if (!newElement.layout) {
-      return;
+  if (newElement.type === 'view') {
+
+    switchToViewRendering();
+
+
+    vertexPosition += renderView(verticesArray, vertexPosition, colorsArray, newElement, inheritedOpacity || 1.0);
+    //console.info(verticesArray);
+    //vertexPosition++;
+
+    var style = newElement.style;
+    if ('opacity' in style) {
+      inheritedOpacity = (inheritedOpacity || 1.0) * style.opacity;
+    }
+    if (style.fontSize) {
+      inheritedFontSize = style.fontSize;
+    }
+    if (style.zoom) {
+      inheritedZoom = (inheritedZoom || 1.0) * style.zoom;
+    }
+    if (style.color) {
+      inheritedColor = style.color;
+    }
+    if (style.filter) {
+      // complex...
     }
 
-    if (newElement.type === 'view') {
-
-      switchToViewRendering();
-
-      renderView(verticesArray, colorsArray, newElement, inheritedOpacity || 1.0);
-
-        var style = newElement.style;
-        if ('opacity' in style) {
-          inheritedOpacity = (inheritedOpacity || 1.0) * style.opacity;
-        }
-        if (style.fontSize) {
-          inheritedFontSize = style.fontSize;
-        }
-        if (style.zoom) {
-          inheritedZoom = (inheritedZoom || 1.0) * style.zoom;
-        }
-        if (style.color) {
-          inheritedColor = style.color;
-        }
-        if (style.filter) {
-          // complex...
+    var children = newElement.children;
+    if (children) {
+      for (var i = 0, l = children.length; i < l; i++) {
+        var child = children[i];
+        if (newElement.style.overflow === 'hidden') {
+          parentWidth = newElement.layout.width;
+          parentLeft = newElement.layout.left;
+          parentHeight = newElement.layout.height;
+          parentTop = newElement.layout.top;
         }
 
-
-
-      var children = newElement.children;
-      if (children) {
-        for (var i = 0, l = children.length; i < l; i++) {
-          var child = children[i];
-          if (newElement.style.overflow === 'hidden') {
-            parentWidth = newElement.layout.width;
-            parentLeft = newElement.layout.left;
-            parentHeight = newElement.layout.height;
-            parentTop = newElement.layout.top;
-          }
-
-          render(domElement, child, null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
-            inheritedZoom,
-            inheritedFontSize,
-            inheritedColor,
-            inheritedFilter);
-        }
+        render(domElement, child, null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
+          inheritedZoom,
+          inheritedFontSize,
+          inheritedColor,
+          inheritedFilter);
       }
     }
-    else if (newElement.type === 'text') {
-     //switchToImageRendering();
-     //var data = renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
-     // if (data) {
-     //   bigArray = bigArray.concat(data);
-     // }
-    }
-    else if (newElement.type === 'image') {
-     //switchToImageRendering();
-     //var data = renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
-     // if (data) {
-     //   bigArray = bigArray.concat(data);
-     // }
-    }
+  }
+  else if (newElement.type === 'text') {
+    //switchToImageRendering();
+    //var data = renderText(webGLContext, imageProgram, u_dimensions, u_matrixLoc, iTextLocation, texCoordBuffer, newElement, inheritedOpacity || 1, inheritedColor);
+    // if (data) {
+    //   bigArray = bigArray.concat(data);
+    // }
+  }
+  else if (newElement.type === 'image') {
+    //switchToImageRendering();
+    //var data = renderImage(topDOMElement, topElement, topOldElement, newElement, top, left, newElement.layout.width, newElement.layout.height, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity || 1, inheritedColor);
+    // if (data) {
+    //   bigArray = bigArray.concat(data);
+    // }
+  }
   if (!newElement.parent) {
     // TODO: set image information here :-/
 
-
     // render all the views at once...
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, colorsBuffer);
-    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(colorsArray), webGLContext.STATIC_DRAW);
+    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, colorsArray, webGLContext.STATIC_DRAW);
     webGLContext.vertexAttribPointer(colorLocation, 4, webGLContext.FLOAT, false, 0, 0);
 
     webGLContext.bindBuffer(webGLContext.ARRAY_BUFFER, viewBuffer);
-    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, new Float32Array(verticesArray), webGLContext.STATIC_DRAW);
+    webGLContext.bufferData(webGLContext.ARRAY_BUFFER, verticesArray, webGLContext.STATIC_DRAW);
     webGLContext.drawArrays(webGLContext.TRIANGLES, 0, verticesArray.length / 2);
 
     //switchToImageRendering();
@@ -2177,8 +2193,6 @@ function render(domElement,
     //webGLContext.drawElements(webGLContext.TRIANGLES, verticesArray.length / 2, webGLContext.UNSIGNED_SHORT, 0);
   }
 }
-
-
 
 module.exports = render;
 
@@ -2336,42 +2350,51 @@ var WebGLColors = {
 };
 
 
-function setBackgroundColor(colorsArray, element, inheritedOpacity) {
+function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
   if (element.style.backgroundColor !== '') {
     var backgroundColor = WebGLColors[element.style.backgroundColor];
     var opacity = 1.0;
     var opacityProp = element.style.opacity;
-    if (!isNaN(opacityProp)) {
-      opacity = opacityProp * inheritedOpacity;
+    if (inheritedOpacity === 1) {
+      opacity = opacityProp;
     }
-    else if (inheritedOpacity) {
+    else if (opacityProp === 1) {
       opacity = inheritedOpacity;
     }
+    else {
+      console.info(opacityProp, inheritedOpacity);
+      opacity = opacityProp * inheritedOpacity;
+    }
 
-    colorsArray[colorsArray.length] = backgroundColor[0];
-    colorsArray[colorsArray.length] = backgroundColor[1];
-    colorsArray[colorsArray.length] = backgroundColor[2];
-    colorsArray[colorsArray.length] = opacity;
-    colorsArray[colorsArray.length] = backgroundColor[0];
-    colorsArray[colorsArray.length] = backgroundColor[1];
-    colorsArray[colorsArray.length] = backgroundColor[2];
-    colorsArray[colorsArray.length] = opacity;
-    colorsArray[colorsArray.length] = backgroundColor[0];
-    colorsArray[colorsArray.length] = backgroundColor[1];
-    colorsArray[colorsArray.length] = backgroundColor[2];
-    colorsArray[colorsArray.length] = opacity;
-    colorsArray[colorsArray.length] = backgroundColor[0];
-    colorsArray[colorsArray.length] = backgroundColor[1];
-    colorsArray[colorsArray.length] = backgroundColor[2];
-    colorsArray[colorsArray.length] = opacity;
-    colorsArray[colorsArray.length] = backgroundColor[0];
-    colorsArray[colorsArray.length] = backgroundColor[1];
-    colorsArray[colorsArray.length] = backgroundColor[2];
-    colorsArray[colorsArray.length] = opacity;
-    colorsArray[colorsArray.length] = backgroundColor[0];
-    colorsArray[colorsArray.length] = backgroundColor[1];
-    colorsArray[colorsArray.length] = backgroundColor[2];
-    colorsArray[colorsArray.length] = opacity;
+    colorsArray[index * 24 + 0] = backgroundColor[0];
+    colorsArray[index * 24 + 1] = backgroundColor[1];
+    colorsArray[index * 24 + 2] = backgroundColor[2];
+    colorsArray[index * 24 + 3] = opacity;
+
+    colorsArray[index * 24 + 4] = backgroundColor[0];
+    colorsArray[index * 24 + 5] = backgroundColor[1];
+    colorsArray[index * 24 + 6] = backgroundColor[2];
+    colorsArray[index * 24 + 7] = opacity;
+
+    colorsArray[index * 24 + 8] = backgroundColor[0];
+    colorsArray[index * 24 + 9] = backgroundColor[1];
+    colorsArray[index * 24 + 10] = backgroundColor[2];
+    colorsArray[index * 24 + 11] = opacity;
+
+    colorsArray[index * 24 + 12] = backgroundColor[0];
+    colorsArray[index * 24 + 13] = backgroundColor[1];
+    colorsArray[index * 24 + 14] = backgroundColor[2];
+    colorsArray[index * 24 + 15] = opacity;
+
+    colorsArray[index * 24 + 16] = backgroundColor[0];
+    colorsArray[index * 24 + 17] = backgroundColor[1];
+    colorsArray[index * 24 + 18] = backgroundColor[2];
+    colorsArray[index * 24 + 19] = opacity;
+
+    colorsArray[index * 24 + 20] = backgroundColor[0];
+    colorsArray[index * 24 + 21] = backgroundColor[1];
+    colorsArray[index * 24 + 22] = backgroundColor[2];
+    colorsArray[index * 24 + 23] = opacity;
 
   }
 }
@@ -2387,7 +2410,7 @@ function isViewVisible(element) {
     element.style && element.style.border;
 }
 
-function renderView(verticesArray, colorsArray, element, inheritedOpacity) {
+function renderView(verticesArray, index, colorsArray, element, inheritedOpacity) {
   if (isViewVisible(element)) {
 
   //  webGLContext.uniform4f(u_view_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
@@ -2397,26 +2420,28 @@ function renderView(verticesArray, colorsArray, element, inheritedOpacity) {
     var y1 = element.layout.top;
     var y2 = element.layout.bottom;
 
-    setBackgroundColor(colorsArray, element, inheritedOpacity);
+    setBackgroundColor(colorsArray, index, element, inheritedOpacity);
     setBorder(element);
 
-    verticesArray[verticesArray.length] = x1;
-    verticesArray[verticesArray.length] = y1;
-    verticesArray[verticesArray.length] = x2;
+    verticesArray[index * 12 + 0] = x1;
+    verticesArray[index * 12 + 1] = y1;
+    verticesArray[index * 12 + 2] = x2;
 
-    verticesArray[verticesArray.length] = y1;
-    verticesArray[verticesArray.length] = x1;
-    verticesArray[verticesArray.length] = y2;
+    verticesArray[index * 12 + 3] = y1;
+    verticesArray[index * 12 + 4] = x1;
+    verticesArray[index * 12 + 5] = y2;
 
-    verticesArray[verticesArray.length] = x1;
-    verticesArray[verticesArray.length] = y2;
-    verticesArray[verticesArray.length] = x2;
+    verticesArray[index * 12 + 6] = x1;
+    verticesArray[index * 12 + 7] = y2;
+    verticesArray[index * 12 + 8] = x2;
 
-    verticesArray[verticesArray.length] = y1;
-    verticesArray[verticesArray.length] = x2;
-    verticesArray[verticesArray.length] = y2;
+    verticesArray[index * 12 + 9]  = y1;
+    verticesArray[index * 12 + 10] = x2;
+    verticesArray[index * 12 + 11] = y2;
 
+    return 1;
   }
+  return 0;
 }
 
 module.exports = renderView;
