@@ -264,6 +264,7 @@ function cloneWithClonedStyle(node) {
 }
 
 var recalculationQueue = [];
+
 function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
   var currentNode = node;
   var children = currentNode.children;
@@ -277,9 +278,7 @@ function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
         var newRef = newChild.newRef;
         newNodeChildren[i] = reconstructTreeForAnimation(newRef, true, true);
         newChild.newRef = newNodeChildren[i];
-        if (currentNode.children[i].oldRef) {
-          currentNode.children[i].oldRef = null;
-        }
+
         newNodeChildren[i].oldRef = currentNode.children[i];
         if (!skipAddToQueue) {
           recalculationQueue.push(newNode.children[i]);
@@ -288,14 +287,37 @@ function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
       else if (newChild.isChildAnimating) {
         newNodeChildren[i] = reconstructTreeForAnimation(newChild, skipAddToQueue || false);
       }
+      currentNode.children[i].oldParent = currentNode;
       newNodeChildren[i].parent = newNode;
-
     }
-    currentNode.children = null;
-
     return newNode;
   }
   return node;
+}
+
+function dereferenceObjects(node) {
+  var children = node.children;
+  if (children) {
+    for (var i = 0, l = children.length; i < l; i++) {
+      var child = children[i];
+
+      if (child.isChildAnimating) {
+        dereferenceObjects(child);
+        child.parent = null;
+        child.oldParent = null;
+        child.oldRef = null;
+      }
+      else if (child.isAnimating && child.oldRef) {
+        child.parent = null;
+        child.oldParent = null;
+        child.oldRef = null;
+      }
+      child.oldParent = null;
+      child.children = [];
+    }
+  }
+  node.oldRef = null;
+  node.oldParent = null;
 }
 
 
@@ -351,6 +373,7 @@ function correctAnimationNodeReferences(newRootNode) {
   }
 
 }
+
 function onAnimate() {
   var currentTime = Date.now() - startTime;
 
@@ -370,18 +393,22 @@ function onAnimate() {
 
   correctAnimationNodeReferences(newRootNode);
 
-  rootNode = newRootNode;
 
   if (__DEV__) {
     for (var i = 0, l = recalculationQueue.length; i < l; i++) {
       var recalcNode = recalculationQueue[i];
-      if (!isInTree(rootNode, recalcNode)) {
+      if (!isInTree(newRootNode, recalcNode)) {
         console.warn('recalc node not found in the tree!');
       }
     }
   }
 
-  Bluebox.relayout(rootNode, recalculationQueue);
+  Bluebox.relayout(newRootNode, recalculationQueue);
+
+  // ensures no memory leaks
+  dereferenceObjects(rootNode);
+
+  rootNode = newRootNode;
 
   recalculationQueue = [];
 
@@ -554,6 +581,7 @@ function Component(type, props, style, children) {
       fontStyle: 'normal'
     }, style || {}),
     parent: null,
+    oldParent: null,
     oldRef: null,
     type: type,
     props: props,
@@ -561,7 +589,8 @@ function Component(type, props, style, children) {
     lineIndex: 0,
     isAnimating: false,
     isChildAnimating: 0,
-    newRef: null
+    newRef: null,
+    nrOfVertices: 0
   };
   if (__DEV__) {
     seal(component);
@@ -575,6 +604,7 @@ function Component(type, props, style, children) {
       if (!component.isChildAnimating && (child.isAnimating || child.isChildAnimating)) {
         component.isChildAnimating++;
       }
+      component.nrOfVertices += 1 + child.nrOfVertices;
     }
   }
 
@@ -1185,40 +1215,10 @@ var Bluebox = {
         }
 
       }
-      LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false);
-
-      changedLayoutNode.oldRef = null;
+      window.ix = 0;
+      LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false, false);
 
     }
-
-    /**
-     * if (!parentWidth) {
-    console.info('YES');
-    parentWidth = viewPortDimensions.width;
-    parentLeft = 0;
-    parentHeight = viewPortDimensions.height;
-    parentTop = 0;
-  }
-
-     (domElement,
-     newElement,
-     oldElement,
-     parent,
-     position,
-     viewPortDimensions,
-     top,
-     left,
-     parentLeft,
-     parentWidth,
-     parentTop,
-     parentHeight,
-     inheritedOpacity,
-     inheritedZoom,
-     inheritedFontSize,
-     inheritedColor,
-     inheritedFilter)
-
-     */
 
     render(domElement, componentTree, null, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
 
@@ -1340,7 +1340,6 @@ function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
   }
 
-
   if (nodeStyle[crossAxis.START] !== UNDEFINED) {
     nodeLayout[crossAxis.START] += nodeStyle[crossAxis.START];
     nodeLayout[crossAxis.END] += nodeStyle[crossAxis.START];
@@ -1361,7 +1360,6 @@ function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
     nodeLayout[crossAxis.END] = parentLayout[crossAxis.END] - nodeStyle[crossAxis.END];
     nodeLayout[crossAxis.DIMENSION] = nodeLayout[crossAxis.END] - nodeLayout[crossAxis.START];
   }
-
 
   if (!nodeLayout.height && nodeStyle.height !== UNDEFINED) {
     nodeLayout.height = nodeStyle.height;
@@ -1425,8 +1423,37 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
     childLayout.bottom = childLayout.top + childLayout.height;
   }
 }
-function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute) {
+
+// main bottleneck - takes up most cpu and allocations
+//                   ideally we skip it when possible
+//                   - add hasParentDimensionsChanged argument
+window.ix = 0;
+function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged) {
+  //if (node === oldNode) {
+  //  console.info(ix++, 'times called heavy function too much...');
+  //}
+
+//  if (node === oldNode && node.parent) {
+  // console.info('skip:', node.style, node.parent.style)
+  // return oldNode;
+//  }
+
   var parent = node.parent;
+  if (oldNode) {
+    if (node.style !== oldNode.style) {
+      if (node.style.width !== oldNode.style.width || node.style.height !== oldNode.style.height) {
+        hasParentDimensionsChanged = true;
+      }
+
+    }
+
+    if (node.style.width !== UNDEFINED && node.style.height !== UNDEFINED &&
+      node.style.width === oldNode.style.width && node.style.height === oldNode.style.height
+    ) {
+      hasParentDimensionsChanged = false;
+    }
+  }
+
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
   var parentHeight = parentLayout ? parentLayout.height : document.body.clientHeight;
@@ -1455,9 +1482,11 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     var childLayout;
     var i;
     var l;
+    var oldChild;
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
-      var oldChild = null;
+      oldChild = oldNode ? oldNode.children[i] : null;
+
       childStyle = child.style;
       childLayout = child.layout;
       layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
@@ -1466,13 +1495,13 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
 
       if (childStyle.position !== ABSOLUTE) {
 
-          if (i === 0) {
-            childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
-            childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
-          }
-          childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
-          childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
-          childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
+        if (i === 0) {
+          childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
+          childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
+        }
+        childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
+        childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
+        childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
 
         var newSize = childStyle[mainAxis.DIMENSION] !== UNDEFINED ? (childStyle[mainAxis.DIMENSION] + childStyle[crossAxis.MARGIN_LEADING] + childStyle[crossAxis.MARGIN_TRAILING]) || 0 : 0;
 
@@ -1487,8 +1516,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
             additional += maxCrossDimension;
             maxCrossDimension = 0;
 
-              childLayout[mainAxis.START] = nodeLayout[mainAxis.START] + childStyle[mainAxis.MARGIN_LEADING];
-              childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
+            childLayout[mainAxis.START] = nodeLayout[mainAxis.START] + childStyle[mainAxis.MARGIN_LEADING];
+            childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
 
             totalChildrenSize = 0;
 
@@ -1498,8 +1527,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
         currNrOfChildren++;
         totalChildrenSize += newSize;
 
-          childLayout[crossAxis.START] += additional;
-          childLayout[crossAxis.END] += additional;
+        childLayout[crossAxis.START] += additional;
+        childLayout[crossAxis.END] += additional;
 
         if (childLayout[parentMainAxis.END] > maxSize) {
           maxSize = childLayout[parentMainAxis.END] + childStyle[parentMainAxis.MARGIN_TRAILING];
@@ -1526,7 +1555,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     crossLineLengths.push(maxCrossDimension);
     lineNrOfChildren.push(currNrOfChildren);
 
-    if (/*node !== oldNode &&*/ nodeLayout[parentMainAxis.DIMENSION] === 0) {
+    if (node !== oldNode && nodeLayout[parentMainAxis.DIMENSION] === 0) {
       nodeLayout[parentMainAxis.END] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING];
       nodeLayout[parentMainAxis.DIMENSION] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING] - nodeLayout[parentMainAxis.START];
     }
@@ -1534,10 +1563,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     var newParentHeight = nodeLayout.height;
     var newParentWidth = nodeLayout.width;
 
-
     var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
     var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
-
 
     // correct the children position (justifyContent, alignItems, more?!)
     var justifyContent = nodeStyle.justifyContent;
@@ -1552,7 +1579,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       child = nodeChildren[i];
       childStyle = child.style;
       childLayout = child.layout;
-      var oldChild = null;
+      oldChild = oldNode ? oldNode.children[i] : null;
       if (currentLineIndex !== childLayout.lineIndex) {
         currentLineIndex = childLayout.lineIndex;
         remainingSpaceMainAxis = mainDimensionSize - lineLengths[currentLineIndex];
@@ -1578,39 +1605,39 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       var initialTop = childLayout.top;
       var initialLeft = childLayout.left;
 
-        if (totalFlexGrow) {
-          flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
-        }
-        else {
-          justifyContentFn(child, previousChild, mainAxis, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
-        }
+      if (totalFlexGrow) {
+        flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
+      }
+      else {
+        justifyContentFn(child, previousChild, mainAxis, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
+      }
 
-        if (isPositionAbsolute) {
-          absolutePosition(child, previousChild, mainAxis, crossAxis);
-        }
-        var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
-        var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
-        if (addSpace) {
-          remainingSpaceCrossAxisSelf += addSpace;
-        }
-        if (alignSelf === CENTER) {
-          remainingSpaceCrossAxisSelf = (remainingSpaceCrossAxisSelf / 2);
-        }
+      if (isPositionAbsolute) {
+        absolutePosition(child, previousChild, mainAxis, crossAxis);
+      }
+      var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
+      var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
+      if (addSpace) {
+        remainingSpaceCrossAxisSelf += addSpace;
+      }
+      if (alignSelf === CENTER) {
+        remainingSpaceCrossAxisSelf = (remainingSpaceCrossAxisSelf / 2);
+      }
 
-        // TODO: fix flexWrap line heights
-        //if (lineLengths.length > 1) {
-        //  var foo = node.layout[xNewCrossAxisDirection.START] + (crossDimensionSize / (lineLengths.length - 1) * currentLineIndex);
-        //
-        //  childLayout[xNewCrossAxisDirection.START] = foo - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING] - addSpace;
-        //  childLayout[xNewCrossAxisDirection.END] = foo - addSpace;
-        //}
-        alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
-        if (isPositionAbsolute) {
-            processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute);
-        }
-        else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
-          correctChildren(child, oldChild, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
-        }
+      // TODO: fix flexWrap line heights
+      //if (lineLengths.length > 1) {
+      //  var foo = node.layout[xNewCrossAxisDirection.START] + (crossDimensionSize / (lineLengths.length - 1) * currentLineIndex);
+      //
+      //  childLayout[xNewCrossAxisDirection.START] = foo - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING] - addSpace;
+      //  childLayout[xNewCrossAxisDirection.END] = foo - addSpace;
+      //}
+      alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
+      if (isPositionAbsolute) {
+        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute, hasParentDimensionsChanged);
+      }
+      else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
+        correctChildren(child, oldChild, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
+      }
       if (!isPositionAbsolute) {
         previousChild = child;
       }
@@ -1619,7 +1646,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
 }
 
 //window.testing = [];
-function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute) {
+function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, hasParentLocationChanged) {
 
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
@@ -1629,15 +1656,25 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
     return node;
   }
 
-  //if (testing.indexOf(node) > -1) {
-  //  console.warn('duplicate layoutNode call:', node, testing.indexOf(node));
-  //  console.trace();
+  if (node === oldNode && !hasParentDimensionsChanged) {
+    if (hasParentLocationChanged) {
+      // TODO: correctChildren
+    }
+    return node;
+  }
+  //
+  //if (__DEV__) {
+  //  if (!parent) {
+  //    window.testing = [];
+  //  }
+  //  if (testing.indexOf(node) > -1) {
+  //    console.warn('duplicate layoutRelativeNode call:', node, testing.indexOf(node));
+  //    console.trace();
+  //  }
+  //  testing.push(node);
   //}
-  //testing.push(node);
-
   var parentLayout = parent ? parent.layout : null;
   var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
-
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
@@ -1649,7 +1686,6 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
     nodeLayout.top = parent ? parentLayout.top : 0;
   }
 
-
   nodeLayout.left += nodeStyle.marginLeft;
   nodeLayout.top += nodeStyle.marginTop;
 
@@ -1658,8 +1694,9 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
 
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
+
   if (nodeStyle.position !== ABSOLUTE) {
-    processChildren(node, oldNode, mainAxis, crossAxis, false);
+    processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged);
   }
 
   return node;
@@ -1678,16 +1715,24 @@ module.exports = {
 },{"../UNDEFINED":3,"../__DEV__":4,"./AXIS":17}],19:[function(require,module,exports){
 'use strict';
 
+var __DEV__   = require('../__DEV__');
 var UNDEFINED = require('../UNDEFINED');
+
 function requestStyleRecalculation(node, oldNode) {
   var currentNode = node;
   var currentOldNode = oldNode;
   var requireStyleRecalculation = true;
 
   while(requireStyleRecalculation) {
+
     requireStyleRecalculation = false;
     var parent = currentNode.parent;
-    var oldParent = currentOldNode.parent;
+    var oldParent = currentOldNode.oldParent || currentOldNode.parent;
+    if (__DEV__) {
+      if (parent && parent === oldParent) {
+        console.warn('new parent shouldn\'t be equal to old parent');
+      }
+    }
     var nodeStyle = currentNode.style;
     var oldNodeStyle = currentOldNode.style;
 
@@ -1719,12 +1764,13 @@ function requestStyleRecalculation(node, oldNode) {
       currentNode = parent;
     }
   }
+  currentNode.oldRef = currentOldNode;
   return currentNode;
 }
 
 module.exports = requestStyleRecalculation;
 
-},{"../UNDEFINED":3}],20:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4}],20:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1995,7 +2041,6 @@ var texCoordBuffer;
 var colorsBuffer;
 var verticesArray = [];
 var colorsArray = [];
-var nrOfVertices = 0;
 
 function isViewVisible(element) {
   return element.style && element.style.backgroundColor ||
@@ -2003,20 +2048,7 @@ function isViewVisible(element) {
 }
 
 
-function getNrOfVertices(tree) {
-  var nrOfVertices = 0;
-  if (tree.type === 'view' && isViewVisible(tree)) {
-    nrOfVertices++;
-  }
-  for (var i = 0, l = tree.children.length; i < l; i++) {
-    var child = tree.children[i];
-    if (child.children) {
-      nrOfVertices += getNrOfVertices(child);
-    }
-  }
 
-  return nrOfVertices;
-}
 var vertexPosition = 0;
 function render(domElement,
   newElement,
@@ -2089,10 +2121,11 @@ function render(domElement,
     webGLContext.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
     webGLContext.disable(webGLContext.DEPTH_TEST);
     webGLContext.disable(webGLContext.CULL_FACE);
+    webGLContext.disable(webGLContext.STENCIL_TEST);
     webGLContext.enable(webGLContext.BLEND);
   }
   if (!newElement.parent) {
-    nrOfVertices = getNrOfVertices(newElement);
+    var nrOfVertices = newElement.nrOfVertices;
     if (verticesArray.length !== nrOfVertices * 12) {
       verticesArray   = new Float32Array(nrOfVertices * 12);
       colorsArray     = new Float32Array(nrOfVertices * 24);
@@ -2413,12 +2446,11 @@ function isViewVisible(element) {
 function renderView(verticesArray, index, colorsArray, element, inheritedOpacity) {
   if (isViewVisible(element)) {
 
-  //  webGLContext.uniform4f(u_view_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
-
-    var x1 = element.layout.left;
-    var x2 = element.layout.right;
-    var y1 = element.layout.top;
-    var y2 = element.layout.bottom;
+    var elementLayout = element.layout;
+    var x1 = elementLayout.left;
+    var x2 = elementLayout.right;
+    var y1 = elementLayout.top;
+    var y2 = elementLayout.bottom;
 
     setBackgroundColor(colorsArray, index, element, inheritedOpacity);
     setBorder(element);
