@@ -1855,13 +1855,6 @@ var renderText = require('./renderText');
 var Promise = require('promise');
 var Shaders = require('./Shaders');
 
-function isVisible(node, viewPortDimensions) {
-  var nodeLayout = node.layout;
-  return (nodeLayout.top >= viewPortDimensions.top && nodeLayout.top <= (viewPortDimensions.top + viewPortDimensions.height)) ||
-    ((nodeLayout.top + nodeLayout.height) <= (viewPortDimensions.top + viewPortDimensions.height) && (nodeLayout.top + nodeLayout.height) >= viewPortDimensions.top) ||
-    nodeLayout.top < viewPortDimensions.top && (nodeLayout.top + nodeLayout.height) > (viewPortDimensions.top + viewPortDimensions.height);
-}
-
 function rerender(domElement,
   newElement,
   oldElement,
@@ -1925,7 +1918,7 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
   var texture = getImageTexture(image, element);
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
-  gl.uniform4f(u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
+  gl.uniform4f(image_u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
 
   var dstX = left;
   var dstY = top;
@@ -1940,7 +1933,7 @@ function _renderImage(image, element, top, left, width, height, viewPortDimensio
 
   // build a matrix that will stretch our
   // unit quad to our desired size and location
-  gl.uniformMatrix3fv(u_matrixLoc, false, [
+  gl.uniformMatrix3fv(image_u_matrix, false, [
     clipWidth, 0, 0,
     0, clipHeight, 0,
     clipX, clipY, 1
@@ -1987,17 +1980,7 @@ function renderImage(domElement, newComponentTree, oldComponentTree, element, to
 var isViewRendering = false;
 var isImageRendering = false;
 var isTextRendering = false;
-function switchToViewRendering() {
-  if (!isViewRendering) {
-    isViewRendering = true;
-    isImageRendering = false;
-    isTextRendering = false;
 
-    gl.useProgram(viewProgram);
-    //gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
-    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  }
-}
 
 function switchToImageRendering() {
   if (!isImageRendering) {
@@ -2020,24 +2003,24 @@ var fragmentShader;
 var imageShader;
 var imageProgram;
 var viewProgram;
-var colorLocation;
-var positionLocation;
+var view_a_color;
+var view_a_position;
 //var iPositionLocation;
-var iResolutionLocation;
-var resolutionLocation;
+var image_u_resolution;
+var view_u_resolution;
 var textCoord;
-var iTextLocation;
-var u_matrixLoc;
+var image_a_position;
+var image_u_matrix;
 var view_u_dimensions;
 var topElement;
 var topOldElement;
 var topDOMElement;
-var u_dimensions;
+var image_u_dimensions;
 var viewBuffer;
 var texCoordBuffer;
 var colorsBuffer;
-var verticesArray = [];
-var colorsArray = [];
+var verticesArray;
+var colorsArray;
 
 function isViewVisible(element) {
   return element.style && element.style.backgroundColor ||
@@ -2075,7 +2058,7 @@ function render(domElement,
 
     viewProgram = createProgram(gl, [vertexShader, fragmentShader]);
     imageProgram = createProgram(gl, [vertexShader2, imageShader]);
-
+    gl.clearColor(0,0,0,0);
     // remove shaders (not needed anymore after linking)
     gl.deleteShader(vertexShader);
     gl.deleteShader(vertexShader2);
@@ -2083,42 +2066,46 @@ function render(domElement,
     gl.deleteShader(imageShader);
 
     gl.useProgram(viewProgram);
+    //gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+
+    view_u_resolution = gl.getUniformLocation(viewProgram, "u_resolution");
+    view_u_dimensions  = gl.getUniformLocation(viewProgram, 'u_dimensions');
+
+    gl.uniform4f(view_u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
+    gl.uniform2f(view_u_resolution, 1 / viewPortDimensions.width, 1 / viewPortDimensions.height);
+
     viewBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
-
-    positionLocation = gl.getAttribLocation(viewProgram, "a_position");
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-    resolutionLocation = gl.getUniformLocation(viewProgram, "u_resolution");
-
-    view_u_dimensions = gl.getUniformLocation(viewProgram, 'u_dimensions');
-    u_dimensions = gl.getUniformLocation(imageProgram, 'u_dimensions');
-
-    gl.uniform4f(gl.getUniformLocation(viewProgram, 'u_dimensions'), parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
-    gl.uniform2f(resolutionLocation, 1 / viewPortDimensions.width, 1 / viewPortDimensions.height);
-
-    gl.useProgram(imageProgram);
-    texCoordBuffer = gl.createBuffer();
-
-    iTextLocation = gl.getAttribLocation(imageProgram, "a_position");
-    u_matrixLoc = gl.getUniformLocation(imageProgram, "u_matrix");
-    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-    gl.enableVertexAttribArray(iTextLocation);
-    gl.vertexAttribPointer(iTextLocation, 2, gl.FLOAT, false, 0, 0);
-
-    iResolutionLocation = gl.getUniformLocation(imageProgram, "u_resolution");
-
-    gl.uniform2f(iResolutionLocation, viewPortDimensions.width, viewPortDimensions.height);
+    view_a_position = gl.getAttribLocation(viewProgram, "a_position");
+    gl.enableVertexAttribArray(view_a_position);
+    gl.vertexAttribPointer(view_a_position, 2, gl.FLOAT, false, 0, 0);
 
     colorsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorsBuffer);
-    colorLocation = gl.getAttribLocation(viewProgram, "aVertexColor");
-    gl.enableVertexAttribArray(colorLocation);
-    gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
+    view_a_color = gl.getAttribLocation(viewProgram, "aVertexColor");
+    gl.enableVertexAttribArray(view_a_color);
+
+    gl.useProgram(imageProgram);
+
+    image_u_dimensions = gl.getUniformLocation(imageProgram, 'u_dimensions');
+    image_u_matrix = gl.getUniformLocation(imageProgram, "u_matrix");
+    image_u_resolution = gl.getUniformLocation(imageProgram, "u_resolution");
+    gl.uniform2f(image_u_resolution, viewPortDimensions.width, viewPortDimensions.height);
+
+    texCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+
+    image_a_position = gl.getAttribLocation(imageProgram, "a_position");
+    gl.enableVertexAttribArray(image_a_position);
+    gl.vertexAttribPointer(image_a_position, 2, gl.FLOAT, false, 0, 0);
+
+
+
 
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
+
     gl.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
@@ -2129,11 +2116,9 @@ function render(domElement,
   }
   if (!newElement.parent) {
     var nrOfVertices = newElement.nrOfVertices;
-    if (verticesArray.length !== nrOfVertices * 12) {
+    if (!verticesArray || verticesArray.length !== nrOfVertices * 12) {
       verticesArray   = new Float32Array(nrOfVertices * 12);
       colorsArray     = new Float32Array(nrOfVertices * 24);
-
-      // can we allocate more here?!
     }
 
     vertexPosition = 0;
@@ -2150,7 +2135,7 @@ function render(domElement,
 
   if (newElement.type === 'view') {
 
-    switchToViewRendering();
+
 
     vertexPosition += renderView(verticesArray, vertexPosition, colorsArray, newElement, inheritedOpacity || 1.0);
     //console.info(verticesArray);
@@ -2210,8 +2195,16 @@ function render(domElement,
     // TODO: set image information here :-/
 
     // render all the views at once...
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
+
+    gl.useProgram(viewProgram);
+
+    if (!skip) {
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.bindBuffer(gl.ARRAY_BUFFER, colorsBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
+      gl.vertexAttribPointer(view_a_color, 4, gl.FLOAT, false, 0, 0);
+      skip = true;
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
@@ -2226,10 +2219,11 @@ function render(domElement,
     //webGLContext.bufferData(webGLContext.ELEMENT_ARRAY_BUFFER, new Uint16Array(verticesArray), webGLContext.STATIC_DRAW);
     //webGLContext.drawElements(webGLContext.TRIANGLES, verticesArray.length / 2, webGLContext.UNSIGNED_SHORT, 0);
 
-    //gl.clearColor(0,0,0,0);
+
     //gl.clear(gl.COLOR_BUFFER_BIT);
   }
 }
+var skip = false;
 
 module.exports = render;
 

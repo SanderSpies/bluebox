@@ -67,7 +67,7 @@
     </script>
     <!-- fragment shader -->
     <script id="2d-fragment-shader" type="x-shader/x-fragment">
-        precision lowp float;
+        precision mediump float;
 
         varying vec4 vColor;
         uniform vec4 u_dimensions;
@@ -87,7 +87,7 @@
         }
     </script>
     <script id="2d-image-shader" type="x-shader/x-fragment">
-        precision lowp float;
+        precision mediump float;
 
         // our texture
         uniform sampler2D u_image;
