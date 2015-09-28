@@ -374,8 +374,10 @@ function correctAnimationNodeReferences(newRootNode) {
 
 }
 
-function onAnimate(currentTime) {
+function onAnimate() {
   requestAnimationFrame(onAnimate);
+
+  var currentTime = Date.now() - startTime;
 
   processTransitions(currentTime);
 
