@@ -220,7 +220,7 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = true; //process.env.NODE_ENV !== 'production';
+module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -374,10 +374,8 @@ function correctAnimationNodeReferences(newRootNode) {
 
 }
 
-function onAnimate() {
+function onAnimate(currentTime) {
   requestAnimationFrame(onAnimate);
-
-  var currentTime = Date.now() - startTime;
 
   processTransitions(currentTime);
 
@@ -1220,7 +1218,7 @@ var Bluebox = {
 
     }
 
-    render(domElement, componentTree, null, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
+    render(domElement, componentTree, oldComponentTree, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
 
     oldComponentTree = componentTree;
 
@@ -2024,13 +2022,6 @@ var indices;
 var indexBuffer;
 var colorsArray;
 
-function isViewVisible(element) {
-  return element.style && element.style.backgroundColor ||
-    element.style && element.style.border;
-}
-
-
-
 var vertexPosition = 0;
 function render(domElement,
   newElement,
@@ -2143,7 +2134,7 @@ function render(domElement,
 
   if (newElement.type === 'view') {
 
-    vertexPosition += renderView(vertices, indices, vertexPosition, colorsArray, newElement, inheritedOpacity || 1.0);
+    vertexPosition += renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
 
     var style = newElement.style;
     if ('opacity' in style) {
@@ -2163,6 +2154,7 @@ function render(domElement,
     }
 
     var children = newElement.children;
+    var oldChildren = oldElement ? oldElement.children : null;
     if (children) {
       for (var i = 0, l = children.length; i < l; i++) {
         var child = children[i];
@@ -2173,7 +2165,7 @@ function render(domElement,
           parentTop = newElement.layout.top;
         }
 
-        render(domElement, child, null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
+        render(domElement, child, oldChildren ? oldChildren[i] : null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
           inheritedZoom,
           inheritedFontSize,
           inheritedColor,
@@ -2203,10 +2195,10 @@ function render(domElement,
     gl.useProgram(viewProgram);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    //if (!skip) {
-      gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
-    //  skip = true;
-    //}
+    gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
+    if (!skip) {
+      skip = true;
+    }
     gl.vertexAttribPointer(view_a_color, 4, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
@@ -2215,7 +2207,8 @@ function render(domElement,
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-
+    if (!skip) {
+    }
     //gl.drawArrays(gl.TRIANGLES, 0, verticesArray.length / 2);
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
@@ -2443,37 +2436,37 @@ function isViewVisible(element) {
 
 var VERTEX_SIZE = 8;
 
-function renderView(verticesArray, indexArray, index, colorsArray, element, inheritedOpacity) {
+function renderView(verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
   if (isViewVisible(element)) {
+    if (element !== oldElement) {
+      var elementLayout = element.layout;
+      var left = elementLayout.left;
+      var right = elementLayout.right;
+      var top = elementLayout.top;
+      var bottom = elementLayout.bottom;
 
-    var elementLayout = element.layout;
-    var left = elementLayout.left;
-    var right = elementLayout.right;
-    var top = elementLayout.top;
-    var bottom = elementLayout.bottom;
+      setBackgroundColor(colorsArray, index, element, inheritedOpacity);
+      setBorder(element);
 
-    setBackgroundColor(colorsArray, index, element, inheritedOpacity);
-    setBorder(element);
+      verticesArray[index * VERTEX_SIZE + 0] = left;
+      verticesArray[index * VERTEX_SIZE + 1] = top;
 
-    verticesArray[index * VERTEX_SIZE + 0] = left;
-    verticesArray[index * VERTEX_SIZE + 1] = top;
+      verticesArray[index * VERTEX_SIZE + 2] = right;
+      verticesArray[index * VERTEX_SIZE + 3] = top;
 
-    verticesArray[index * VERTEX_SIZE + 2] = right;
-    verticesArray[index * VERTEX_SIZE + 3] = top;
+      verticesArray[index * VERTEX_SIZE + 4] = left;
+      verticesArray[index * VERTEX_SIZE + 5] = bottom;
 
-    verticesArray[index * VERTEX_SIZE + 4] = left;
-    verticesArray[index * VERTEX_SIZE + 5] = bottom;
+      verticesArray[index * VERTEX_SIZE + 6] = right;
+      verticesArray[index * VERTEX_SIZE + 7] = bottom;
 
-    verticesArray[index * VERTEX_SIZE + 6] = right;
-    verticesArray[index * VERTEX_SIZE + 7] = bottom;
-
-    indexArray[index * 6 + 0] = (index * VERTEX_SIZE) /2 + 0;
-    indexArray[index * 6 + 1] = (index * VERTEX_SIZE) /2 + 1;
-    indexArray[index * 6 + 2] = (index * VERTEX_SIZE) /2 + 2;
-    indexArray[index * 6 + 3] = (index * VERTEX_SIZE) /2 + 2;
-    indexArray[index * 6 + 4] = (index * VERTEX_SIZE) /2 + 1;
-    indexArray[index * 6 + 5] = (index * VERTEX_SIZE) /2 + 3;
-
+      indexArray[index * 6 + 0] = (index * VERTEX_SIZE) / 2 + 0;
+      indexArray[index * 6 + 1] = (index * VERTEX_SIZE) / 2 + 1;
+      indexArray[index * 6 + 2] = (index * VERTEX_SIZE) / 2 + 2;
+      indexArray[index * 6 + 3] = (index * VERTEX_SIZE) / 2 + 2;
+      indexArray[index * 6 + 4] = (index * VERTEX_SIZE) / 2 + 1;
+      indexArray[index * 6 + 5] = (index * VERTEX_SIZE) / 2 + 3;
+    }
     return 1;
   }
   return 0;
