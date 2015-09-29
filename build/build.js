@@ -2023,7 +2023,7 @@ var vertices;
 var indices;
 var indexBuffer;
 var colorsArray;
-
+var arraybuff;
 var vertexPosition = 0;
 function render(domElement,
   newElement,
@@ -2041,9 +2041,17 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl =  domElement.getContext('webgl');
+    gl =  domElement.getContext('webgl', {
+      alpha: false,
+      depth: false,
+      antialias: false
+    });
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl');
+      gl = domElement.getContext('experimental-webgl', {
+        alpha: false,
+        depth: false,
+        antialias: false
+      });
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2105,9 +2113,9 @@ function render(domElement,
     domElement.height = viewPortDimensions.height;
 
     gl.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
-    gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
+    gl.disable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2117,6 +2125,7 @@ function render(domElement,
   if (!newElement.parent) {
     var nrOfVertices = newElement.nrOfVertices;
     if (!vertices || vertices.length !== nrOfVertices * 8) {
+      //arraybuff       = new ArrayBuffer(nrOfVertices * 24);
       vertices        = new Uint16Array(nrOfVertices * 8);
       colorsArray     = new Uint8Array(nrOfVertices * 16);
       indices         = new Uint16Array(nrOfVertices * 6);
@@ -2194,25 +2203,22 @@ function render(domElement,
     // TODO: set image information here :-/
 
     // render all the views at once...
-    //gl.clear(gl.COLOR_BUFFER_BIT);
+   // gl.clear(gl.COLOR_BUFFER_BIT);
 
 
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     if (!skip) {
       gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
+      gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, false, 0, 0);
     } else {
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, colorsArray);
+      gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
     }
-
-
-    // TODO: should be removed (according to webgl inspector)
-    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     if (!skip) {
       gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
     } else {
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
     }
 
 
@@ -2377,20 +2383,20 @@ module.exports = renderText;
 'use strict';
 
 var WebGLColors = {
-  black: [0.0, 0.0, 0.0],
+  black: [0, 0, 0],
   silver: [],
   gray: [],
-  white: [1.0, 1.0, 1.0],
+  white: [255, 255, 255],
   maroon: [],
-  red: [1.0, 0.0, 0.0],
+  red: [255, 0, 0],
   purple: [],
   fuchsia: [],
-  green: [0.0, 0.5, 0.0],
+  green: [0, 128, 0],
   lime: [],
   olive: [],
   yellow: [],
   navy: [],
-  blue: [0.0, 0.0, 1.0],
+  blue: [0, 0, 255],
   teal: [],
   acqua: []
 
@@ -2411,6 +2417,8 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
     else {
       opacity = opacityProp * inheritedOpacity;
     }
+
+    //opacity = .5; //Math.round(opacity * 255);
 
     var colorPosition = index * 16;
     colorsArray[colorPosition + 0] = backgroundColor[0];
@@ -2454,10 +2462,10 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
   if (isViewVisible(element)) {
     if (element !== oldElement) {
       var elementLayout = element.layout;
-      var left = elementLayout.left;
-      var right = elementLayout.right;
-      var top = elementLayout.top;
-      var bottom = elementLayout.bottom;
+      var left = elementLayout.left | 0;
+      var right = elementLayout.right | 0;
+      var top = elementLayout.top | 0;
+      var bottom = elementLayout.bottom | 0;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
@@ -2476,7 +2484,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       verticesArray[vertexPos + 7] = bottom;
 
       
-      vertexPos /= 2
+      vertexPos /= 2;
       var indexPos = index * 6;
       
       indexArray[indexPos + 0] = vertexPos + 0;
