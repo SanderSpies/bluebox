@@ -28,6 +28,8 @@
 
     </canvas>
     <script id="2d-vertex-shader" type="x-shader/x-vertex">
+    precision lowp float;
+
     attribute vec2 a_position;
     attribute vec4 aVertexColor;
 
@@ -51,6 +53,8 @@
     }
     </script>
     <script id="2d-vertex-shader2" type="x-shader/x-vertex">
+        precision lowp float;
+
         attribute vec2 a_position;
 
         uniform mat3 u_matrix;

@@ -2073,7 +2073,7 @@ function render(domElement,
     viewBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     view_a_position = gl.getAttribLocation(viewProgram, "a_position");
-    gl.vertexAttribPointer(view_a_position, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(view_a_position, 2, gl.UNSIGNED_SHORT, false, 0, 0);
     gl.enableVertexAttribArray(view_a_position);
 
     indexBuffer = gl.createBuffer();
@@ -2081,8 +2081,8 @@ function render(domElement,
     colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     view_a_color = gl.getAttribLocation(viewProgram, "aVertexColor");
-    gl.vertexAttribPointer(view_a_color, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(view_a_color);
+    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, false, 0, 0);
 
 
 
@@ -2107,18 +2107,18 @@ function render(domElement,
     gl.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
-  //  gl.disable(gl.STENCIL_TEST);
+    gl.disable(gl.STENCIL_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-
+    gl.useProgram(viewProgram);
   }
   if (!newElement.parent) {
     var nrOfVertices = newElement.nrOfVertices;
     if (!vertices || vertices.length !== nrOfVertices * 8) {
-      vertices        = new Float32Array(nrOfVertices * 8);
-      colorsArray     = new Float32Array(nrOfVertices * 16);
+      vertices        = new Uint16Array(nrOfVertices * 8);
+      colorsArray     = new Uint8Array(nrOfVertices * 16);
       indices         = new Uint16Array(nrOfVertices * 6);
     }
 
@@ -2188,13 +2188,14 @@ function render(domElement,
     // if (data) {
     //   bigArray = bigArray.concat(data);
     // }
+
   }
   if (!newElement.parent) {
     // TODO: set image information here :-/
 
     // render all the views at once...
+    //gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.useProgram(viewProgram);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     if (!skip) {
@@ -2204,7 +2205,8 @@ function render(domElement,
     }
 
 
-    gl.vertexAttribPointer(view_a_color, 4, gl.FLOAT, false, 0, 0);
+    // TODO: should be removed (according to webgl inspector)
+    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     if (!skip) {
@@ -2212,11 +2214,12 @@ function render(domElement,
     } else {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
     }
-    gl.vertexAttribPointer(view_a_position, 2, gl.FLOAT, false, 0, 0);
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-    if (!skip) {
+
+
+    if (!skip) { // skipIndices
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     } else {
      // gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, indices);
@@ -2233,7 +2236,7 @@ function render(domElement,
     //webGLContext.drawElements(webGLContext.TRIANGLES, verticesArray.length / 2, webGLContext.UNSIGNED_SHORT, 0);
 
 
-    //gl.clear(gl.COLOR_BUFFER_BIT);
+
   }
 }
 var skip = false;
@@ -2406,29 +2409,29 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
       opacity = inheritedOpacity;
     }
     else {
-      console.info(opacityProp, inheritedOpacity);
       opacity = opacityProp * inheritedOpacity;
     }
 
-    colorsArray[index * 16 + 0] = backgroundColor[0];
-    colorsArray[index * 16 + 1] = backgroundColor[1];
-    colorsArray[index * 16 + 2] = backgroundColor[2];
-    colorsArray[index * 16 + 3] = opacity;
+    var colorPosition = index * 16;
+    colorsArray[colorPosition + 0] = backgroundColor[0];
+    colorsArray[colorPosition + 1] = backgroundColor[1];
+    colorsArray[colorPosition + 2] = backgroundColor[2];
+    colorsArray[colorPosition + 3] = opacity;
 
-    colorsArray[index * 16 + 4] = backgroundColor[0];
-    colorsArray[index * 16 + 5] = backgroundColor[1];
-    colorsArray[index * 16 + 6] = backgroundColor[2];
-    colorsArray[index * 16 + 7] = opacity;
+    colorsArray[colorPosition + 4] = backgroundColor[0];
+    colorsArray[colorPosition + 5] = backgroundColor[1];
+    colorsArray[colorPosition + 6] = backgroundColor[2];
+    colorsArray[colorPosition + 7] = opacity;
 
-    colorsArray[index * 16 + 8] = backgroundColor[0];
-    colorsArray[index * 16 + 9] = backgroundColor[1];
-    colorsArray[index * 16 + 10] = backgroundColor[2];
-    colorsArray[index * 16 + 11] = opacity;
+    colorsArray[colorPosition + 8] = backgroundColor[0];
+    colorsArray[colorPosition + 9] = backgroundColor[1];
+    colorsArray[colorPosition + 10] = backgroundColor[2];
+    colorsArray[colorPosition + 11] = opacity;
 
-    colorsArray[index * 16 + 12] = backgroundColor[0];
-    colorsArray[index * 16 + 13] = backgroundColor[1];
-    colorsArray[index * 16 + 14] = backgroundColor[2];
-    colorsArray[index * 16 + 15] = opacity;
+    colorsArray[colorPosition + 12] = backgroundColor[0];
+    colorsArray[colorPosition + 13] = backgroundColor[1];
+    colorsArray[colorPosition + 14] = backgroundColor[2];
+    colorsArray[colorPosition + 15] = opacity;
     
 
   }
@@ -2459,25 +2462,29 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
 
-      verticesArray[index * VERTEX_SIZE + 0] = left;
-      verticesArray[index * VERTEX_SIZE + 1] = top;
+      var vertexPos = (index * VERTEX_SIZE);
+      verticesArray[vertexPos + 0] = left;
+      verticesArray[vertexPos + 1] = top;
 
-      verticesArray[index * VERTEX_SIZE + 2] = right;
-      verticesArray[index * VERTEX_SIZE + 3] = top;
+      verticesArray[vertexPos + 2] = right;
+      verticesArray[vertexPos + 3] = top;
 
-      verticesArray[index * VERTEX_SIZE + 4] = left;
-      verticesArray[index * VERTEX_SIZE + 5] = bottom;
+      verticesArray[vertexPos + 4] = left;
+      verticesArray[vertexPos + 5] = bottom;
 
-      verticesArray[index * VERTEX_SIZE + 6] = right;
-      verticesArray[index * VERTEX_SIZE + 7] = bottom;
+      verticesArray[vertexPos + 6] = right;
+      verticesArray[vertexPos + 7] = bottom;
 
-      var vertexPos = (index * VERTEX_SIZE) / 2;
-      indexArray[index * 6 + 0] = vertexPos + 0;
-      indexArray[index * 6 + 1] = vertexPos + 1;
-      indexArray[index * 6 + 2] = vertexPos + 2;
-      indexArray[index * 6 + 3] = vertexPos + 2;
-      indexArray[index * 6 + 4] = vertexPos + 1;
-      indexArray[index * 6 + 5] = vertexPos + 3;
+      
+      vertexPos /= 2
+      var indexPos = index * 6;
+      
+      indexArray[indexPos + 0] = vertexPos + 0;
+      indexArray[indexPos + 1] = vertexPos + 1;
+      indexArray[indexPos + 2] = vertexPos + 2;
+      indexArray[indexPos + 3] = vertexPos + 2;
+      indexArray[indexPos + 4] = vertexPos + 1;
+      indexArray[indexPos + 5] = vertexPos + 3;
     }
     return 1;
   }
