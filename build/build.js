@@ -2090,7 +2090,7 @@ function render(domElement,
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     view_a_color = gl.getAttribLocation(viewProgram, "aVertexColor");
     gl.enableVertexAttribArray(view_a_color);
-    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, false, 0, 0);
+    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
 
 
 
@@ -2115,7 +2115,7 @@ function render(domElement,
     gl.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.disable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2125,7 +2125,7 @@ function render(domElement,
   if (!newElement.parent) {
     var nrOfVertices = newElement.nrOfVertices;
     if (!vertices || vertices.length !== nrOfVertices * 8) {
-      //arraybuff       = new ArrayBuffer(nrOfVertices * 24);
+      arraybuff       = new ArrayBuffer(nrOfVertices * (Uint16Array.BYTES_PER_ELEMENT * 8 + Uint8Array.BYTES_PER_ELEMENT * 16));
       vertices        = new Uint16Array(nrOfVertices * 8);
       colorsArray     = new Uint8Array(nrOfVertices * 16);
       indices         = new Uint16Array(nrOfVertices * 6);
@@ -2209,7 +2209,7 @@ function render(domElement,
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     if (!skip) {
       gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
-      gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, false, 0, 0);
+      gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
     } else {
       gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
     }
@@ -2418,8 +2418,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
       opacity = opacityProp * inheritedOpacity;
     }
 
-    //opacity = .5; //Math.round(opacity * 255);
-
+    opacity = opacity * 255;
     var colorPosition = index * 16;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
@@ -2462,10 +2461,10 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
   if (isViewVisible(element)) {
     if (element !== oldElement) {
       var elementLayout = element.layout;
-      var left = elementLayout.left | 0;
-      var right = elementLayout.right | 0;
-      var top = elementLayout.top | 0;
-      var bottom = elementLayout.bottom | 0;
+      var left = elementLayout.left;
+      var right = elementLayout.right;
+      var top = elementLayout.top;
+      var bottom = elementLayout.bottom;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
