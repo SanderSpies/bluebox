@@ -476,7 +476,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":28,"./_easings":6}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":30,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -615,7 +615,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../utils/deepSeal":26,"../utils/merge":27}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../utils/deepSeal":28,"../utils/merge":29}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -1236,7 +1236,7 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
-},{"./components/Image":8,"./components/Text":9,"./components/View":10,"./diff/diff":11,"./diff/ensureTreeCorrectness":12,"./layout/AXIS":17,"./layout/LayoutEngine":18,"./layout/requestStyleRecalculation":19,"./renderers/DOM/ViewPortHelper":20,"./renderers/GL/render":22}],17:[function(require,module,exports){
+},{"./components/Image":8,"./components/Text":9,"./components/View":10,"./diff/diff":11,"./diff/ensureTreeCorrectness":12,"./layout/AXIS":17,"./layout/LayoutEngine":18,"./layout/requestStyleRecalculation":19,"./renderers/DOM/ViewPortHelper":20,"./renderers/GL/render":24}],17:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1848,12 +1848,48 @@ module.exports = Shaders;
 },{}],22:[function(require,module,exports){
 'use strict';
 
+/**
+ * Helper for the Vertices.
+ *
+ * A vertex contains the following data:
+ * [x,y,z,r,g,b,a]
+ * - XYZ for positioning
+ * - RGBA for colors and alpha
+ *
+ * @type
+ */
+var VertexInfo = {
+
+  STRIDE: Uint16Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4
+
+};
+
+module.exports = VertexInfo;
+
+
+
+},{}],23:[function(require,module,exports){
+'use strict';
+
+var VertexInfo = require('./VertexInfo');
+
+function ensureViewIntegrity(element, index, verticesArray, colorsArray) {
+
+
+}
+
+module.exports = ensureViewIntegrity;
+
+},{"./VertexInfo":22}],24:[function(require,module,exports){
+'use strict';
+
 var gl;
 require('./temp-utils');
 var renderView = require('./renderView');
 var renderText = require('./renderText');
 var Promise = require('promise');
 var Shaders = require('./Shaders');
+var VertexInfo = require('./VertexInfo');
 
 function rerender(domElement,
   newElement,
@@ -2052,12 +2088,12 @@ function render(domElement,
         depth: false,
         antialias: false
       });
-    }
+      }
 
-    vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
-    vertexShader2 = createShaderFromScriptElement(gl, "2d-vertex-shader2");
-    fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
-    imageShader = createShaderFromScriptElement(gl, "2d-image-shader");
+      vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
+      vertexShader2 = createShaderFromScriptElement(gl, "2d-vertex-shader2");
+      fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
+      imageShader = createShaderFromScriptElement(gl, "2d-image-shader");
 
     viewProgram = createProgram(gl, [vertexShader, fragmentShader]);
     imageProgram = createProgram(gl, [vertexShader2, imageShader]);
@@ -2070,8 +2106,6 @@ function render(domElement,
 
     gl.useProgram(viewProgram);
 
-
-
     view_u_resolution = gl.getUniformLocation(viewProgram, "u_resolution");
     view_u_dimensions  = gl.getUniformLocation(viewProgram, 'u_dimensions');
 
@@ -2080,33 +2114,31 @@ function render(domElement,
 
     viewBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
+
     view_a_position = gl.getAttribLocation(viewProgram, "a_position");
-    gl.vertexAttribPointer(view_a_position, 2, gl.UNSIGNED_SHORT, false, 0, 0);
+    view_a_color = gl.getAttribLocation(viewProgram, "a_color");
+
+    // xyzrgba
+    gl.vertexAttribPointer(view_a_position, 3, gl.UNSIGNED_SHORT, false, VertexInfo.STRIDE, 0);
     gl.enableVertexAttribArray(view_a_position);
+    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Uint16Array.BYTES_PER_ELEMENT);
+    gl.enableVertexAttribArray(view_a_color);
 
     indexBuffer = gl.createBuffer();
 
-    colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    view_a_color = gl.getAttribLocation(viewProgram, "aVertexColor");
-    gl.enableVertexAttribArray(view_a_color);
-    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
-
-
-
-    gl.useProgram(imageProgram);
-
-    image_u_dimensions = gl.getUniformLocation(imageProgram, 'u_dimensions');
-    image_u_matrix = gl.getUniformLocation(imageProgram, "u_matrix");
-    image_u_resolution = gl.getUniformLocation(imageProgram, "u_resolution");
-    gl.uniform2f(image_u_resolution, viewPortDimensions.width, viewPortDimensions.height);
-
-    texCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-
-    image_a_position = gl.getAttribLocation(imageProgram, "a_position");
-    gl.vertexAttribPointer(image_a_position, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(image_a_position);
+    //gl.useProgram(imageProgram);
+    //
+    //image_u_dimensions = gl.getUniformLocation(imageProgram, 'u_dimensions');
+    //image_u_matrix = gl.getUniformLocation(imageProgram, "u_matrix");
+    //image_u_resolution = gl.getUniformLocation(imageProgram, "u_resolution");
+    //gl.uniform2f(image_u_resolution, viewPortDimensions.width, viewPortDimensions.height);
+    //
+    //texCoordBuffer = gl.createBuffer();
+    //gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    //
+    //image_a_position = gl.getAttribLocation(imageProgram, "a_position");
+    //gl.vertexAttribPointer(image_a_position, 2, gl.FLOAT, false, 0, 0);
+    //gl.enableVertexAttribArray(image_a_position);
 
 
     domElement.width = viewPortDimensions.width;
@@ -2119,16 +2151,23 @@ function render(domElement,
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-    gl.useProgram(viewProgram);
+    //
+    //gl.useProgram(viewProgram);
+    //gl.vertexAttribPointer(view_a_position, 3, gl.UNSIGNED_SHORT, false, VertexInfo.STRIDE, 0);
+    //gl.enableVertexAttribArray(view_a_position);
+    //gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Uint16Array.BYTES_PER_ELEMENT);
+    //gl.enableVertexAttribArray(view_a_color);
   }
+
+
   if (!newElement.parent) {
     var nrOfVertices = newElement.nrOfVertices;
-    if (!vertices || vertices.length !== nrOfVertices * 8) {
-      arraybuff       = new ArrayBuffer(nrOfVertices * (Uint16Array.BYTES_PER_ELEMENT * 8 + Uint8Array.BYTES_PER_ELEMENT * 16));
-      vertices        = new Uint16Array(nrOfVertices * 8);
-      colorsArray     = new Uint8Array(nrOfVertices * 16);
-      indices         = new Uint16Array(nrOfVertices * 6);
+    if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
+      // vertex should be: [x,y,z,r,g,b,a]
+      arraybuff       = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
+      vertices        = new Uint16Array(arraybuff);
+      colorsArray     = new Uint8Array(arraybuff);
+      indices         = new Uint16Array(6 * nrOfVertices * VertexInfo.STRIDE);
     }
 
     vertexPosition = 0;
@@ -2200,56 +2239,28 @@ function render(domElement,
 
   }
   if (!newElement.parent) {
-    // TODO: set image information here :-/
 
-    // render all the views at once...
-   // gl.clear(gl.COLOR_BUFFER_BIT);
-
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     if (!skip) {
-      gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
-      gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
-    } else {
-      gl.bufferData(gl.ARRAY_BUFFER, colorsArray, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     }
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
-    if (!skip) {
-      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-    } else {
-      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-    }
-
-
-
+    gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.STATIC_DRAW);
 
     if (!skip) { // skipIndices
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-    } else {
-     // gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, indices);
     }
+
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
     skip = true;
-    //switchToImageRendering();
-
-    // TODO: render all images at once here...
-
-    //var verticesBuffer = webGLContext.createBuffer();
-    //webGLContext.bindBuffer(webGLContext.ELEMENT_ARRAY_BUFFER, verticesBuffer);
-    //webGLContext.bufferData(webGLContext.ELEMENT_ARRAY_BUFFER, new Uint16Array(verticesArray), webGLContext.STATIC_DRAW);
-    //webGLContext.drawElements(webGLContext.TRIANGLES, verticesArray.length / 2, webGLContext.UNSIGNED_SHORT, 0);
-
-
-
   }
 }
 var skip = false;
 
 module.exports = render;
 
-},{"./Shaders":21,"./renderText":23,"./renderView":24,"./temp-utils":25,"promise":32}],23:[function(require,module,exports){
+},{"./Shaders":21,"./VertexInfo":22,"./renderText":25,"./renderView":26,"./temp-utils":27,"promise":34}],25:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2379,8 +2390,12 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],24:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 'use strict';
+
+var __DEV__ = require('../../__DEV__');
+var VertexInfo = require('./VertexInfo');
+var ensureViewIntegrity = require('./ensureViewIntegrity');
 
 var WebGLColors = {
   black: [0, 0, 0],
@@ -2419,28 +2434,38 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
     }
 
     opacity = opacity * 255;
-    var colorPosition = index * 16;
+    var colorPosition = index * VertexInfo.STRIDE * 4;
+    // 0 - 2 - xyz
+
+    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
     colorsArray[colorPosition + 3] = opacity;
 
-    colorsArray[colorPosition + 4] = backgroundColor[0];
-    colorsArray[colorPosition + 5] = backgroundColor[1];
-    colorsArray[colorPosition + 6] = backgroundColor[2];
-    colorsArray[colorPosition + 7] = opacity;
+    // 7 - 9 - xyz
 
-    colorsArray[colorPosition + 8] = backgroundColor[0];
-    colorsArray[colorPosition + 9] = backgroundColor[1];
-    colorsArray[colorPosition + 10] = backgroundColor[2];
-    colorsArray[colorPosition + 11] = opacity;
+    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT + 4;
+    colorsArray[colorPosition + 0] = backgroundColor[0];
+    colorsArray[colorPosition + 1] = backgroundColor[1];
+    colorsArray[colorPosition + 2] = backgroundColor[2];
+    colorsArray[colorPosition + 3] = opacity;
 
-    colorsArray[colorPosition + 12] = backgroundColor[0];
-    colorsArray[colorPosition + 13] = backgroundColor[1];
-    colorsArray[colorPosition + 14] = backgroundColor[2];
-    colorsArray[colorPosition + 15] = opacity;
-    
+    // 14 - 16 - xyz
 
+    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT + 4;
+    colorsArray[colorPosition + 0] = backgroundColor[0];
+    colorsArray[colorPosition + 1] = backgroundColor[1];
+    colorsArray[colorPosition + 2] = backgroundColor[2];
+    colorsArray[colorPosition + 3] = opacity;
+
+    // 21 - 23 - xyz
+
+    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT + 4;
+    colorsArray[colorPosition + 0] = backgroundColor[0];
+    colorsArray[colorPosition + 1] = backgroundColor[1];
+    colorsArray[colorPosition + 2] = backgroundColor[2];
+    colorsArray[colorPosition + 3] = opacity;
   }
 }
 
@@ -2455,35 +2480,57 @@ function isViewVisible(element) {
     element.style && element.style.border;
 }
 
-var VERTEX_SIZE = 8;
+//var VERTEX_SIZE = 8;
 
 function renderView(verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
   if (isViewVisible(element)) {
     if (element !== oldElement) {
       var elementLayout = element.layout;
-      var left = elementLayout.left;
-      var right = elementLayout.right;
-      var top = elementLayout.top;
+      var left   = elementLayout.left;
+      var right  = elementLayout.right;
+      var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
 
-      var vertexPos = (index * VERTEX_SIZE);
+      var vertexPos = index * VertexInfo.STRIDE * 4 / Uint16Array.BYTES_PER_ELEMENT;
+      //console.info('position:', vertexPos);
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = top;
+      verticesArray[vertexPos + 2] = 0;
 
-      verticesArray[vertexPos + 2] = right;
-      verticesArray[vertexPos + 3] = top;
 
-      verticesArray[vertexPos + 4] = left;
-      verticesArray[vertexPos + 5] = bottom;
 
-      verticesArray[vertexPos + 6] = right;
-      verticesArray[vertexPos + 7] = bottom;
+      // color rgba 3 - 6
+      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
 
+      //012 3456 7
+
+      verticesArray[vertexPos + 0] = right;
+      verticesArray[vertexPos + 1] = top;
+      verticesArray[vertexPos + 2] = 0;
+
+      // color rgba 10 - 13
+      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+
+      verticesArray[vertexPos + 0] = left;
+      verticesArray[vertexPos + 1] = bottom;
+      verticesArray[vertexPos + 2] = 0;
+
+      // color rgba 17 - 20
+      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+
+      verticesArray[vertexPos + 0] = right;
+      verticesArray[vertexPos + 1] = bottom;
+      verticesArray[vertexPos + 2] = 0;
+
+
+      if (__DEV__) {
+        ensureViewIntegrity(element, index, verticesArray, colorsArray)
+      }
       
-      vertexPos /= 2;
+      vertexPos = index * 4;
       var indexPos = index * 6;
       
       indexArray[indexPos + 0] = vertexPos + 0;
@@ -2492,6 +2539,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       indexArray[indexPos + 3] = vertexPos + 2;
       indexArray[indexPos + 4] = vertexPos + 1;
       indexArray[indexPos + 5] = vertexPos + 3;
+
     }
     return 1;
   }
@@ -2500,7 +2548,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
 
 module.exports = renderView;
 
-},{}],25:[function(require,module,exports){
+},{"../../__DEV__":4,"./VertexInfo":22,"./ensureViewIntegrity":23}],27:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2812,7 +2860,7 @@ module.exports = renderView;
 }());
 
 
-},{}],26:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../__DEV__');
@@ -2857,7 +2905,7 @@ function deepSeal(_obj) {
 
 module.exports = deepSeal;
 
-},{"../__DEV__":4}],27:[function(require,module,exports){
+},{"../__DEV__":4}],29:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -2871,7 +2919,7 @@ function merge(parent, child) {
 
 module.exports = merge;
 
-},{}],28:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 var keys = Object.keys;
@@ -2888,7 +2936,7 @@ function shallowClone(node) {
 
 module.exports = shallowClone;
 
-},{}],29:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -2956,7 +3004,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":30}],30:[function(require,module,exports){
+},{"events":32}],32:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3259,7 +3307,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],31:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3351,12 +3399,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":37}],33:[function(require,module,exports){
+},{"./lib":39}],35:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3542,7 +3590,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":41}],34:[function(require,module,exports){
+},{"asap/raw":43}],36:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3557,7 +3605,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":33}],35:[function(require,module,exports){
+},{"./core.js":35}],37:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3666,7 +3714,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":33}],36:[function(require,module,exports){
+},{"./core.js":35}],38:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3684,7 +3732,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":33}],37:[function(require,module,exports){
+},{"./core.js":35}],39:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3693,7 +3741,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":33,"./done.js":34,"./es6-extensions.js":35,"./finally.js":36,"./node-extensions.js":38}],38:[function(require,module,exports){
+},{"./core.js":35,"./done.js":36,"./es6-extensions.js":37,"./finally.js":38,"./node-extensions.js":40}],40:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3766,7 +3814,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":33,"asap":39}],39:[function(require,module,exports){
+},{"./core.js":35,"asap":41}],41:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3834,7 +3882,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":40}],40:[function(require,module,exports){
+},{"./raw":42}],42:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -4058,7 +4106,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],41:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4163,4 +4211,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":31,"domain":29}]},{},[2]);
+},{"_process":33,"domain":31}]},{},[2]);

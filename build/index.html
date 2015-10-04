@@ -30,8 +30,8 @@
     <script id="2d-vertex-shader" type="x-shader/x-vertex">
     precision lowp float;
 
-    attribute vec2 a_position;
-    attribute vec4 aVertexColor;
+    attribute vec3 a_position;
+    attribute vec4 a_color;
 
     uniform vec2 u_resolution;
 
@@ -39,7 +39,7 @@
 
     void main() {
        // convert the rectangle from pixels to 0.0 to 1.0
-       vec2 zeroToOne = a_position * u_resolution;
+       vec2 zeroToOne = vec2(a_position[0], a_position[1]) * u_resolution;
 
        // convert from 0->1 to 0->2
        vec2 zeroToTwo = zeroToOne * 2.0;
@@ -49,7 +49,7 @@
 
        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
 
-       vColor = aVertexColor;
+       vColor = a_color;
     }
     </script>
     <script id="2d-vertex-shader2" type="x-shader/x-vertex">
