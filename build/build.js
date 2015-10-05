@@ -590,13 +590,15 @@ function Component(type, props, style, children) {
     isAnimating: false,
     isChildAnimating: 0,
     newRef: null,
-    nrOfVertices: 0
+    nrOfVertices: 0,
+    depth: 0
   };
   if (__DEV__) {
     seal(component);
     seal(component.layout);
     seal(component.style);
   }
+  var depth = 0;
   for (var i = 0, l = children.length; i < l; i++) {
     var child = children[i];
     if (child.type) {
@@ -605,8 +607,13 @@ function Component(type, props, style, children) {
         component.isChildAnimating++;
       }
       component.nrOfVertices += 1 + child.nrOfVertices;
+      if (child.depth > depth) {
+        depth = child.depth;
+      }
     }
+
   }
+  component.depth = 1 + depth;
 
 
 
@@ -1853,6 +1860,8 @@ module.exports = Shaders;
  *
  * A vertex contains the following data:
  * [x,y,z,r,g,b,a]
+ * [2, 2, 2, 1, 1, 1]
+ * - TODO: add additional bytes
  * - XYZ for positioning
  * - RGBA for colors and alpha
  *
@@ -2077,17 +2086,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl =  domElement.getContext('webgl', {
-      alpha: false,
-      depth: false,
-      antialias: false
-    });
+    gl =  domElement.getContext('webgl');
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl', {
-        alpha: false,
-        depth: false,
-        antialias: false
-      });
+      gl = domElement.getContext('experimental-webgl');
       }
 
       vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2148,6 +2149,7 @@ function render(domElement,
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
     gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2491,6 +2493,9 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
 
+      var zIndex = 1 / element.depth;
+      //console.info(zIndex);
+
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
 
@@ -2498,9 +2503,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       //console.info('position:', vertexPos);
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = top;
-      verticesArray[vertexPos + 2] = 0;
-
-
+      verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 3 - 6
       vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
@@ -2509,21 +2512,21 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
 
       verticesArray[vertexPos + 0] = right;
       verticesArray[vertexPos + 1] = top;
-      verticesArray[vertexPos + 2] = 0;
+      verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 10 - 13
       vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
 
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = bottom;
-      verticesArray[vertexPos + 2] = 0;
+      verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 17 - 20
       vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
 
       verticesArray[vertexPos + 0] = right;
       verticesArray[vertexPos + 1] = bottom;
-      verticesArray[vertexPos + 2] = 0;
+      verticesArray[vertexPos + 2] = zIndex;
 
 
       if (__DEV__) {
