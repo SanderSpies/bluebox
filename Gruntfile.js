@@ -30,13 +30,13 @@ module.exports = function(grunt) {
             //'lib/layout/layoutNode-tests/padding-test.js',
             'lib/layout/layoutNode-tests/positionAbsolute-test.js',
             'lib/layout/layoutNode-tests/combinations-test.js',
-            ////'lib/layout/layoutNode-tests/randomLayout-test.js'
+            'lib/layout/layoutNode-tests/updateLayout-test.js',
           ],
           preprocessors: {
             'lib/layout/layoutNode-tests/*-test.js': ['browserify']
           },
           browsers: ['Chrome'],
-          singleRun: true
+        //  singleRun: true
         }
       }
     },

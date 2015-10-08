@@ -23,7 +23,7 @@
     "phantom": "^0.7.2"
   },
   "scripts": {
-    "test": "./node_modules/.bin/grunt test",
+    "test": "./node_modules/.bin/grunt jest",
     "build": "./node_modules/.bin/browserify -t flow-typestrip examples/testing/test.js -o build/build.js"
   }
 }

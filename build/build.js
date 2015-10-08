@@ -220,7 +220,7 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = false; //process.env.NODE_ENV !== 'production';
+module.exports = true; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -313,7 +313,6 @@ function dereferenceObjects(node) {
         child.oldRef = null;
       }
       child.oldParent = null;
-      child.children = [];
     }
   }
   node.oldRef = null;
@@ -407,15 +406,31 @@ function onAnimate() {
 
   Bluebox.relayout(newRootNode, recalculationQueue);
 
+  //compareOldAndNew(rootNode, newRootNode);
+
   // ensures no memory leaks
   dereferenceObjects(rootNode);
 
   rootNode = newRootNode;
 
+
   recalculationQueue = [];
 
   if (__DEV__) {
     ensureTreeCorrectness(rootNode);
+
+  }
+}
+
+function compareOldAndNew(oldC, newC) {
+  if (oldC.children && oldC.children.length !== newC.children.length) {
+    console.warn('Something got lost here...');
+    debugger;
+  }
+  if (oldC.children) {
+    for (var i = 0, l = oldC.children.length; i < l; i++) {
+      compareOldAndNew(oldC.children[i], newC.children[i]);
+    }
   }
 }
 
@@ -476,7 +491,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":30,"./_easings":6}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":29,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -538,7 +553,6 @@ var UNDEFINED = require('../UNDEFINED');
 var __DEV__ = require('../__DEV__');
 
 var seal = Object.seal;
-var deepSeal = require('../utils/deepSeal');
 
 function Component(type, props, style, children) {
   var component = {
@@ -622,7 +636,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../utils/deepSeal":28,"../utils/merge":29}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../utils/merge":28}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -1222,10 +1236,14 @@ var Bluebox = {
         }
 
       }
-      window.ix = 0;
+      //window.ix = 0;
       LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false, false);
-
+     // console.info(changedLayoutNode);
     }
+    //console.info(componentTree.children[2].children[]);
+
+    //console.info(component)
+    //componentTree = LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
 
     render(domElement, componentTree, oldComponentTree, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
 
@@ -1434,16 +1452,8 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
 // main bottleneck - takes up most cpu and allocations
 //                   ideally we skip it when possible
 //                   - add hasParentDimensionsChanged argument
-window.ix = 0;
-function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged) {
-  //if (node === oldNode) {
-  //  console.info(ix++, 'times called heavy function too much...');
-  //}
 
-//  if (node === oldNode && node.parent) {
-  // console.info('skip:', node.style, node.parent.style)
-  // return oldNode;
-//  }
+function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, hasParentLocationChanged) {
 
   var parent = node.parent;
   if (oldNode) {
@@ -1496,7 +1506,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
 
       childStyle = child.style;
       childLayout = child.layout;
-      layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute);
+      layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute, hasParentLocationChanged);
 
       var skipPrevious = false;
 
@@ -1640,7 +1650,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       //}
       alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
       if (isPositionAbsolute) {
-        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute, hasParentDimensionsChanged);
+        //hasParentLocationChanged = hasParentLocationChanged || node.style.left !== oldNode.style.left || node.style.top !== oldNode.style.top;
+        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute, hasParentDimensionsChanged, hasParentLocationChanged);
       }
       else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
         correctChildren(child, oldChild, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
@@ -1664,8 +1675,10 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   }
 
   if (node === oldNode && !hasParentDimensionsChanged) {
+    // console.info('AAAA');
     if (hasParentLocationChanged) {
       // TODO: correctChildren
+      console.info('TODO: correct children please!');
     }
     return node;
   }
@@ -1703,7 +1716,7 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
 
   if (nodeStyle.position !== ABSOLUTE) {
-    processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged);
+    processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged, hasParentLocationChanged);
   }
 
   return node;
@@ -1715,8 +1728,8 @@ function layoutAbsoluteNode(node, oldNode, previousSibling, mainAxis, crossAxis)
 }
 
 module.exports = {
-  layoutRelativeNode: layoutRelativeNode,
-  layoutAbsoluteNode: layoutAbsoluteNode
+  layoutRelativeNode: layoutRelativeNode//,
+  //layoutAbsoluteNode: layoutAbsoluteNode
 };
 
 },{"../UNDEFINED":3,"../__DEV__":4,"./AXIS":17}],19:[function(require,module,exports){
@@ -1859,8 +1872,8 @@ module.exports = Shaders;
  * Helper for the Vertices.
  *
  * A vertex contains the following data:
- * [x,y,z,r,g,b,a]
- * [2, 2, 2, 1, 1, 1]
+ * [x,y,z,r,g,b,a, empty, empty]
+ * [2, 2, 2, 1, 1, 1, 1, -, -]
  * - TODO: add additional bytes
  * - XYZ for positioning
  * - RGBA for colors and alpha
@@ -1869,7 +1882,7 @@ module.exports = Shaders;
  */
 var VertexInfo = {
 
-  STRIDE: Uint16Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4
+  STRIDE: Int16Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4
 
 };
 
@@ -2026,7 +2039,6 @@ var isViewRendering = false;
 var isImageRendering = false;
 var isTextRendering = false;
 
-
 function switchToImageRendering() {
   if (!isImageRendering) {
     isImageRendering = true;
@@ -2086,15 +2098,15 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl =  domElement.getContext('webgl');
+    gl = domElement.getContext('webgl');
     if (gl == null) {
       gl = domElement.getContext('experimental-webgl');
-      }
+    }
 
-      vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
-      vertexShader2 = createShaderFromScriptElement(gl, "2d-vertex-shader2");
-      fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
-      imageShader = createShaderFromScriptElement(gl, "2d-image-shader");
+    vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
+    vertexShader2 = createShaderFromScriptElement(gl, "2d-vertex-shader2");
+    fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
+    imageShader = createShaderFromScriptElement(gl, "2d-image-shader");
 
     viewProgram = createProgram(gl, [vertexShader, fragmentShader]);
     imageProgram = createProgram(gl, [vertexShader2, imageShader]);
@@ -2108,7 +2120,7 @@ function render(domElement,
     gl.useProgram(viewProgram);
 
     view_u_resolution = gl.getUniformLocation(viewProgram, "u_resolution");
-    view_u_dimensions  = gl.getUniformLocation(viewProgram, 'u_dimensions');
+    view_u_dimensions = gl.getUniformLocation(viewProgram, 'u_dimensions');
 
     gl.uniform4f(view_u_dimensions, parentLeft, parentTop, parentLeft + parentWidth, parentTop + parentHeight);
     gl.uniform2f(view_u_resolution, 1 / viewPortDimensions.width, 1 / viewPortDimensions.height);
@@ -2120,9 +2132,9 @@ function render(domElement,
     view_a_color = gl.getAttribLocation(viewProgram, "a_color");
 
     // xyzrgba
-    gl.vertexAttribPointer(view_a_position, 3, gl.UNSIGNED_SHORT, false, VertexInfo.STRIDE, 0);
+    gl.vertexAttribPointer(view_a_position, 3, gl.SHORT, false, VertexInfo.STRIDE, 0);
     gl.enableVertexAttribArray(view_a_position);
-    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Uint16Array.BYTES_PER_ELEMENT);
+    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Int16Array.BYTES_PER_ELEMENT);
     gl.enableVertexAttribArray(view_a_color);
 
     indexBuffer = gl.createBuffer();
@@ -2140,7 +2152,6 @@ function render(domElement,
     //image_a_position = gl.getAttribLocation(imageProgram, "a_position");
     //gl.vertexAttribPointer(image_a_position, 2, gl.FLOAT, false, 0, 0);
     //gl.enableVertexAttribArray(image_a_position);
-
 
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
@@ -2161,15 +2172,14 @@ function render(domElement,
     //gl.enableVertexAttribArray(view_a_color);
   }
 
-
   if (!newElement.parent) {
     var nrOfVertices = newElement.nrOfVertices;
     if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
       // vertex should be: [x,y,z,r,g,b,a]
-      arraybuff       = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
-      vertices        = new Uint16Array(arraybuff);
-      colorsArray     = new Uint8Array(arraybuff);
-      indices         = new Uint16Array(6 * nrOfVertices * VertexInfo.STRIDE);
+      arraybuff = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
+      vertices = new Int16Array(arraybuff);
+      colorsArray = new Uint8Array(arraybuff);
+      indices = new Uint16Array(6 * nrOfVertices * VertexInfo.STRIDE);
     }
 
     vertexPosition = 0;
@@ -2184,6 +2194,7 @@ function render(domElement,
     return;
   }
 
+  //console.info(newElement.type);
   if (newElement.type === 'view') {
 
     vertexPosition += renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
@@ -2216,7 +2227,7 @@ function render(domElement,
           parentHeight = newElement.layout.height;
           parentTop = newElement.layout.top;
         }
-
+        console.info(vertexPosition);
         render(domElement, child, oldChildren ? oldChildren[i] : null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
           inheritedZoom,
           inheritedFontSize,
@@ -2262,7 +2273,7 @@ var skip = false;
 
 module.exports = render;
 
-},{"./Shaders":21,"./VertexInfo":22,"./renderText":25,"./renderView":26,"./temp-utils":27,"promise":34}],25:[function(require,module,exports){
+},{"./Shaders":21,"./VertexInfo":22,"./renderText":25,"./renderView":26,"./temp-utils":27,"promise":33}],25:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2439,7 +2450,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
     var colorPosition = index * VertexInfo.STRIDE * 4;
     // 0 - 2 - xyz
 
-    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2447,7 +2458,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 7 - 9 - xyz
 
-    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2455,7 +2466,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 14 - 16 - xyz
 
-    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2463,7 +2474,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 21 - 23 - xyz
 
-    colorPosition += 3 * Uint16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2494,12 +2505,11 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var bottom = elementLayout.bottom;
 
       var zIndex = 1 / element.depth;
-      //console.info(zIndex);
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
 
-      var vertexPos = index * VertexInfo.STRIDE * 4 / Uint16Array.BYTES_PER_ELEMENT;
+      var vertexPos = index * VertexInfo.STRIDE * 4 / Int16Array.BYTES_PER_ELEMENT;
       //console.info('position:', vertexPos);
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = top;
@@ -2544,9 +2554,8 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       indexArray[indexPos + 5] = vertexPos + 3;
 
     }
-    return 1;
   }
-  return 0;
+  return 1;
 }
 
 module.exports = renderView;
@@ -2866,51 +2875,6 @@ module.exports = renderView;
 },{}],28:[function(require,module,exports){
 'use strict';
 
-var __DEV__ = require('../__DEV__');
-
-var keys = Object.keys;
-var isArray = Array.isArray;
-var seal = Object.seal;
-
-function deepSealArray(_array) {
-  var array = _array;
-  seal(array);
-  for (var i = 0, l = array.length; i < l; i++) {
-    var item = array[i];
-    if (isArray(item)){
-      deepSealArray(item);
-    }
-    else if (item && typeof item === 'object') {
-      deepSeal(item);
-    }
-  }
-}
-
-function deepSeal(_obj) {
-  if (!__DEV__) {
-    console.warn('deepSeal should only be used at development time');
-  }
-  var obj = _obj;
-  seal(obj);
-  var parameters = keys(obj);
-  for (var i = 0, l = parameters.length; i < l; i++) {
-    var parameter = parameters[i];
-    var value = obj[parameter]
-    if (isArray(value)) {
-      deepSealArray(value);
-    }
-    else if (value && typeof value === 'object') {
-      deepSeal(value);
-    }
-  }
-}
-
-
-module.exports = deepSeal;
-
-},{"../__DEV__":4}],29:[function(require,module,exports){
-'use strict';
-
 function merge(parent, child) {
   var childKeys = Object.keys(child);
   for (var i = 0, l = childKeys.length; i < l; i++) {
@@ -2922,7 +2886,7 @@ function merge(parent, child) {
 
 module.exports = merge;
 
-},{}],30:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 
 var keys = Object.keys;
@@ -2939,7 +2903,7 @@ function shallowClone(node) {
 
 module.exports = shallowClone;
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -3007,7 +2971,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":32}],32:[function(require,module,exports){
+},{"events":31}],31:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3310,7 +3274,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],33:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3402,12 +3366,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":39}],35:[function(require,module,exports){
+},{"./lib":38}],34:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3593,7 +3557,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":43}],36:[function(require,module,exports){
+},{"asap/raw":42}],35:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3608,7 +3572,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":35}],37:[function(require,module,exports){
+},{"./core.js":34}],36:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3717,7 +3681,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":35}],38:[function(require,module,exports){
+},{"./core.js":34}],37:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3735,7 +3699,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":35}],39:[function(require,module,exports){
+},{"./core.js":34}],38:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3744,7 +3708,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":35,"./done.js":36,"./es6-extensions.js":37,"./finally.js":38,"./node-extensions.js":40}],40:[function(require,module,exports){
+},{"./core.js":34,"./done.js":35,"./es6-extensions.js":36,"./finally.js":37,"./node-extensions.js":39}],39:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3817,7 +3781,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":35,"asap":41}],41:[function(require,module,exports){
+},{"./core.js":34,"asap":40}],40:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3885,7 +3849,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":42}],42:[function(require,module,exports){
+},{"./raw":41}],41:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -4109,7 +4073,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],43:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4214,4 +4178,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":33,"domain":31}]},{},[2]);
+},{"_process":32,"domain":30}]},{},[2]);
