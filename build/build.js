@@ -220,7 +220,7 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = true; //process.env.NODE_ENV !== 'production';
+module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -2227,7 +2227,6 @@ function render(domElement,
           parentHeight = newElement.layout.height;
           parentTop = newElement.layout.top;
         }
-        console.info(vertexPosition);
         render(domElement, child, oldChildren ? oldChildren[i] : null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
           inheritedZoom,
           inheritedFontSize,
