@@ -1882,7 +1882,7 @@ module.exports = Shaders;
  */
 var VertexInfo = {
 
-  STRIDE: Int16Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4
+  STRIDE: Int16Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4 + Int8Array.BYTES_PER_ELEMENT * 2
 
 };
 
@@ -2159,7 +2159,7 @@ function render(domElement,
     gl.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+        gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
     gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2457,7 +2457,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 7 - 9 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4 + 2;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2465,7 +2465,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 14 - 16 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4 + 2;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2473,7 +2473,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 21 - 23 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4 + 2;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2503,7 +2503,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
 
-      var zIndex = 1 / element.depth;
+      var zIndex = 1; // / element.depth;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
@@ -2515,7 +2515,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 3 - 6
-      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3 + 1;
 
       //012 3456 7
 
@@ -2524,14 +2524,14 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 10 - 13
-      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3 + 1;
 
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = bottom;
       verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 17 - 20
-      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3 + 1;
 
       verticesArray[vertexPos + 0] = right;
       verticesArray[vertexPos + 1] = bottom;
