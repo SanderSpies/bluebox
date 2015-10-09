@@ -486,7 +486,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":29,"./_easings":6}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":30,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -599,7 +599,7 @@ function Component(type, props, style, children) {
     isAnimating: false,
     isChildAnimating: 0,
     newRef: null,
-    nrOfVertices: 0,
+    nrOfVertices: 1,
     depth: 0
   };
   if (__DEV__) {
@@ -615,14 +615,14 @@ function Component(type, props, style, children) {
       if (!component.isChildAnimating && (child.isAnimating || child.isChildAnimating)) {
         component.isChildAnimating++;
       }
-      component.nrOfVertices += 1 + child.nrOfVertices;
+      component.nrOfVertices += child.nrOfVertices;
       if (child.depth > depth) {
         depth = child.depth;
       }
     }
 
   }
-  component.depth = 0.1 + depth;
+  component.depth = 1 + depth;
 
 
 
@@ -631,7 +631,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../utils/merge":28}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../utils/merge":29}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -1256,7 +1256,7 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
-},{"./components/Image":8,"./components/Text":9,"./components/View":10,"./diff/diff":11,"./diff/ensureTreeCorrectness":12,"./layout/AXIS":17,"./layout/LayoutEngine":18,"./layout/requestStyleRecalculation":19,"./renderers/DOM/ViewPortHelper":20,"./renderers/GL/render":24}],17:[function(require,module,exports){
+},{"./components/Image":8,"./components/Text":9,"./components/View":10,"./diff/diff":11,"./diff/ensureTreeCorrectness":12,"./layout/AXIS":17,"./layout/LayoutEngine":18,"./layout/requestStyleRecalculation":19,"./renderers/DOM/ViewPortHelper":20,"./renderers/GL/render":25}],17:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1900,6 +1900,15 @@ module.exports = ensureViewIntegrity;
 },{"./VertexInfo":22}],24:[function(require,module,exports){
 'use strict';
 
+function isViewVisible(element) {
+  return element.style && element.style.backgroundColor ||
+    element.style && element.style.border;
+}
+
+module.exports = isViewVisible;
+},{}],25:[function(require,module,exports){
+'use strict';
+
 var gl;
 require('./temp-utils');
 var renderView = require('./renderView');
@@ -1907,6 +1916,7 @@ var renderText = require('./renderText');
 var Promise = require('promise');
 var Shaders = require('./Shaders');
 var VertexInfo = require('./VertexInfo');
+var isViewVisible = require('./isViewVisible');
 
 function rerender(domElement,
   newElement,
@@ -2077,7 +2087,25 @@ var indexBuffer;
 var colorsArray;
 var arraybuff;
 var vertexPosition = 0;
-var actuallyUsedIndices = 0;
+var actuallyUsedIndices = 1;
+var adjustedIndices = -1;
+
+function getNoVisibleDOMNodes(element) {
+  var nrOfVisibleDOMNodes = 0;
+
+  if (isViewVisible(element)) {
+    nrOfVisibleDOMNodes += 1;
+  }
+
+  if (element.children) {
+    for (var i = 0, l = element.children.length; i < l; i++) {
+      nrOfVisibleDOMNodes += getNoVisibleDOMNodes(element.children[i]);
+    }
+  }
+
+  return nrOfVisibleDOMNodes;
+}
+
 function render(domElement,
   newElement,
   oldElement,
@@ -2169,17 +2197,19 @@ function render(domElement,
   }
 
   if (!newElement.parent) {
-    var nrOfVertices = newElement.nrOfVertices;
+    var nrOfVertices = getNoVisibleDOMNodes(newElement);
+
     if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
       // vertex should be: [x,y,z,r,g,b,a]
       arraybuff = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
       vertices = new Int16Array(arraybuff);
       colorsArray = new Uint8Array(arraybuff);
       indices = new Uint16Array(6 * nrOfVertices);
+      //console.info('arranged size:', 6 * nrOfVertices);
     }
 
     vertexPosition = 0;
-    actuallyUsedIndices = 0;
+    actuallyUsedIndices = 1;
   }
 
   if (typeof newElement === 'string') {
@@ -2194,10 +2224,8 @@ function render(domElement,
   //console.info(newElement.type);
   if (newElement.type === 'view') {
 
-    if (renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip)) {
-      actuallyUsedIndices++;
-    }
-    vertexPosition++;
+    vertexPosition += renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
+
 
     var style = newElement.style;
     if ('opacity' in style) {
@@ -2253,23 +2281,24 @@ function render(domElement,
   if (!newElement.parent) {
     //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+
+
     if (!skip) {
       gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     }
-    //arraybuff = arraybuff.slice(0, actuallyUsedIndices * VertexInfo.STRIDE);
+
     if (!skip) {
       gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.DYNAMIC_DRAW);
     } else {
-      gl.bufferSubData(gl.ARRAY_BUFFER, arraybuff.length, arraybuff);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, arraybuff);
     }
 
-
-    if (!skip) { // skipIndices
+    if (!skip) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      indices = indices.subarray(0, actuallyUsedIndices * 6);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     }
 
+    
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
     skip = true;
@@ -2279,7 +2308,7 @@ var skip = false;
 
 module.exports = render;
 
-},{"./Shaders":21,"./VertexInfo":22,"./renderText":25,"./renderView":26,"./temp-utils":27,"promise":33}],25:[function(require,module,exports){
+},{"./Shaders":21,"./VertexInfo":22,"./isViewVisible":24,"./renderText":26,"./renderView":27,"./temp-utils":28,"promise":34}],26:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2409,12 +2438,13 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../../__DEV__');
 var VertexInfo = require('./VertexInfo');
 var ensureViewIntegrity = require('./ensureViewIntegrity');
+var isViewVisible = require('./isViewVisible');
 
 var WebGLColors = {
   black: [0, 0, 0],
@@ -2494,10 +2524,7 @@ function setBorder(element) {
   }
 }
 
-function isViewVisible(element) {
-  return element.style && element.style.backgroundColor ||
-    element.style && element.style.border;
-}
+
 
 //var VERTEX_SIZE = 8;
 
@@ -2510,9 +2537,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
 
-      var zIndex = 1 - element.depth;
-
-      //console.info(zIndex);
+      var zIndex = 1;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
@@ -2560,16 +2585,17 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       indexArray[indexPos + 3] = vertexPos + 2;
       indexArray[indexPos + 4] = vertexPos + 1;
       indexArray[indexPos + 5] = vertexPos + 3;
-
-      return true;
+      //console.info('vertex:', vertexPos);
+      //console.info('setting indexPos:', indexPos);
     }
+    return 1;
   }
-  return false;
+  return 0;
 }
 
 module.exports = renderView;
 
-},{"../../__DEV__":4,"./VertexInfo":22,"./ensureViewIntegrity":23}],27:[function(require,module,exports){
+},{"../../__DEV__":4,"./VertexInfo":22,"./ensureViewIntegrity":23,"./isViewVisible":24}],28:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -2881,7 +2907,7 @@ module.exports = renderView;
 }());
 
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 
 function merge(parent, child) {
@@ -2895,7 +2921,7 @@ function merge(parent, child) {
 
 module.exports = merge;
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 var keys = Object.keys;
@@ -2912,7 +2938,7 @@ function shallowClone(node) {
 
 module.exports = shallowClone;
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -2980,7 +3006,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":31}],31:[function(require,module,exports){
+},{"events":32}],32:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3283,7 +3309,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3375,12 +3401,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":38}],34:[function(require,module,exports){
+},{"./lib":39}],35:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3566,7 +3592,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":42}],35:[function(require,module,exports){
+},{"asap/raw":43}],36:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3581,7 +3607,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":34}],36:[function(require,module,exports){
+},{"./core.js":35}],37:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3690,7 +3716,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":34}],37:[function(require,module,exports){
+},{"./core.js":35}],38:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3708,7 +3734,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":34}],38:[function(require,module,exports){
+},{"./core.js":35}],39:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3717,7 +3743,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":34,"./done.js":35,"./es6-extensions.js":36,"./finally.js":37,"./node-extensions.js":39}],39:[function(require,module,exports){
+},{"./core.js":35,"./done.js":36,"./es6-extensions.js":37,"./finally.js":38,"./node-extensions.js":40}],40:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3790,7 +3816,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":34,"asap":40}],40:[function(require,module,exports){
+},{"./core.js":35,"asap":41}],41:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3858,7 +3884,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":41}],41:[function(require,module,exports){
+},{"./raw":42}],42:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -4082,7 +4108,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4187,4 +4213,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":32,"domain":30}]},{},[2]);
+},{"_process":33,"domain":31}]},{},[2]);
