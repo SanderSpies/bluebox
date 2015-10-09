@@ -2077,6 +2077,7 @@ var indexBuffer;
 var colorsArray;
 var arraybuff;
 var vertexPosition = 0;
+var actuallyUsedIndices = 0;
 function render(domElement,
   newElement,
   oldElement,
@@ -2174,10 +2175,11 @@ function render(domElement,
       arraybuff = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
       vertices = new Int16Array(arraybuff);
       colorsArray = new Uint8Array(arraybuff);
-      indices = new Uint16Array(6 * nrOfVertices * VertexInfo.STRIDE);
+      indices = new Uint16Array(6 * nrOfVertices);
     }
 
     vertexPosition = 0;
+    actuallyUsedIndices = 0;
   }
 
   if (typeof newElement === 'string') {
@@ -2192,7 +2194,10 @@ function render(domElement,
   //console.info(newElement.type);
   if (newElement.type === 'view') {
 
-    vertexPosition += renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
+    if (renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip)) {
+      actuallyUsedIndices++;
+    }
+    vertexPosition++;
 
     var style = newElement.style;
     if ('opacity' in style) {
@@ -2251,15 +2256,17 @@ function render(domElement,
     if (!skip) {
       gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     }
-
+    //arraybuff = arraybuff.slice(0, actuallyUsedIndices * VertexInfo.STRIDE);
     if (!skip) {
       gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.DYNAMIC_DRAW);
     } else {
       gl.bufferSubData(gl.ARRAY_BUFFER, arraybuff.length, arraybuff);
     }
 
+
     if (!skip) { // skipIndices
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+      indices = indices.subarray(0, actuallyUsedIndices * 6);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     }
 
@@ -2554,9 +2561,10 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       indexArray[indexPos + 4] = vertexPos + 1;
       indexArray[indexPos + 5] = vertexPos + 3;
 
+      return true;
     }
   }
-  return 1;
+  return false;
 }
 
 module.exports = renderView;
