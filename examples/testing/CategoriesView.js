@@ -104,17 +104,12 @@ var sharedImageStyle = {width: 100, height: 100};
 //return;
 
 function Transition(start, end, opts, node) {
-  //if (node.style.position === 'absolute') {
-    Animator.registerAbsoluteTransition(start, end, opts, node);
-  //} else {
-  //  //Animator.registerRelativeTransition(start, end, opts, node);
-  //}
+  Animator.registerAbsoluteTransition(start, end, opts, node);
   node.isAnimating = true;
   return node;
 }
 
 setTimeout(Animator._startAnimating, 300);
-
 
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({}, {

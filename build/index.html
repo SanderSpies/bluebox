@@ -14,10 +14,6 @@
             font-weight: 100;
         }
 
-        #canvas {
-            width: 100%;
-            height: 100%;
-        }
     </style>
     <script type="text/javascript" src="webgl-debug.js"></script>
 </head>
@@ -47,7 +43,7 @@
        // convert from 0->2 to -1->+1 (clipspace)
        vec2 clipSpace = zeroToTwo - 1.0;
 
-       gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+       gl_Position = vec4(clipSpace * vec2(1, -1), a_position[2], 1);
 
        vColor = a_color;
     }
@@ -78,10 +74,10 @@
         uniform vec4 u_dimensions;
 
         void main() {
-            float parentTop = u_dimensions[1] * -1.0;
-            float parentHeight = u_dimensions[3];
-            float parentLeft = u_dimensions[0];
-            float parentWidth = u_dimensions[2];
+//            float parentTop = u_dimensions[1] * -1.0;
+//            float parentHeight = u_dimensions[3];
+//            float parentLeft = u_dimensions[0];
+//            float parentWidth = u_dimensions[2];
             // TODO: fix clipping...
 //            if (gl_FragCoord.x < parentWidth && gl_FragCoord.x > parentLeft &&
 //                gl_FragCoord.y < parentHeight && gl_FragCoord.y > parentTop) {

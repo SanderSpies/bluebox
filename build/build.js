@@ -105,17 +105,12 @@ var sharedImageStyle = {width: 100, height: 100};
 //return;
 
 function Transition(start, end, opts, node) {
-  //if (node.style.position === 'absolute') {
-    Animator.registerAbsoluteTransition(start, end, opts, node);
-  //} else {
-  //  //Animator.registerRelativeTransition(start, end, opts, node);
-  //}
+  Animator.registerAbsoluteTransition(start, end, opts, node);
   node.isAnimating = true;
   return node;
 }
 
 setTimeout(Animator._startAnimating, 300);
-
 
 module.exports = View({}, {backgroundColor: 'red'}, [
   View({}, {
@@ -627,7 +622,7 @@ function Component(type, props, style, children) {
     }
 
   }
-  component.depth = 1 + depth;
+  component.depth = 0.1 + depth;
 
 
 
@@ -2156,10 +2151,10 @@ function render(domElement,
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
 
-    gl.viewport(0, 0, viewPortDimensions.width, viewPortDimensions.height);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-        gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
     gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2251,12 +2246,17 @@ function render(domElement,
 
   }
   if (!newElement.parent) {
+    //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     if (!skip) {
       gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
     }
 
-    gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.STATIC_DRAW);
+    if (!skip) {
+      gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.DYNAMIC_DRAW);
+    } else {
+      gl.bufferSubData(gl.ARRAY_BUFFER, arraybuff.length, arraybuff);
+    }
 
     if (!skip) { // skipIndices
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -2503,7 +2503,9 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
 
-      var zIndex = 1; // / element.depth;
+      var zIndex = 1 - element.depth;
+
+      //console.info(zIndex);
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
