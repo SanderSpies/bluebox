@@ -1903,6 +1903,14 @@ module.exports = ensureViewIntegrity;
 function isViewVisible(element) {
   return element.style && element.style.backgroundColor ||
     element.style && element.style.border;
+
+//) &&
+//    (!element.parent || element.parent.style.overflow !== 'hidden' ||
+//    ((element.layout.left > element.parent.layout.left && element.layout.left < element.parent.layout.right) ||
+//    (element.layout.right > element.parent.layout.left && element.layout.right < element.parent.layout.right) ||
+//    (element.layout.top > element.parent.layout.top && element.layout.top < element.parent.layout.bottom) ||
+//    (element.layout.bottom > element.parent.layout.top && element.layout.bottom < element.parent.layout.bottom)
+//    ));
 }
 
 module.exports = isViewVisible;
@@ -2183,8 +2191,8 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
-    gl.depthFunc(gl.LEQUAL);
+    gl.disable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    //gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2298,7 +2306,7 @@ function render(domElement,
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     }
 
-    
+
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
     skip = true;
@@ -2537,7 +2545,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
 
-      var zIndex = 1;
+      var zIndex = element.depth;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
