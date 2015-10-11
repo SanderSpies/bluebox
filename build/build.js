@@ -1901,16 +1901,16 @@ module.exports = ensureViewIntegrity;
 'use strict';
 
 function isViewVisible(element, viewPortDimensions) {
-  var result = (element.style && (element.style.backgroundColor ||
+  var result = !!(element.style && (element.style.backgroundColor ||
     element.style.border))
-  //&&
-  //  ((element.layout.left >= viewPortDimensions.left && element.layout.left <= (viewPortDimensions.left + viewPortDimensions.width)) ||
-  //  (element.layout.right >= viewPortDimensions.left && element.layout.right <= (viewPortDimensions.left + viewPortDimensions.width)))
-  //  &&
-  //  ((element.layout.top >= viewPortDimensions.top && element.layout.top <= (viewPortDimensions.top + viewPortDimensions.height)) ||
-  //  (element.layout.bottom >= viewPortDimensions.top && element.layout.bottom <= (viewPortDimensions.top + viewPortDimensions.height)));
-  return result || false;
+  &&
+    (((element.layout.left >= viewPortDimensions.left && element.layout.left <= (viewPortDimensions.left + viewPortDimensions.width)) ||
+    (element.layout.right >= viewPortDimensions.left && element.layout.right <= (viewPortDimensions.left + viewPortDimensions.width))) &&
+      (element.parent && element.parent.style.flexWrap === 'wrap') ||
+      ((element.layout.top >= viewPortDimensions.top && element.layout.top <= (viewPortDimensions.top + viewPortDimensions.height)) ||
+      (element.layout.bottom >= viewPortDimensions.top && element.layout.bottom <= (viewPortDimensions.top + viewPortDimensions.height))));
 
+    return result;
 }
 
 module.exports = isViewVisible;
@@ -2096,8 +2096,6 @@ var indexBuffer;
 var colorsArray;
 var arraybuff;
 var vertexPosition = 0;
-var actuallyUsedIndices = 1;
-var adjustedIndices = -1;
 
 function getNoVisibleDOMNodes(element, viewPortDimensions) {
   var nrOfVisibleDOMNodes = 0;
@@ -2205,20 +2203,22 @@ function render(domElement,
     //gl.enableVertexAttribArray(view_a_color);
   }
 
+
   if (!newElement.parent) {
     var nrOfVertices = getNoVisibleDOMNodes(newElement, viewPortDimensions);
 
-    if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
+    if (!arraybuff){// || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
+      //console.info('foobar:', nrOfVertices);
+      skip = false;
       // vertex should be: [x,y,z,r,g,b,a]
       arraybuff = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
       vertices = new Int16Array(arraybuff);
       colorsArray = new Uint8Array(arraybuff);
       indices = new Uint16Array(6 * nrOfVertices);
-      //console.info('arranged size:', 6 * nrOfVertices);
     }
 
     vertexPosition = 0;
-    actuallyUsedIndices = 1;
+
   }
 
   if (typeof newElement === 'string') {
@@ -2234,6 +2234,7 @@ function render(domElement,
   if (newElement.type === 'view') {
 
     vertexPosition += renderView(viewPortDimensions, vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
+    //vertexPosition++;
 
 
     var style = newElement.style;
