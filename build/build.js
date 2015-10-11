@@ -1235,7 +1235,7 @@ var Bluebox = {
       LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false, false);
      // console.info(changedLayoutNode);
     }
-    //console.info(componentTree.children[2].children[]);
+    //console.vfo(componentTree.children[2].children[]);
 
     //console.info(component)
     //componentTree = LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
@@ -1900,20 +1900,21 @@ module.exports = ensureViewIntegrity;
 },{"./VertexInfo":22}],24:[function(require,module,exports){
 'use strict';
 
-function isViewVisible(element) {
-  return element.style && element.style.backgroundColor ||
-    element.style && element.style.border;
+function isViewVisible(element, viewPortDimensions) {
+  var result = (element.style && (element.style.backgroundColor ||
+    element.style.border))
+  //&&
+  //  ((element.layout.left >= viewPortDimensions.left && element.layout.left <= (viewPortDimensions.left + viewPortDimensions.width)) ||
+  //  (element.layout.right >= viewPortDimensions.left && element.layout.right <= (viewPortDimensions.left + viewPortDimensions.width)))
+  //  &&
+  //  ((element.layout.top >= viewPortDimensions.top && element.layout.top <= (viewPortDimensions.top + viewPortDimensions.height)) ||
+  //  (element.layout.bottom >= viewPortDimensions.top && element.layout.bottom <= (viewPortDimensions.top + viewPortDimensions.height)));
+  return result || false;
 
-//) &&
-//    (!element.parent || element.parent.style.overflow !== 'hidden' ||
-//    ((element.layout.left > element.parent.layout.left && element.layout.left < element.parent.layout.right) ||
-//    (element.layout.right > element.parent.layout.left && element.layout.right < element.parent.layout.right) ||
-//    (element.layout.top > element.parent.layout.top && element.layout.top < element.parent.layout.bottom) ||
-//    (element.layout.bottom > element.parent.layout.top && element.layout.bottom < element.parent.layout.bottom)
-//    ));
 }
 
 module.exports = isViewVisible;
+
 },{}],25:[function(require,module,exports){
 'use strict';
 
@@ -2098,16 +2099,16 @@ var vertexPosition = 0;
 var actuallyUsedIndices = 1;
 var adjustedIndices = -1;
 
-function getNoVisibleDOMNodes(element) {
+function getNoVisibleDOMNodes(element, viewPortDimensions) {
   var nrOfVisibleDOMNodes = 0;
 
-  if (isViewVisible(element)) {
+  if (isViewVisible(element, viewPortDimensions)) {
     nrOfVisibleDOMNodes += 1;
   }
 
   if (element.children) {
     for (var i = 0, l = element.children.length; i < l; i++) {
-      nrOfVisibleDOMNodes += getNoVisibleDOMNodes(element.children[i]);
+      nrOfVisibleDOMNodes += getNoVisibleDOMNodes(element.children[i], viewPortDimensions);
     }
   }
 
@@ -2191,8 +2192,8 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.disable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
-    //gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2205,7 +2206,7 @@ function render(domElement,
   }
 
   if (!newElement.parent) {
-    var nrOfVertices = getNoVisibleDOMNodes(newElement);
+    var nrOfVertices = getNoVisibleDOMNodes(newElement, viewPortDimensions);
 
     if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
       // vertex should be: [x,y,z,r,g,b,a]
@@ -2232,7 +2233,7 @@ function render(domElement,
   //console.info(newElement.type);
   if (newElement.type === 'view') {
 
-    vertexPosition += renderView(vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
+    vertexPosition += renderView(viewPortDimensions, vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
 
 
     var style = newElement.style;
@@ -2536,8 +2537,8 @@ function setBorder(element) {
 
 //var VERTEX_SIZE = 8;
 
-function renderView(verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
-  if (isViewVisible(element)) {
+function renderView(viewPortDimensions, verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
+  if (isViewVisible(element, viewPortDimensions)) {
     if (element !== oldElement) {
       var elementLayout = element.layout;
       var left   = elementLayout.left;
