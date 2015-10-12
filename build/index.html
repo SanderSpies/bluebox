@@ -32,7 +32,7 @@
     varying vec4 vColor;
 
     void main() {
-       gl_Position.xyz = a_position.xyz;
+       gl_Position = vec4(a_position, 1.0);
        vColor = a_color;
     }
 
