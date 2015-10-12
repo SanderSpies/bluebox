@@ -2185,8 +2185,8 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
-    gl.depthFunc(gl.LEQUAL);
+    gl.disable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    //gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2537,6 +2537,8 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
   if (isViewVisible(element, viewPortDimensions)) {
     if (element !== oldElement) {
       var elementLayout = element.layout;
+
+      // TODO: move to compile time to remove stress from runtime CPU
       var a = 1 / viewPortDimensions.width * 2;
       var b = 1 / viewPortDimensions.height * 2;
       var left   = elementLayout.left * a - 1.0;
