@@ -215,7 +215,7 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = true; //process.env.NODE_ENV !== 'production';
+module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -429,6 +429,12 @@ function onAnimate() {
 //  }
 //}
 
+var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
+
+var a = 1 / viewPortDimensions.width * 2;
+var b = 1 / viewPortDimensions.height * 2;
+
 var Animator = {
 
   isAnimating: false,
@@ -454,6 +460,45 @@ var Animator = {
           isPositionalChange = false;
         }
       }
+    }
+
+    // convert to clipspace
+    if (start.left) {
+      start.left *= a;
+    }
+    if (start.right) {
+      start.right *= a;
+    }
+    if (start.width) {
+      start.width *= a;
+    }
+    if (start.top) {
+      start.top *= b;
+    }
+    if (start.bottom) {
+      start.bottom *= b;
+    }
+    if (start.height) {
+      start.height *= b;
+    }
+
+    if (end.left) {
+      end.left *= a;
+    }
+    if (end.right) {
+      end.right *= a;
+    }
+    if (end.width) {
+      end.width *= a;
+    }
+    if (end.top) {
+      end.top *= b;
+    }
+    if (end.bottom) {
+      end.bottom *= b;
+    }
+    if (end.height) {
+      end.height *= b;
     }
 
     registeredAbsoluteTransitions.push({
@@ -486,7 +531,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../utils/shallowClone":30,"./_easings":6}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../renderers/DOM/ViewPortHelper":20,"../utils/shallowClone":30,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -546,8 +591,44 @@ module.exports = easings;
 var merge = require('../utils/merge');
 var UNDEFINED = require('../UNDEFINED');
 var __DEV__ = require('../__DEV__');
-
+var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
 var seal = Object.seal;
+var a = 1 / viewPortDimensions.width * 2;
+var b = 1 / viewPortDimensions.height * 2;
+
+function convertToClipSpace(style) {
+  if (style.width !== UNDEFINED) {
+    style.width *= a;
+  }
+  if (style.height !== UNDEFINED) {
+    style.height *= b;
+  }
+  if (style.top !== UNDEFINED) {
+    style.top *= b;
+  }
+  if (style.left !== UNDEFINED) {
+    style.left *= a;
+  }
+  if (style.right !== UNDEFINED) {
+    style.right *= a;
+  }
+  if (style.bottom !== UNDEFINED) {
+    style.bottom *= b;
+  }
+  if (style.marginLeft !== 0) {
+    style.marginLeft *= a;
+  }
+  if (style.marginRight !== 0) {
+    style.marginRight *= a;
+  }
+  if (style.marginTop !== 0) {
+    style.marginTop *= b;
+  }
+  if (style.marginBottom !== 0) {
+    style.marginBottom *= b;
+  }
+}
 
 function Component(type, props, style, children) {
   var component = {
@@ -622,16 +703,16 @@ function Component(type, props, style, children) {
     }
 
   }
+
+  convertToClipSpace(component.style);
   component.depth = 1 + depth;
-
-
 
   return component;
 }
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../utils/merge":29}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/merge":29}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -1432,14 +1513,14 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
     if (previousChild) {
       childLayout.left = previousChild.layout.right;
     }
-    childLayout.width = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.width !== UNDEFINED ? childStyle.width : 0);
+    childLayout.width = childStyle.flexGrow / (totalFlexGrow * a) * remainingSpaceMainAxis + (childStyle.width !== UNDEFINED ? childStyle.width : 0);
     childLayout.right = childLayout.left + childLayout.width;
   }
   else {
     if (previousChild) {
       childLayout.top = previousChild.layout.bottom;
     }
-    childLayout.height = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.height !== UNDEFINED ? childStyle.height : 0);
+    childLayout.height = childStyle.flexGrow / (totalFlexGrow * b) * remainingSpaceMainAxis + (childStyle.height !== UNDEFINED ? childStyle.height : 0);
     childLayout.bottom = childLayout.top + childLayout.height;
   }
 }
@@ -1467,8 +1548,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
   }
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
-  var parentHeight = parentLayout ? parentLayout.height : document.body.clientHeight;
+  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * a);
+  var parentHeight = parentLayout ? parentLayout.height : (document.body.clientHeight * b);
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var nodeChildren = node.children;
@@ -1657,6 +1738,11 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     }
   }
 }
+var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
+
+var a = 1 / viewPortDimensions.width * 2;
+var b = 1 / viewPortDimensions.height * 2;
 
 //window.testing = [];
 function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, hasParentLocationChanged) {
@@ -1689,7 +1775,7 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   //  testing.push(node);
   //}
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
+  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * a);
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
@@ -1727,7 +1813,7 @@ module.exports = {
   //layoutAbsoluteNode: layoutAbsoluteNode
 };
 
-},{"../UNDEFINED":3,"../__DEV__":4,"./AXIS":17}],19:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"./AXIS":17}],19:[function(require,module,exports){
 'use strict';
 
 var __DEV__   = require('../__DEV__');
@@ -2529,8 +2615,6 @@ function setBorder(element) {
   }
 }
 
-
-
 //var VERTEX_SIZE = 8;
 
 function renderView(viewPortDimensions, verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
@@ -2539,13 +2623,11 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       var elementLayout = element.layout;
 
       // TODO: move to compile time to remove stress from runtime CPU
-      var a = 1 / viewPortDimensions.width * 2;
-      var b = 1 / viewPortDimensions.height * 2;
-      var left   = elementLayout.left * a - 1.0;
-      var right  = elementLayout.right * a - 1.0;
-      var top    = (elementLayout.top * b - 1.0) * -1.0;
-      var bottom = (elementLayout.bottom * b - 1.0) * -1.0;
-      var zIndex = 1.0 - 1.0 / element.depth;
+      var left   = elementLayout.left - 1.0;
+      var right  = elementLayout.right - 1.0;
+      var top    = (elementLayout.top - 1.0) * -1.0;
+      var bottom = (elementLayout.bottom - 1.0) * -1.0;
+      var zIndex = 0.0; //1.0 - 1.0 / element.depth;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
