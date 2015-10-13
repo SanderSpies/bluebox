@@ -1986,23 +1986,33 @@ module.exports = ensureViewIntegrity;
 },{"./VertexInfo":22}],24:[function(require,module,exports){
 'use strict';
 
-function isViewVisible(element, viewPortDimensions) {
+var ViewPortHelper  = require('../DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
+
+var a = 1 / viewPortDimensions.width * 2;
+var b = 1 / viewPortDimensions.height * 2;
+
+var left = viewPortDimensions.left * a;
+var width = viewPortDimensions.width * a;
+var top = viewPortDimensions.top * b;
+var height = viewPortDimensions.height * b;
+
+function isViewVisible(element) {
   var result = (element.style && (element.style.backgroundColor ||
-    element.style.border));
-  //&&
-  //  ((element.layout.left >= viewPortDimensions.left && element.layout.left <= (viewPortDimensions.left + viewPortDimensions.width)) ||
-  //  (element.layout.right >= viewPortDimensions.left && element.layout.right <= (viewPortDimensions.left + viewPortDimensions.width)) ||
-  //  (element.layout.left < viewPortDimensions.left && element.layout.right > (viewPortDimensions.left + viewPortDimensions.width))) &&
-  //    ((element.layout.top >= viewPortDimensions.top && element.layout.top <= (viewPortDimensions.top + viewPortDimensions.height)) ||
-  //    (element.layout.bottom >= viewPortDimensions.top && element.layout.bottom <= (viewPortDimensions.top + viewPortDimensions.height)) ||
-  //    (element.layout.top < viewPortDimensions.top && element.layout.bottom > (viewPortDimensions.top + viewPortDimensions.height)));
+    element.style.border)) &&
+    ((element.layout.left >= left && element.layout.left <= (left + width)) ||
+    (element.layout.right >= left && element.layout.right <= (left + width)) ||
+    (element.layout.left < left && element.layout.right > (left + width))) &&
+      ((element.layout.top >= top && element.layout.top <= (top + height)) ||
+      (element.layout.bottom >= top && element.layout.bottom <= (top+ height)) ||
+      (element.layout.top < top && element.layout.bottom > (top + height)));
 
     return !!result;
 }
 
 module.exports = isViewVisible;
 
-},{}],25:[function(require,module,exports){
+},{"../DOM/ViewPortHelper":20}],25:[function(require,module,exports){
 'use strict';
 
 var gl;
@@ -2287,10 +2297,9 @@ function render(domElement,
 
   if (!newElement.parent) {
     var nrOfVertices = getNoVisibleDOMNodes(newElement, viewPortDimensions);
-    //console.info(nrOfVertices);
-    // TODO: re-ennable the OR statement - and make sure it works!
+
     if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
-      //console.info('foobar:', nrOfVertices);
+      console.info(nrOfVertices);
       skip = false;
       // vertex should be: [x,y,z,r,g,b,a]
       arraybuff = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
@@ -2619,7 +2628,7 @@ function setBorder(element) {
 
 function renderView(viewPortDimensions, verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
   if (isViewVisible(element, viewPortDimensions)) {
-    if (element !== oldElement) {
+    if (element !== oldElement || !skip) {
       var elementLayout = element.layout;
 
       // TODO: move to compile time to remove stress from runtime CPU
