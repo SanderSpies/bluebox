@@ -1513,14 +1513,14 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
     if (previousChild) {
       childLayout.left = previousChild.layout.right;
     }
-    childLayout.width = childStyle.flexGrow / (totalFlexGrow * a) * remainingSpaceMainAxis + (childStyle.width !== UNDEFINED ? childStyle.width : 0);
+    childLayout.width = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.width !== UNDEFINED ? childStyle.width : 0);
     childLayout.right = childLayout.left + childLayout.width;
   }
   else {
     if (previousChild) {
       childLayout.top = previousChild.layout.bottom;
     }
-    childLayout.height = childStyle.flexGrow / (totalFlexGrow * b) * remainingSpaceMainAxis + (childStyle.height !== UNDEFINED ? childStyle.height : 0);
+    childLayout.height = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.height !== UNDEFINED ? childStyle.height : 0);
     childLayout.bottom = childLayout.top + childLayout.height;
   }
 }
@@ -2216,9 +2216,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = domElement.getContext('webgl');
+    gl = domElement.getContext('webgl', {premultipliedAlpha: false, alpha: false, antialias: false});
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl');
+      gl = domElement.getContext('experimental-webgl', {premultipliedAlpha: false, alpha: false, antialias: false});
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
