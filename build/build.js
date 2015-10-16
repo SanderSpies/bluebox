@@ -2234,9 +2234,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = domElement.getContext('webgl', {depth: false, alpha: false, antialias: true});
+    gl = domElement.getContext('webgl', {depth: true, alpha: false, antialias: true});
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl', {depth: false, alpha: false, antialias: true});
+      gl = domElement.getContext('experimental-webgl', {depth: true, alpha: false, antialias: true});
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2289,8 +2289,8 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    //gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
-    //gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2390,9 +2390,6 @@ function render(domElement,
   if (!newElement.parent) {
     //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-
-    organizeArrayBufferFrontToBack();
-
     if (!skip) {
       //var fooArrayBuffer = new ArrayBuffer(staticBuffer.byteLength + dynamicBuffer.byteLength);
       gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
@@ -2400,6 +2397,7 @@ function render(domElement,
     } else {
       //gl.bufferSubData(gl.ARRAY_BUFFER, staticBuffer.byteLength, dynamicBuffer);
     }
+
     gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.STATIC_DRAW);
 
     if (!skip) {
@@ -2409,6 +2407,7 @@ function render(domElement,
 
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
+    //gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.STATIC_DRAW);
     skip = true;
   }
 }
@@ -2683,7 +2682,7 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       }
       
       vertexPos = index * 4;
-      var indexPos = /*indexArray.length - 6 -*/ index * 6;
+      var indexPos = indexArray.length - 6 - index * 6;
       
       indexArray[indexPos + 0] = vertexPos + 0;
       indexArray[indexPos + 1] = vertexPos + 1;
