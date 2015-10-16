@@ -112,7 +112,7 @@ function Transition(start, end, opts, node) {
 setTimeout(Animator._startAnimating, 300);
 
 module.exports = View({}, {backgroundColor: 'red'}, [
-  View({}, {
+  View({isStatic: true}, {
       height: 300,
       justifyContent: 'space-around',
       flexDirection: 'row',
@@ -120,9 +120,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       opacity: .4,
       alignItems: 'center'
   }, [
-    View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { textAlign:'center', fontSize: 50, fontWeight: 'bold', fontFamily: 'San Francisco'})]),
-    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
+    View({isStatic: true}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
+    View({isStatic: true}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { textAlign:'center', fontSize: 50, fontWeight: 'bold', fontFamily: 'San Francisco'})]),
+    View({isStatic: true}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [

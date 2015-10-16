@@ -1,12 +1,4 @@
-Rendering
+TODO
 ===
-TODO:
-- move to separate framebuffer for after effects
-- more calculations on the GPU:
-  - opacity calculations
-  - rotation should happen on the GPU preferably (but slow?!)
-  - z-index + depth testing
-  - translate functions should happen on the GPU
-
-TaskScheduler
----
+- move static components to framebuffer - depth buffer is important here...
+- how to swap between dynamic and static?

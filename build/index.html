@@ -27,6 +27,7 @@
 
     <script id="2d-vertex-shader" type="x-shader/x-vertex">
     precision lowp float;
+    precision lowp int;
 
     attribute vec3 a_position;
     attribute vec4 a_color;
@@ -60,6 +61,7 @@
     <!-- fragment shader -->
     <script id="2d-fragment-shader" type="x-shader/x-fragment">
         precision lowp float;
+        precision lowp int;
 
         varying vec4 vColor;
 

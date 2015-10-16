@@ -113,7 +113,7 @@ function Transition(start, end, opts, node) {
 setTimeout(Animator._startAnimating, 300);
 
 module.exports = View({}, {backgroundColor: 'red'}, [
-  View({}, {
+  View({isStatic: true}, {
       height: 300,
       justifyContent: 'space-around',
       flexDirection: 'row',
@@ -121,9 +121,9 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       opacity: .4,
       alignItems: 'center'
   }, [
-    View({}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
-    View({}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { textAlign:'center', fontSize: 50, fontWeight: 'bold', fontFamily: 'San Francisco'})]),
-    View({}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
+    View({isStatic: true}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
+    View({isStatic: true}, {height: 100, backgroundColor: 'red', color:'blue', flexGrow: 4}, [Text('a', { textAlign:'center', fontSize: 50, fontWeight: 'bold', fontFamily: 'San Francisco'})]),
+    View({isStatic: true}, {height: 100, backgroundColor: 'blue', flexGrow: 1}, [Text('b')])
   ]),
   View({}, {flexDirection: 'row'}, [
     View({}, {width: 600, height: 400, backgroundColor: 'black', overflow: 'hidden'}, [
@@ -215,7 +215,7 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = false; //process.env.NODE_ENV !== 'production';
+module.exports = true; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -432,8 +432,8 @@ function onAnimate() {
 var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
 
-var a = 1 / viewPortDimensions.width * 2;
-var b = 1 / viewPortDimensions.height * 2;
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
 
 var Animator = {
 
@@ -464,41 +464,41 @@ var Animator = {
 
     // convert to clipspace
     if (start.left) {
-      start.left *= a;
+      start.left *= clipSpaceX;
     }
     if (start.right) {
-      start.right *= a;
+      start.right *= clipSpaceX;
     }
     if (start.width) {
-      start.width *= a;
+      start.width *= clipSpaceX;
     }
     if (start.top) {
-      start.top *= b;
+      start.top *= clipSpaceY;
     }
     if (start.bottom) {
-      start.bottom *= b;
+      start.bottom *= clipSpaceY;
     }
     if (start.height) {
-      start.height *= b;
+      start.height *= clipSpaceY;
     }
 
     if (end.left) {
-      end.left *= a;
+      end.left *= clipSpaceX;
     }
     if (end.right) {
-      end.right *= a;
+      end.right *= clipSpaceX;
     }
     if (end.width) {
-      end.width *= a;
+      end.width *= clipSpaceX;
     }
     if (end.top) {
-      end.top *= b;
+      end.top *= clipSpaceY;
     }
     if (end.bottom) {
-      end.bottom *= b;
+      end.bottom *= clipSpaceY;
     }
     if (end.height) {
-      end.height *= b;
+      end.height *= clipSpaceY;
     }
 
     registeredAbsoluteTransitions.push({
@@ -594,39 +594,39 @@ var __DEV__ = require('../__DEV__');
 var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
 var seal = Object.seal;
-var a = 1 / viewPortDimensions.width * 2;
-var b = 1 / viewPortDimensions.height * 2;
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
 
 function convertToClipSpace(style) {
   if (style.width !== UNDEFINED) {
-    style.width *= a;
+    style.width *= clipSpaceX;
   }
   if (style.height !== UNDEFINED) {
-    style.height *= b;
+    style.height *= clipSpaceY;
   }
   if (style.top !== UNDEFINED) {
-    style.top *= b;
+    style.top *= clipSpaceY;
   }
   if (style.left !== UNDEFINED) {
-    style.left *= a;
+    style.left *= clipSpaceX;
   }
   if (style.right !== UNDEFINED) {
-    style.right *= a;
+    style.right *= clipSpaceX;
   }
   if (style.bottom !== UNDEFINED) {
-    style.bottom *= b;
+    style.bottom *= clipSpaceY;
   }
   if (style.marginLeft !== 0) {
-    style.marginLeft *= a;
+    style.marginLeft *= clipSpaceX;
   }
   if (style.marginRight !== 0) {
-    style.marginRight *= a;
+    style.marginRight *= clipSpaceX;
   }
   if (style.marginTop !== 0) {
-    style.marginTop *= b;
+    style.marginTop *= clipSpaceY;
   }
   if (style.marginBottom !== 0) {
-    style.marginBottom *= b;
+    style.marginBottom *= clipSpaceY;
   }
 }
 
@@ -664,6 +664,7 @@ function Component(type, props, style, children) {
       top: UNDEFINED,
       right: UNDEFINED,
       bottom: UNDEFINED,
+      position: 'relative',
       fontSize: 12,
       fontFamily: 'Arial',
       textAlign: 'left',
@@ -701,10 +702,10 @@ function Component(type, props, style, children) {
         depth = child.depth;
       }
     }
-
   }
 
   convertToClipSpace(component.style);
+
   component.depth = 1 + depth;
 
   return component;
@@ -1278,7 +1279,7 @@ var Bluebox = {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
 
-    render(domElement, newComponentTree, null, viewPortDimensions);
+    render(domElement, newComponentTree, null, 0, viewPortDimensions);
 
     oldComponentTree = newComponentTree;
     return newComponentTree;
@@ -1312,16 +1313,10 @@ var Bluebox = {
         }
 
       }
-      //window.ix = 0;
       LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false, false);
-     // console.info(changedLayoutNode);
     }
-    //console.vfo(componentTree.children[2].children[]);
-
-    //console.info(component)
-    //componentTree = LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
-
-    render(domElement, componentTree, oldComponentTree, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
+    //LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
+    render(domElement, componentTree, oldComponentTree, 0, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
 
     oldComponentTree = componentTree;
 
@@ -1528,8 +1523,14 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
 // main bottleneck - takes up most cpu and allocations
 //                   ideally we skip it when possible
 //                   - add hasParentDimensionsChanged argument
+function hasPositionChanged(node, oldNode) {
+  return node.style.left !== oldNode.style.left ||
+    node.style.right !== oldNode.style.right ||
+    node.style.top !== oldNode.style.top ||
+    node.style.bottom !== oldNode.style.bottom;
+}
 
-function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, hasParentLocationChanged) {
+function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, offsetX, offsetY) {
 
   var parent = node.parent;
   if (oldNode) {
@@ -1548,8 +1549,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
   }
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * a);
-  var parentHeight = parentLayout ? parentLayout.height : (document.body.clientHeight * b);
+  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * clipSpaceX);
+  var parentHeight = parentLayout ? parentLayout.height : (document.body.clientHeight * clipSpaceY);
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var nodeChildren = node.children;
@@ -1576,13 +1577,16 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     var i;
     var l;
     var oldChild;
+    var hasParentLocationChanged = oldNode && hasPositionChanged(node, oldNode);
+    var oldNodeLayoutTop = oldNode ? oldNode.layout.top : 0;
     for (i = 0, l = nodeChildren.length; i < l; i++) {
       child = nodeChildren[i];
       oldChild = oldNode ? oldNode.children[i] : null;
 
       childStyle = child.style;
       childLayout = child.layout;
-      layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute, hasParentLocationChanged);
+
+      layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged);
 
       var skipPrevious = false;
 
@@ -1726,8 +1730,7 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       //}
       alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
       if (isPositionAbsolute) {
-        //hasParentLocationChanged = hasParentLocationChanged || node.style.left !== oldNode.style.left || node.style.top !== oldNode.style.top;
-        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute, hasParentDimensionsChanged, hasParentLocationChanged);
+        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute, hasParentDimensionsChanged, offsetX, offsetY);
       }
       else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
         correctChildren(child, oldChild, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
@@ -1736,19 +1739,30 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
         previousChild = child;
       }
     }
+
+    if(hasParentLocationChanged) {
+      //console.info(offsetY, offsetX);
+      //debugger;
+      correctChildren(node, oldNode, offsetY, offsetX, parentMainAxis, parentCrossAxis);
+    }
   }
 }
 var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
 
-var a = 1 / viewPortDimensions.width * 2;
-var b = 1 / viewPortDimensions.height * 2;
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
 
-//window.testing = [];
-function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, hasParentLocationChanged) {
-
+function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged) {
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
+
+  var oldNodeTop = 0;
+  var oldNodeLeft = 0;
+  if (oldNode) {
+    oldNodeTop = oldNode.layout.top;
+    oldNodeLeft = oldNode.layout.left;
+  }
 
   var parent = node.parent;
   if (parent && parent.style.position === ABSOLUTE && !shouldProcessAbsolute) {
@@ -1756,26 +1770,12 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   }
 
   if (node === oldNode && !hasParentDimensionsChanged) {
-    // console.info('AAAA');
-    if (hasParentLocationChanged) {
-      // TODO: correctChildren
-      console.info('TODO: correct children please!');
-    }
     return node;
   }
-  //
-  //if (__DEV__) {
-  //  if (!parent) {
-  //    window.testing = [];
-  //  }
-  //  if (testing.indexOf(node) > -1) {
-  //    console.warn('duplicate layoutRelativeNode call:', node, testing.indexOf(node));
-  //    console.trace();
-  //  }
-  //  testing.push(node);
-  //}
+
+
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * a);
+  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * clipSpaceX);
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
@@ -1797,7 +1797,8 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
 
   if (nodeStyle.position !== ABSOLUTE) {
-    processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged, hasParentLocationChanged);
+    //console.info('TESTING:', oldNodeTop === node.layout.top);
+    processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged, oldNodeLeft - node.layout.left, oldNodeTop - node.layout.top);
   }
 
   return node;
@@ -1989,25 +1990,27 @@ module.exports = ensureViewIntegrity;
 var ViewPortHelper  = require('../DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
 
-var a = 1 / viewPortDimensions.width * 2;
-var b = 1 / viewPortDimensions.height * 2;
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
 
-var left = viewPortDimensions.left * a;
-var width = viewPortDimensions.width * a;
-var top = viewPortDimensions.top * b;
-var height = viewPortDimensions.height * b;
+var left = viewPortDimensions.left * clipSpaceX;
+var width = viewPortDimensions.width * clipSpaceX;
+var top = viewPortDimensions.top * clipSpaceY;
+var height = viewPortDimensions.height * clipSpaceY;
 
+// TODO: add overflow support here...
 function isViewVisible(element) {
-  var result = (element.style && (element.style.backgroundColor ||
+  var result = !!(element.style && (element.style.backgroundColor ||
     element.style.border)) &&
     ((element.layout.left >= left && element.layout.left <= (left + width)) ||
     (element.layout.right >= left && element.layout.right <= (left + width)) ||
     (element.layout.left < left && element.layout.right > (left + width))) &&
       ((element.layout.top >= top && element.layout.top <= (top + height)) ||
-      (element.layout.bottom >= top && element.layout.bottom <= (top+ height)) ||
+      (element.layout.bottom >= top && element.layout.bottom <= (top + height)) ||
       (element.layout.top < top && element.layout.bottom > (top + height)));
 
-    return !!result;
+
+    return result;
 }
 
 module.exports = isViewVisible;
@@ -2210,9 +2213,14 @@ function getNoVisibleDOMNodes(element, viewPortDimensions) {
   return nrOfVisibleDOMNodes;
 }
 
+function organizeArrayBufferFrontToBack() {
+
+}
+
 function render(domElement,
   newElement,
   oldElement,
+  childIndex,
   viewPortDimensions,
   parentLeft,
   parentWidth,
@@ -2226,9 +2234,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = domElement.getContext('webgl', {premultipliedAlpha: false, alpha: false, antialias: false});
+    gl = domElement.getContext('webgl', {depth: false, alpha: false, antialias: true});
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl', {premultipliedAlpha: false, alpha: false, antialias: false});
+      gl = domElement.getContext('experimental-webgl', {depth: false, alpha: false, antialias: true});
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2281,7 +2289,7 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.disable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
+    //gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
     //gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2299,7 +2307,7 @@ function render(domElement,
     var nrOfVertices = getNoVisibleDOMNodes(newElement, viewPortDimensions);
 
     if (!arraybuff || arraybuff.byteLength !== (4 * nrOfVertices * VertexInfo.STRIDE)) {
-      console.info(nrOfVertices);
+      //console.info(nrOfVertices);
       skip = false;
       // vertex should be: [x,y,z,r,g,b,a]
       arraybuff = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
@@ -2324,7 +2332,7 @@ function render(domElement,
   //console.info(newElement.type);
   if (newElement.type === 'view') {
 
-    vertexPosition += renderView(viewPortDimensions, vertices, indices, vertexPosition, colorsArray, newElement, oldElement, inheritedOpacity || 1.0, skip);
+    vertexPosition += renderView(viewPortDimensions, vertices, indices, vertexPosition, colorsArray, newElement, oldElement, childIndex, inheritedOpacity || 1.0, skip);
     //vertexPosition++;
 
 
@@ -2356,7 +2364,7 @@ function render(domElement,
           parentHeight = newElement.layout.height;
           parentTop = newElement.layout.top;
         }
-        render(domElement, child, oldChildren ? oldChildren[i] : null, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
+        render(domElement, child, oldChildren ? oldChildren[i] : null, i, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
           inheritedZoom,
           inheritedFontSize,
           inheritedColor,
@@ -2383,16 +2391,16 @@ function render(domElement,
     //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 
+    organizeArrayBufferFrontToBack();
 
     if (!skip) {
+      //var fooArrayBuffer = new ArrayBuffer(staticBuffer.byteLength + dynamicBuffer.byteLength);
       gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
-    }
 
-    if (!skip) {
-      gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.DYNAMIC_DRAW);
     } else {
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, arraybuff);
+      //gl.bufferSubData(gl.ARRAY_BUFFER, staticBuffer.byteLength, dynamicBuffer);
     }
+    gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.STATIC_DRAW);
 
     if (!skip) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -2621,12 +2629,11 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 function setBorder(element) {
   if (element.props && element.props.style && element.props.style.border) {
     console.warn('not implemented yet');
+    // 4x renderView I guess?! do borderLeft, borderTop, borderRight, borderBottom separately...
   }
 }
 
-//var VERTEX_SIZE = 8;
-
-function renderView(viewPortDimensions, verticesArray, indexArray, index, colorsArray, element, oldElement, inheritedOpacity, skip) {
+function renderView(viewPortDimensions, verticesArray, indexArray, index, colorsArray, element, oldElement, childIndex, inheritedOpacity, skip) {
   if (isViewVisible(element, viewPortDimensions)) {
     if (element !== oldElement || !skip) {
       var elementLayout = element.layout;
@@ -2636,7 +2643,7 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       var right  = elementLayout.right - 1.0;
       var top    = (elementLayout.top - 1.0) * -1.0;
       var bottom = (elementLayout.bottom - 1.0) * -1.0;
-      var zIndex = 0.0; //1.0 - 1.0 / element.depth;
+      var zIndex = 1.0 - 1.0 / (element.depth + 0.01);
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
@@ -2676,7 +2683,7 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       }
       
       vertexPos = index * 4;
-      var indexPos = index * 6;
+      var indexPos = /*indexArray.length - 6 -*/ index * 6;
       
       indexArray[indexPos + 0] = vertexPos + 0;
       indexArray[indexPos + 1] = vertexPos + 1;
@@ -2684,8 +2691,7 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       indexArray[indexPos + 3] = vertexPos + 2;
       indexArray[indexPos + 4] = vertexPos + 1;
       indexArray[indexPos + 5] = vertexPos + 3;
-      //console.info('vertex:', vertexPos);
-      //console.info('setting indexPos:', indexPos);
+
     }
     return 1;
   }
