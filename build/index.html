@@ -18,16 +18,17 @@
 
     </style>
 </head>
+<body>
 <div>
-    <div id="app"></div>
     <canvas id="canvas">
 
 
     </canvas>
+</div>
+</body>
 
-    <script id="2d-vertex-shader" type="x-shader/x-vertex">
+<script id="2d-vertex-shader" type="x-shader/x-vertex">
     precision lowp float;
-    precision lowp int;
 
     attribute vec3 a_position;
     attribute vec4 a_color;
@@ -40,7 +41,7 @@
     }
 
     </script>
-    <script id="2d-vertex-shader2" type="x-shader/x-vertex">
+<script id="2d-vertex-shader2" type="x-shader/x-vertex">
         precision lowp float;
 
         attribute vec2 a_position;
@@ -58,8 +59,8 @@
         }
 
     </script>
-    <!-- fragment shader -->
-    <script id="2d-fragment-shader" type="x-shader/x-fragment">
+<!-- fragment shader -->
+<script id="2d-fragment-shader" type="x-shader/x-fragment">
         precision lowp float;
         precision lowp int;
 
@@ -70,7 +71,7 @@
         }
 
     </script>
-    <script id="2d-image-shader" type="x-shader/x-fragment">
+<script id="2d-image-shader" type="x-shader/x-fragment">
         precision lowp float;
 
         // our texture
@@ -94,6 +95,5 @@
         }
     </script>
 
-    <script src="build.js"></script>
-</div>
+<script src="build.js"></script>
 </html>

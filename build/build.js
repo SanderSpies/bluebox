@@ -215,7 +215,7 @@ requestAnimationFrame(continuousRendering);
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000;
 },{}],4:[function(require,module,exports){
-module.exports = true; //process.env.NODE_ENV !== 'production';
+module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -2234,9 +2234,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = domElement.getContext('webgl', {depth: true, alpha: false, antialias: true});
+    gl = domElement.getContext('webgl', {depth: false, alpha: false, antialias: true});
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl', {depth: true, alpha: false, antialias: true});
+      gl = domElement.getContext('experimental-webgl', {depth: false, alpha: false, antialias: true});
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2289,8 +2289,8 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    gl.enable(gl.DEPTH_TEST); // should enable according to 2011 new game conf presentation (ben vanik + co)
-    gl.depthFunc(gl.LEQUAL);
+    //gl.enable(gl.DEPTH_TEST);
+    //gl.depthFunc(gl.LESS);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -2300,6 +2300,7 @@ function render(domElement,
     //gl.enableVertexAttribArray(view_a_position);
     //gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Uint16Array.BYTES_PER_ELEMENT);
     //gl.enableVertexAttribArray(view_a_color);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   }
 
 
@@ -2317,6 +2318,7 @@ function render(domElement,
    }
 
     vertexPosition = 0;
+
 
   }
 
@@ -2390,18 +2392,8 @@ function render(domElement,
   if (!newElement.parent) {
     //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    if (!skip) {
-      //var fooArrayBuffer = new ArrayBuffer(staticBuffer.byteLength + dynamicBuffer.byteLength);
-      gl.bindBuffer(gl.ARRAY_BUFFER, viewBuffer);
-
-    } else {
-      //gl.bufferSubData(gl.ARRAY_BUFFER, staticBuffer.byteLength, dynamicBuffer);
-    }
-
     gl.bufferData(gl.ARRAY_BUFFER, arraybuff, gl.STATIC_DRAW);
-
     if (!skip) {
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     }
 
@@ -2642,6 +2634,8 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       var right  = elementLayout.right - 1.0;
       var top    = (elementLayout.top - 1.0) * -1.0;
       var bottom = (elementLayout.bottom - 1.0) * -1.0;
+
+      // TODO better calculate zIndex
       var zIndex = 1.0 - 1.0 / (element.depth + 0.01);
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
@@ -2682,7 +2676,7 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       }
       
       vertexPos = index * 4;
-      var indexPos = indexArray.length - 6 - index * 6;
+      var indexPos = /*indexArray.length - 6 -*/ index * 6;
       
       indexArray[indexPos + 0] = vertexPos + 0;
       indexArray[indexPos + 1] = vertexPos + 1;
