@@ -462,6 +462,45 @@ var Animator = {
       }
     }
 
+    // convert to clipspace
+    if (start.left) {
+      start.left *= clipSpaceX;
+    }
+    if (start.right) {
+      start.right *= clipSpaceX;
+    }
+    if (start.width) {
+      start.width *= clipSpaceX;
+    }
+    if (start.top) {
+      start.top *= clipSpaceY;
+    }
+    if (start.bottom) {
+      start.bottom *= clipSpaceY;
+    }
+    if (start.height) {
+      start.height *= clipSpaceY;
+    }
+
+    if (end.left) {
+      end.left *= clipSpaceX;
+    }
+    if (end.right) {
+      end.right *= clipSpaceX;
+    }
+    if (end.width) {
+      end.width *= clipSpaceX;
+    }
+    if (end.top) {
+      end.top *= clipSpaceY;
+    }
+    if (end.bottom) {
+      end.bottom *= clipSpaceY;
+    }
+    if (end.height) {
+      end.height *= clipSpaceY;
+    }
+
     registeredAbsoluteTransitions.push({
       keys: keys(start),
       start: start,
@@ -552,8 +591,44 @@ module.exports = easings;
 var merge = require('../utils/merge');
 var UNDEFINED = require('../UNDEFINED');
 var __DEV__ = require('../__DEV__');
+var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
 var seal = Object.seal;
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
 
+function convertToClipSpace(style) {
+  if (style.width !== UNDEFINED) {
+    style.width *= clipSpaceX;
+  }
+  if (style.height !== UNDEFINED) {
+    style.height *= clipSpaceY;
+  }
+  if (style.top !== UNDEFINED) {
+    style.top *= clipSpaceY;
+  }
+  if (style.left !== UNDEFINED) {
+    style.left *= clipSpaceX;
+  }
+  if (style.right !== UNDEFINED) {
+    style.right *= clipSpaceX;
+  }
+  if (style.bottom !== UNDEFINED) {
+    style.bottom *= clipSpaceY;
+  }
+  if (style.marginLeft !== 0) {
+    style.marginLeft *= clipSpaceX;
+  }
+  if (style.marginRight !== 0) {
+    style.marginRight *= clipSpaceX;
+  }
+  if (style.marginTop !== 0) {
+    style.marginTop *= clipSpaceY;
+  }
+  if (style.marginBottom !== 0) {
+    style.marginBottom *= clipSpaceY;
+  }
+}
 
 function Component(type, props, style, children) {
   var component = {
@@ -629,6 +704,8 @@ function Component(type, props, style, children) {
     }
   }
 
+  convertToClipSpace(component.style);
+
   component.depth = 1 + depth;
 
   return component;
@@ -636,7 +713,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../utils/merge":29}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/merge":29}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -1472,8 +1549,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
   }
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
-  var parentHeight = parentLayout ? parentLayout.height : document.body.clientHeight;
+  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * clipSpaceX);
+  var parentHeight = parentLayout ? parentLayout.height : (document.body.clientHeight * clipSpaceY);
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var nodeChildren = node.children;
@@ -1670,7 +1747,11 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     }
   }
 }
+var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
 
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
 
 function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged) {
   var nodeLayout = node.layout;
@@ -1694,7 +1775,7 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
 
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : document.body.clientWidth;
+  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * clipSpaceX);
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
@@ -1733,7 +1814,7 @@ module.exports = {
   //layoutAbsoluteNode: layoutAbsoluteNode
 };
 
-},{"../UNDEFINED":3,"../__DEV__":4,"./AXIS":17}],19:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"./AXIS":17}],19:[function(require,module,exports){
 'use strict';
 
 var __DEV__   = require('../__DEV__');
@@ -1874,7 +1955,7 @@ module.exports = Shaders;
  *
  * A vertex contains the following data:
  * [x,y,z,r,g,b,a]
- * [2, 2, 2, 1, 1, 1, 1, -, -]
+ * [4, 4, 4, 1, 1, 1, 1]
  * - TODO: add additional bytes
  * - XYZ for positioning
  * - RGBA for colors and alpha
@@ -1883,7 +1964,7 @@ module.exports = Shaders;
  */
 var VertexInfo = {
 
-  STRIDE: Int16Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4
+  STRIDE: Float32Array.BYTES_PER_ELEMENT * 3 + Uint8Array.BYTES_PER_ELEMENT * 4
 
 };
 
@@ -1909,10 +1990,13 @@ module.exports = ensureViewIntegrity;
 var ViewPortHelper  = require('../DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
 
-var left = viewPortDimensions.left;
-var width = viewPortDimensions.width;
-var top = viewPortDimensions.top;
-var height = viewPortDimensions.height;
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
+
+var left = viewPortDimensions.left * clipSpaceX;
+var width = viewPortDimensions.width * clipSpaceX;
+var top = viewPortDimensions.top * clipSpaceY;
+var height = viewPortDimensions.height * clipSpaceY;
 
 // TODO: add overflow support here...
 function isViewVisible(element) {
@@ -2172,9 +2256,6 @@ function render(domElement,
 
     gl.useProgram(dynamicViewProgram);
 
-    view_u_resolution = gl.getUniformLocation(dynamicViewProgram, "u_resolution");
-    gl.uniform2f(view_u_resolution, 1 / viewPortDimensions.width, 1 / viewPortDimensions.height);
-
     dynamicBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, dynamicBuffer);
 
@@ -2183,9 +2264,9 @@ function render(domElement,
 
     staticBuffer = gl.createBuffer();
     // xyzrgba
-    gl.vertexAttribPointer(view_a_position, 3, gl.SHORT, false, VertexInfo.STRIDE, 0);
+    gl.vertexAttribPointer(view_a_position, 3, gl.FLOAT, false, VertexInfo.STRIDE, 0);
     gl.enableVertexAttribArray(view_a_position);
-    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Int16Array.BYTES_PER_ELEMENT);
+    gl.vertexAttribPointer(view_a_color, 4, gl.UNSIGNED_BYTE, true, VertexInfo.STRIDE, 3 * Float32Array.BYTES_PER_ELEMENT);
     gl.enableVertexAttribArray(view_a_color);
 
     indexBuffer = gl.createBuffer();
@@ -2233,7 +2314,7 @@ function render(domElement,
       skip = false;
       // vertex should be: [x,y,z,r,g,b,a]
       dynamicArrayBuffer = new ArrayBuffer(4 * nrOfVertices * VertexInfo.STRIDE);
-      vertices = new Int16Array(dynamicArrayBuffer);
+      vertices = new Float32Array(dynamicArrayBuffer);
       colorsArray = new Uint8Array(dynamicArrayBuffer);
       dynamicIndices = new Uint16Array(6 * nrOfVertices);
    }
@@ -2504,7 +2585,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
     var colorPosition = index * VertexInfo.STRIDE * 4;
     // 0 - 2 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT;
+    colorPosition += 3 * Float32Array.BYTES_PER_ELEMENT;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2512,7 +2593,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 7 - 9 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Float32Array.BYTES_PER_ELEMENT + 4;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2520,7 +2601,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 14 - 16 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Float32Array.BYTES_PER_ELEMENT + 4;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2528,7 +2609,7 @@ function setBackgroundColor(colorsArray, index, element, inheritedOpacity) {
 
     // 21 - 23 - xyz
 
-    colorPosition += 3 * Int16Array.BYTES_PER_ELEMENT + 4;
+    colorPosition += 3 * Float32Array.BYTES_PER_ELEMENT + 4;
     colorsArray[colorPosition + 0] = backgroundColor[0];
     colorsArray[colorPosition + 1] = backgroundColor[1];
     colorsArray[colorPosition + 2] = backgroundColor[2];
@@ -2547,12 +2628,12 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
   if (isViewVisible(element, viewPortDimensions)) {
     if (element !== oldElement || !skip) {
       var elementLayout = element.layout;
-      var left   = elementLayout.left;
-      var right  = elementLayout.right;
-      var top    = elementLayout.top;
-      var bottom = elementLayout.bottom;
 
-
+      // TODO: move to compile time to remove stress from runtime CPU
+      var left   = elementLayout.left - 1.0;
+      var right  = elementLayout.right - 1.0;
+      var top    = (elementLayout.top - 1.0) * -1.0;
+      var bottom = (elementLayout.bottom - 1.0) * -1.0;
 
       // TODO better calculate zIndex
       var zIndex = 1.0 - 1.0 / (element.depth + 0.01);
@@ -2560,14 +2641,14 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);
 
-      var vertexPos = index * VertexInfo.STRIDE * 4 / Int16Array.BYTES_PER_ELEMENT;
+      var vertexPos = index * VertexInfo.STRIDE * 4 / Float32Array.BYTES_PER_ELEMENT;
 
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = top;
       verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 3 - 6
-      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+      vertexPos += 4;
 
       //012 3456 7
 
@@ -2576,14 +2657,14 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
       verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 10 - 13
-      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+      vertexPos += 4;
 
       verticesArray[vertexPos + 0] = left;
       verticesArray[vertexPos + 1] = bottom;
       verticesArray[vertexPos + 2] = zIndex;
 
       // color rgba 17 - 20
-      vertexPos += Uint8Array.BYTES_PER_ELEMENT * 2 + 3;
+      vertexPos += 4;
 
       verticesArray[vertexPos + 0] = right;
       verticesArray[vertexPos + 1] = bottom;
