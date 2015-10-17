@@ -3053,7 +3053,9 @@ function shallowClone(node) {
 module.exports = shallowClone;
 
 },{}],31:[function(require,module,exports){
-module.exports = Math.fround || function(nr) {return nr;};
+var helperArray = new Float32Array(1);
+
+module.exports = function(nr) {helperArray[0] = nr; return helperArray[0];};
 
 },{}],32:[function(require,module,exports){
 /*global define:false require:false */
