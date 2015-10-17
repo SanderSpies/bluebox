@@ -1701,14 +1701,14 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
         remainingSpaceMainAxis = mainDimensionSize - lineLengths[currentLineIndex];
         if (!totalFlexGrow) {
           if (justifyContent === CENTER) {
-            remainingSpaceMainAxis /= 2;
+            remainingSpaceMainAxis /= toFloat32(2);
           }
           else if (justifyContent === SPACE_BETWEEN) {
-            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] - 1);
+            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] - toFloat32(1));
             previousChild = null;
           }
           else if (justifyContent === SPACE_AROUND) {
-            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] * 2);
+            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] * toFloat32(2));
             previousChild = null;
           }
         }
@@ -1797,8 +1797,8 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
 
   }
   else {
-    nodeLayout.left = parent ? parentLayout.left : 0;
-    nodeLayout.top = parent ? parentLayout.top : 0;
+    nodeLayout.left = parent ? parentLayout.left : toFloat32(0);
+    nodeLayout.top = parent ? parentLayout.top : toFloat32(0);
   }
 
   nodeLayout.left += nodeStyle.marginLeft;
