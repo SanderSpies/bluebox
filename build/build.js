@@ -213,8 +213,10 @@ requestAnimationFrame(continuousRendering);
 
 
 },{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
-module.exports = 7000;
-},{}],4:[function(require,module,exports){
+var toFloat32 = require('./utils/toFloat32');
+
+module.exports = toFloat32(7000);
+},{"./utils/toFloat32":31}],4:[function(require,module,exports){
 module.exports = false; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
@@ -592,10 +594,16 @@ var merge = require('../utils/merge');
 var UNDEFINED = require('../UNDEFINED');
 var __DEV__ = require('../__DEV__');
 var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
-var viewPortDimensions = ViewPortHelper.getDimensions();
+
+var toFloat32 = require('../utils/toFloat32');
+
+
 var seal = Object.seal;
-var clipSpaceX = 1 / viewPortDimensions.width * 2;
-var clipSpaceY = 1 / viewPortDimensions.height * 2;
+
+var viewPortDimensions = ViewPortHelper.getDimensions();
+var clipSpaceX = toFloat32(1 / viewPortDimensions.width * 2);
+var clipSpaceY = toFloat32(1 / viewPortDimensions.height * 2);
+
 
 function convertToClipSpace(style) {
   if (style.width !== UNDEFINED) {
@@ -633,22 +641,22 @@ function convertToClipSpace(style) {
 function Component(type, props, style, children) {
   var component = {
     customType: null,
-    layout: {left: 0, width: undefined, right: 0, top: 0, height: undefined, bottom: 0, lineIndex: 0},
+    layout: {left: toFloat32(0), width: undefined, right: toFloat32(0), top: toFloat32(0), height: undefined, bottom: toFloat32(0), lineIndex: 0},
     style: merge({
       backgroundColor: '',
       color: '',
       margin: '',
-      marginLeft: 0,
-      marginRight: 0,
-      marginTop: 0,
-      marginBottom: 0,
-      minHeight: 0,
-      minWidth: 0,
+      marginLeft: toFloat32(0),
+      marginRight: toFloat32(0),
+      marginTop: toFloat32(0),
+      marginBottom: toFloat32(0),
+      minHeight: toFloat32(0),
+      minWidth: toFloat32(0),
       padding: '',
-      paddingLeft: 0,
-      paddingRight: 0,
-      paddingTop: 0,
-      paddingBottom: 0,
+      paddingLeft: toFloat32(0),
+      paddingRight: toFloat32(0),
+      paddingTop: toFloat32(0),
+      paddingBottom: toFloat32(0),
       opacity: 1,
       overflow: 'inherit',
       width: UNDEFINED,
@@ -713,7 +721,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/merge":29}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/merge":29,"../utils/toFloat32":31}],8:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -1530,6 +1538,10 @@ function hasPositionChanged(node, oldNode) {
     node.style.bottom !== oldNode.style.bottom;
 }
 
+var toFloat32 = require('../utils/toFloat32');
+var clientWidth = toFloat32(document.body.clientWidth);
+var clientHeight = toFloat32(document.body.clientHeight);
+
 function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, offsetX, offsetY) {
 
   var parent = node.parent;
@@ -1549,8 +1561,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
   }
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * clipSpaceX);
-  var parentHeight = parentLayout ? parentLayout.height : (document.body.clientHeight * clipSpaceY);
+  var parentWidth = parentLayout ? parentLayout.width : (clientWidth * clipSpaceX);
+  var parentHeight = parentLayout ? parentLayout.height : (clientHeight * clipSpaceY);
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var nodeChildren = node.children;
@@ -1740,14 +1752,14 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       }
     }
 
-    if(hasParentLocationChanged) {
+    if (hasParentLocationChanged) {
       //console.info(offsetY, offsetX);
       //debugger;
       correctChildren(node, oldNode, offsetY, offsetX, parentMainAxis, parentCrossAxis);
     }
   }
 }
-var ViewPortHelper  = require('../renderers/DOM/ViewPortHelper');
+var ViewPortHelper = require('../renderers/DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
 
 var clipSpaceX = 1 / viewPortDimensions.width * 2;
@@ -1773,9 +1785,8 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
     return node;
   }
 
-
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : (document.body.clientWidth * clipSpaceX);
+  var parentWidth = parentLayout ? parentLayout.width : (clientWidth * clipSpaceX);
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
     nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
@@ -1796,10 +1807,12 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
   nodeLayout.right = nodeLayout.left + nodeLayout.width;
 
+
   if (nodeStyle.position !== ABSOLUTE) {
-    //console.info('TESTING:', oldNodeTop === node.layout.top);
     processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged, oldNodeLeft - node.layout.left, oldNodeTop - node.layout.top);
   }
+
+
 
   return node;
 }
@@ -1814,7 +1827,7 @@ module.exports = {
   //layoutAbsoluteNode: layoutAbsoluteNode
 };
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"./AXIS":17}],19:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/toFloat32":31,"./AXIS":17}],19:[function(require,module,exports){
 'use strict';
 
 var __DEV__   = require('../__DEV__');
@@ -2407,7 +2420,7 @@ var skip = false;
 
 module.exports = render;
 
-},{"./Shaders":21,"./VertexInfo":22,"./isViewVisible":24,"./renderText":26,"./renderView":27,"./temp-utils":28,"promise":34}],26:[function(require,module,exports){
+},{"./Shaders":21,"./VertexInfo":22,"./isViewVisible":24,"./renderText":26,"./renderView":27,"./temp-utils":28,"promise":35}],26:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -3008,18 +3021,21 @@ module.exports = renderView;
 },{}],29:[function(require,module,exports){
 'use strict';
 
+var toFloat32 = require('../utils/toFloat32');
+
 function merge(parent, child) {
   var childKeys = Object.keys(child);
   for (var i = 0, l = childKeys.length; i < l; i++) {
     var childKey = childKeys[i];
-    parent[childKey] = child[childKey];
+    var value = child[childKey];
+    parent[childKey] = !isNaN(value) ? toFloat32(value) : value;
   }
   return parent;
 }
 
 module.exports = merge;
 
-},{}],30:[function(require,module,exports){
+},{"../utils/toFloat32":31}],30:[function(require,module,exports){
 'use strict';
 
 var keys = Object.keys;
@@ -3037,6 +3053,9 @@ function shallowClone(node) {
 module.exports = shallowClone;
 
 },{}],31:[function(require,module,exports){
+module.exports = Math.fround || function(nr) {return nr;};
+
+},{}],32:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -3104,7 +3123,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":32}],32:[function(require,module,exports){
+},{"events":33}],33:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3407,7 +3426,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3499,12 +3518,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":39}],35:[function(require,module,exports){
+},{"./lib":40}],36:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3690,7 +3709,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":43}],36:[function(require,module,exports){
+},{"asap/raw":44}],37:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3705,7 +3724,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":35}],37:[function(require,module,exports){
+},{"./core.js":36}],38:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3814,7 +3833,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":35}],38:[function(require,module,exports){
+},{"./core.js":36}],39:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3832,7 +3851,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":35}],39:[function(require,module,exports){
+},{"./core.js":36}],40:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3841,7 +3860,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":35,"./done.js":36,"./es6-extensions.js":37,"./finally.js":38,"./node-extensions.js":40}],40:[function(require,module,exports){
+},{"./core.js":36,"./done.js":37,"./es6-extensions.js":38,"./finally.js":39,"./node-extensions.js":41}],41:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3914,7 +3933,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":35,"asap":41}],41:[function(require,module,exports){
+},{"./core.js":36,"asap":42}],42:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -3982,7 +4001,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":42}],42:[function(require,module,exports){
+},{"./raw":43}],43:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -4206,7 +4225,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4311,4 +4330,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":33,"domain":31}]},{},[2]);
+},{"_process":34,"domain":32}]},{},[2]);
