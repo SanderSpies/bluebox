@@ -3055,7 +3055,7 @@ module.exports = shallowClone;
 },{}],31:[function(require,module,exports){
 var helperArray = new Float32Array(1);
 
-module.exports = function(nr) {helperArray[0] = nr; return helperArray[0];};
+module.exports = function(nr) {helperArray[0] = +nr; return helperArray[0];};
 
 },{}],32:[function(require,module,exports){
 /*global define:false require:false */
