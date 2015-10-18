@@ -2352,7 +2352,7 @@ function render(domElement,
   //console.info(newElement.type);
   if (newElement.type === 'view') {
 
-    dynamicVertexPosition += renderView(viewPortDimensions, vertices, dynamicIndices, dynamicVertexPosition, colorsArray, newElement, oldElement, childIndex, inheritedOpacity || 1.0, skip);
+    dynamicVertexPosition += renderView(vertices, dynamicIndices, dynamicVertexPosition, colorsArray, newElement, oldElement, childIndex, inheritedOpacity || 1.0, skip);
 
     var style = newElement.style;
     if ('opacity' in style) {
@@ -2640,16 +2640,46 @@ function setBorder(element) {
   }
 }
 
-function renderView(viewPortDimensions, verticesArray, indexArray, index, colorsArray, element, oldElement, childIndex, inheritedOpacity, skip) {
-  if (isViewVisible(element, viewPortDimensions)) {
+var ViewPortHelper  = require('../DOM/ViewPortHelper');
+var viewPortDimensions = ViewPortHelper.getDimensions();
+
+var clipSpaceX = 1 / viewPortDimensions.width * 2;
+var clipSpaceY = 1 / viewPortDimensions.height * 2;
+var viewPortLeft = viewPortDimensions.left * clipSpaceX;
+var viewPortRight = viewPortDimensions.right * clipSpaceX;
+var viewPortTop = viewPortDimensions.top * clipSpaceY;
+var viewPortBottom = viewPortDimensions.bottom * clipSpaceY;
+
+
+function renderView(verticesArray, indexArray, index, colorsArray, element, oldElement, childIndex, inheritedOpacity, skip) {
+  if (isViewVisible(element)) {
     if (element !== oldElement || !skip) {
       var elementLayout = element.layout;
 
       // TODO: move to compile time to remove stress from runtime CPU
-      var left   = elementLayout.left - 1.0;
-      var right  = elementLayout.right - 1.0;
-      var top    = (elementLayout.top - 1.0) * -1.0;
-      var bottom = (elementLayout.bottom - 1.0) * -1.0;
+      var left   = elementLayout.left;
+      var right  = elementLayout.right;
+      var top    = elementLayout.top
+      var bottom = elementLayout.bottom;
+      if (left < viewPortLeft) {
+        left = viewPortLeft;
+      }
+      if (right > viewPortRight) {
+        right = viewPortRight;
+      }
+      if (top < viewPortTop) {
+        top = viewPortTop;
+      }
+      if (bottom > viewPortBottom) {
+        bottom = viewPortBottom;
+      }
+
+      left   = left - 1.0;
+      right  = right - 1.0;
+      top    = (top - 1.0) * -1.0;
+      bottom = (bottom - 1.0) * -1.0;
+
+
 
       // TODO better calculate zIndex
       var zIndex = 1.0 - 1.0 / (element.depth + 0.01);
@@ -2709,7 +2739,7 @@ function renderView(viewPortDimensions, verticesArray, indexArray, index, colors
 
 module.exports = renderView;
 
-},{"../../__DEV__":4,"./VertexInfo":22,"./ensureViewIntegrity":23,"./isViewVisible":24}],28:[function(require,module,exports){
+},{"../../__DEV__":4,"../DOM/ViewPortHelper":20,"./VertexInfo":22,"./ensureViewIntegrity":23,"./isViewVisible":24}],28:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
