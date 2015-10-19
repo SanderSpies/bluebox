@@ -2258,9 +2258,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = domElement.getContext('webgl', {depth: true, alpha: true, antialias: true});
+    gl = WebGLDebugUtils.makeDebugContext(domElement.getContext('webgl', {depth: true, alpha: true, antialias: true}));
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl', {depth: true, alpha: true, antialias: true});
+      gl = WebGLDebugUtils.makeDebugContext(domElement.getContext('experimental-webgl', {depth: true, alpha: true, antialias: true}));
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
