@@ -2258,9 +2258,9 @@ function render(domElement,
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = domElement.getContext('webgl', {depth: false, alpha: true, antialias: true});
+    gl = domElement.getContext('webgl', {depth: true, alpha: true, antialias: true});
     if (gl == null) {
-      gl = domElement.getContext('experimental-webgl', {depth: false, alpha: true, antialias: true});
+      gl = domElement.getContext('experimental-webgl', {depth: true, alpha: true, antialias: true});
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2315,11 +2315,11 @@ function render(domElement,
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
-    //gl.enable(gl.DEPTH_TEST);
-    //gl.depthFunc(gl.LESS);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    //gl.enable(gl.BLEND);
+    //gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    //gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     //
     //gl.useProgram(viewProgram);
     //gl.vertexAttribPointer(view_a_position, 3, gl.UNSIGNED_SHORT, false, VertexInfo.STRIDE, 0);
@@ -2421,7 +2421,7 @@ function render(domElement,
     }
 
     gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
-    
+
     skip = true;
   }
 }
@@ -2728,7 +2728,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       }
       
       vertexPos = index * 4;
-      var indexPos = /*indexArray.length - 6 -*/ index * 6;
+      var indexPos = indexArray.length - 6 - index * 6;
       
       indexArray[indexPos + 0] = vertexPos + 0;
       indexArray[indexPos + 1] = vertexPos + 1;
