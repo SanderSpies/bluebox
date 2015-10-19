@@ -1324,6 +1324,7 @@ var Bluebox = {
       LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false, false);
     }
     //LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
+    //var flattened = flatMap(componentTree);
     render(domElement, componentTree, oldComponentTree, 0, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
 
     oldComponentTree = componentTree;
@@ -1429,6 +1430,7 @@ function justifyContentFn(child, previousChild, mainAxis, justifyContentX, remai
       childLayout[mainAxis.START] = 0;
       childLayout[mainAxis.DIMENSION] = mainAxis === AXIS.row ? parentWidth : parentHeight;
       childLayout[mainAxis.END] = childLayout[mainAxis.DIMENSION];
+
     }
 
   }
@@ -2233,6 +2235,12 @@ function getNoVisibleDOMNodes(element, viewPortDimensions) {
 
   return nrOfVisibleDOMNodes;
 }
+
+function flatten(component) {
+  var workArray = [];
+
+}
+
 function render(domElement,
   newElement,
   oldElement,
@@ -2413,9 +2421,7 @@ function render(domElement,
     }
 
     gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
-
-    gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
-
+    
     skip = true;
   }
 }
