@@ -118,7 +118,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       justifyContent: 'space-around',
       flexDirection: 'row',
       backgroundColor: 'black',
-      opacity: .4,
+      opacity: 1,
       alignItems: 'center'
   }, [
     View({isStatic: true}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),
@@ -2311,15 +2311,15 @@ function render(domElement,
 
     domElement.width = viewPortDimensions.width;
     domElement.height = viewPortDimensions.height;
-
+    console.info(gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
     gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
-    //gl.enable(gl.BLEND);
-    //gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    //gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthFunc(gl.LESS);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     //
     //gl.useProgram(viewProgram);
     //gl.vertexAttribPointer(view_a_position, 3, gl.UNSIGNED_SHORT, false, VertexInfo.STRIDE, 0);
@@ -2415,9 +2415,13 @@ function render(domElement,
   }
   if (!newElement.parent) {
 
-    gl.bufferData(gl.ARRAY_BUFFER, dynamicArrayBuffer, gl.STATIC_DRAW);
+
     if (!skip) {
+      gl.bufferData(gl.ARRAY_BUFFER, dynamicArrayBuffer, gl.DYNAMIC_DRAW);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, dynamicIndices, gl.STATIC_DRAW);
+    }
+    else {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, dynamicArrayBuffer);
     }
 
     gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
@@ -2665,7 +2669,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       // TODO: move to compile time to remove stress from runtime CPU
       var left   = elementLayout.left;
       var right  = elementLayout.right;
-      var top    = elementLayout.top
+      var top    = elementLayout.top;
       var bottom = elementLayout.bottom;
       if (left < viewPortLeft) {
         left = viewPortLeft;
@@ -2688,7 +2692,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
 
 
       // TODO better calculate zIndex
-      var zIndex = 1.0 - 1.0 / (element.depth + 0.01);
+      var zIndex = element.depth * 0.1;
 
       setBackgroundColor(colorsArray, index, element, inheritedOpacity);
       setBorder(element);

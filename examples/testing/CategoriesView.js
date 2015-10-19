@@ -117,7 +117,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
       justifyContent: 'space-around',
       flexDirection: 'row',
       backgroundColor: 'black',
-      opacity: .4,
+      opacity: 1,
       alignItems: 'center'
   }, [
     View({isStatic: true}, {height: 100, backgroundColor: 'green', flexGrow: 1}, [Text('a')]),

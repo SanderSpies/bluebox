@@ -36,7 +36,7 @@
 
     varying vec4 vColor;
 
-    void main() {
+    void main(void) {
        gl_Position = vec4(a_position, 1.0);
        vColor = a_color;
     }
@@ -51,7 +51,7 @@
 
         varying vec2 v_texCoord;
 
-        void main() {
+        void main(void) {
            gl_Position = vec4(u_matrix * vec3(a_position, 1), 1);
 
            // because we're using a unit quad we can just use
@@ -66,7 +66,7 @@
 
         varying vec4 vColor;
 
-        void main() {
+        void main(void) {
             gl_FragColor = vColor;
         }
 
@@ -81,7 +81,7 @@
         // the texCoords passed in from the vertex shader.
         varying vec2 v_texCoord;
 
-        void main() {
+        void main(void) {
             float parentTop = u_dimensions[1] * -1.0;
             float parentBottom = u_dimensions[3] * 4.0;
             float parentLeft = u_dimensions[0];
