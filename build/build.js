@@ -198,7 +198,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     )
   ])
 ]);
-},{"../../lib/animation/Animator":5,"./../../lib/components/C":7,"./../../lib/index":17}],2:[function(require,module,exports){
+},{"../../lib/animation/Animator":5,"./../../lib/components/C":7,"./../../lib/index":16}],2:[function(require,module,exports){
 var Bluebox = require('./../../lib/index');
 
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
@@ -212,7 +212,7 @@ function continuousRendering() {
 requestAnimationFrame(continuousRendering);
 
 
-},{"./../../lib/index":17,"./CategoriesView":1}],3:[function(require,module,exports){
+},{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
 module.exports = 7000.0;
 },{}],4:[function(require,module,exports){
 module.exports = true; //process.env.NODE_ENV !== 'production';
@@ -223,134 +223,10 @@ module.exports = true; //process.env.NODE_ENV !== 'production';
 var Bluebox = require('../index');
 var __DEV__ = require('../__DEV__');
 var keys = Object.keys;
-var isArray = Array.isArray;
 var registeredAbsoluteTransitions = [];
-var registeredAbsoluteSprings = [];
-var shallowClone = require('../utils/shallowClone');
-var ensureTreeCorrectness = require('../diff/ensureTreeCorrectness');
-var isInTree = require('../diff/isInTree');
 
 var easings = require('./_easings');
-var componentsPool = [];
-var ix = 0;
-function recycle(node) {
-  var recycledNode;
 
-  if (node.oldRef && node.oldRef.oldRef) {
-    recycledNode = node.oldRef.oldRef;
-    var parameters = keys(node);
-    for (var i = 0, l = parameters.length; i < l; i++) {
-      var parameter = parameters[i];
-      recycledNode[parameter] = node[parameter];
-    }
-    node.oldRef.oldRef = null;
-  }
-  else if (componentsPool.length) {
-    recycledNode = componentsPool.shift();
-    var parameters = keys(node);
-    for (var i = 0, l = parameters.length; i < l; i++) {
-      var parameter = parameters[i];
-      recycledNode[parameter] = node[parameter];
-    }
-  }
-  else {
-    recycledNode = shallowClone(node);
-  }
-  return recycledNode;
-}
-
-function cloneWithEmptyChildren(node) {
-  var newNode = recycle(node);
-  newNode.children = [];
-  return newNode;
-}
-
-function copyChildren(node, newNode) {
-  for (var i = 0, l = node.children.length; i < l; i++) {
-    var child = node.children[i];
-    newNode.children[i] = child;
-    child.parent = newNode;
-  }
-}
-
-function cloneWithChildren(node) {
-  var newNode = cloneWithEmptyChildren(node);
-  copyChildren(node, newNode);
-  return newNode;
-}
-
-function cloneWithClonedStyle(node) {
-  var newNode = recycle(node);
-  newNode.style = shallowClone(newNode.style);
-  return newNode;
-}
-
-var recalculationQueue = [];
-
-function reconstructTreeForAnimation(node, skipAddToQueue) {
-  var currentNode = node;
-  var children = currentNode.children;
-  if (children && children.length) {
-    var newNode = cloneWithChildren(currentNode);
-    var newNodeChildren = newNode.children;
-    for (var i = 0, l = newNodeChildren.length; i < l; i++) {
-      var newChild = newNodeChildren[i];
-      if(children[i].oldRef){
-        //releaseComponent(children[i].oldRef);
-      }
-      if (newChild.isAnimating) {
-        var newRef = newChild.newRef;
-        newNodeChildren[i] = reconstructTreeForAnimation(newRef, true, true);
-        newChild.newRef = newNodeChildren[i];
-
-        newNodeChildren[i].oldRef = currentNode.children[i];
-        if (!skipAddToQueue) {
-          recalculationQueue.push(newNode.children[i]);
-        }
-      }
-      else if (newChild.isChildAnimating) {
-        newNodeChildren[i] = reconstructTreeForAnimation(newChild, skipAddToQueue || false);
-
-      }
-      currentNode.children[i].oldParent = currentNode;
-      newNodeChildren[i].parent = newNode;
-    }
-    return newNode;
-  }
-  return node;
-}
-
-function dereferenceObjects(node) {
-  var children = node.children;
-  if (children) {
-    for (var i = 0, l = children.length; i < l; i++) {
-      var child = children[i];
-
-      if (child.isChildAnimating) {
-        dereferenceObjects(child);
-        child.parent = null;
-        child.oldParent = null;
-        //if (child.oldRef) {
-        //  releaseComponent(child.oldRef);
-        //}
-        //child.oldRef = null;
-      }
-      else if (child.isAnimating && child.oldRef) {
-        child.parent = null;
-        child.oldParent = null;
-        //if (child.oldRef) {
-        //  releaseComponent(child.oldRef);
-        //}
-        //child.oldRef = null;
-      }
-      child.oldParent = null;
-    }
-  }
-  node.oldParent = null;
-}
-
-
-var rootNode;
 var startTime = Date.now();
 function processTransitions(currentTime) {
   for (var i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
@@ -364,43 +240,14 @@ function processTransitions(currentTime) {
     var easing = opts.easing || 'linear';
 
     // perform calculations here
-    var newNode = cloneWithClonedStyle(node);
+   // var newNode = cloneWithClonedStyle(node);
     for (var j = 0, l2 = keys.length; j < l2; j++) {
       var key = keys[j];
-      newNode.style[key] = easings[easing](currentTime, start[key], end[key], duration);
+      node.style[key] = easings[easing](currentTime, start[key], end[key], duration);
     }
-
-    node.newRef = newNode;
 
     absoluteTransition.node = node;
   }
-}
-
-function addRootNode() {
-  if (!rootNode) {
-    if (registeredAbsoluteTransitions.length) {
-      rootNode = registeredAbsoluteTransitions[0].node;
-      while (rootNode.parent) {
-        rootNode = rootNode.parent;
-      }
-    }
-  }
-}
-
-function correctAnimationNodeReferences(newRootNode) {
-  for (var i = 0, l = registeredAbsoluteTransitions.length; i < l; i++) {
-    var absoluteTransition = registeredAbsoluteTransitions[i];
-    if (__DEV__) {
-      if (!isInTree(newRootNode, absoluteTransition.node.newRef)) {
-        console.warn('absolute transition node CANNOT be found in the tree');
-        console.log(absoluteTransition.node.newRef);
-      }
-    }
-    var newRef = absoluteTransition.node.newRef;
-    absoluteTransition.node.newRef = null;
-    absoluteTransition.node = newRef;
-  }
-
 }
 
 function onAnimate() {
@@ -410,44 +257,8 @@ function onAnimate() {
 
   processTransitions(currentTime);
 
-  addRootNode();
+  Bluebox.relayout();
 
-  if (__DEV__) {
-    ensureTreeCorrectness(rootNode);
-  }
-  ix = 0;
-  var newRootNode = reconstructTreeForAnimation(rootNode, false);
-
-  if (__DEV__) {
-    ensureTreeCorrectness(newRootNode);
-  }
-
-  correctAnimationNodeReferences(newRootNode);
-
-
-  if (__DEV__) {
-    for (var i = 0, l = recalculationQueue.length; i < l; i++) {
-      var recalcNode = recalculationQueue[i];
-      if (!isInTree(newRootNode, recalcNode)) {
-        console.warn('recalc node not found in the tree!');
-      }
-    }
-  }
-
-  Bluebox.relayout(newRootNode, recalculationQueue);
-
-  // ensures no memory leaks
-  dereferenceObjects(rootNode);
-
-  rootNode = newRootNode;
-
-
-  recalculationQueue = [];
-
-  if (__DEV__) {
-    ensureTreeCorrectness(rootNode);
-
-  }
 }
 //
 //function compareOldAndNew(oldC, newC) {
@@ -564,7 +375,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":13,"../diff/isInTree":14,"../index":17,"../renderers/DOM/ViewPortHelper":22,"../utils/shallowClone":32,"./_easings":6}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../index":16,"../renderers/DOM/ViewPortHelper":21,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -753,7 +564,7 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":22,"../utils/merge":31,"../utils/toFloat32":33}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":21,"../utils/merge":30,"../utils/toFloat32":31}],8:[function(require,module,exports){
 'use strict';
 
 var ComponentConstants = {
@@ -781,7 +592,7 @@ var Image = Bluebox.create('image', function render(props, style, children) {
 
 module.exports = Image;
 
-},{"./../../lib/index":17,"./C":7}],10:[function(require,module,exports){
+},{"./../../lib/index":16,"./C":7}],10:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -794,7 +605,7 @@ var Text = Bluebox.create('text', function(props, style, children) {
 
 module.exports = Text;
 
-},{"./../../lib/index":17,"./C":7}],11:[function(require,module,exports){
+},{"./../../lib/index":16,"./C":7}],11:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -806,7 +617,7 @@ var View = Bluebox.create('view', function render(props, style, children) {
 
 module.exports = View;
 
-},{"./../../lib/index":17,"./C":7}],12:[function(require,module,exports){
+},{"./../../lib/index":16,"./C":7}],12:[function(require,module,exports){
 /**
  * @flow
  */
@@ -976,7 +787,7 @@ function diff(newNode, oldNode, parent, oldParent) {
 
 module.exports = diff;
 
-},{"../events/EventHandling":15}],13:[function(require,module,exports){
+},{"../events/EventHandling":14}],13:[function(require,module,exports){
 'use strict';
 
 function ensureTreeCorrectness(node) {
@@ -1000,27 +811,6 @@ function ensureTreeCorrectness(node) {
 
 module.exports = ensureTreeCorrectness;
 },{}],14:[function(require,module,exports){
-'use strict';
-
-function isInTree(rootNode, item) {
-  if (rootNode === item) {
-    return true;
-  }
-
-  var children = rootNode.children;
-  if (children) {
-    for (var i = 0, l = children.length; i < l; i++) {
-      if (isInTree(children[i], item)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-module.exports = isInTree;
-
-},{}],15:[function(require,module,exports){
 'use strict';
 
 var handleEvents = require('../events/handleEvents');
@@ -1067,7 +857,7 @@ module.exports = {
   setEventListeners: setEventListeners
 };
 
-},{"../events/handleEvents":16}],16:[function(require,module,exports){
+},{"../events/handleEvents":15}],15:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
@@ -1185,7 +975,7 @@ module.exports = {
   handleEvent: handleEvent,
   updateComponents: updateComponents
 };
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var diff            = require('./diff/diff');
@@ -1342,44 +1132,17 @@ var Bluebox = {
   },
 
 
-  relayout: function(componentTree, changedLayoutNodes) {
+  relayout: function() {
     // TODO: remove this, shouldn't happen all the time - only once ideally
-    var optimizedQueue = [];
-    var i, l;
-    for (i = 0, l = changedLayoutNodes.length; i < l; i++) {
-      var node = requestStyleRecalculation(changedLayoutNodes[i], changedLayoutNodes[i].oldRef);
-      if (optimizedQueue.indexOf(node) === -1) {
-        optimizedQueue.push(node);
-      }
-    }
 
-    var domElement = oldDOMElement;
 
-    for (i = 0, l = optimizedQueue.length; i < l; i++) {
-      var changedLayoutNode = optimizedQueue[i];
-      var mainAxis = changedLayoutNode.parent ? AXIS[changedLayoutNode.parent.style.flexDirection] : AXIS.column;
-      var crossAxis = mainAxis === AXIS.column ? AXIS.row : AXIS.column;
-      var mainAxis2 = changedLayoutNode.parent ? AXIS2[changedLayoutNode.parent.style.flexDirection] : AXIS2.column;
-      var crossAxis2 = mainAxis === AXIS.column ? AXIS2.row : AXIS2.column;
-      var parent = changedLayoutNode.parent;
-      var previousSibling = null;
-      if (parent) {
-        var index = parent.children.indexOf(changedLayoutNode);
 
-        if (index > 0) {
-          previousSibling = parent.children[index - 1];
-        }
+    LayoutEngine.layoutRelativeNode(oldComponentTree, null, null, AXIS.column, AXIS.row, AXIS2.column, AXIS2.row, false);
 
-      }
-      LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, mainAxis2, crossAxis2, false, false);
-    }
-    //LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
-    //revar flattened = flatMap(componentTree);
-    render(domElement, componentTree, oldComponentTree, 0, viewPortDimensions, false, false);
+    render(oldDOMElement, oldComponentTree, null, 0, viewPortDimensions, false, false);
 
-    oldComponentTree = componentTree;
 
-    return componentTree;
+    return oldComponentTree;
   }
 
 };
@@ -1391,7 +1154,7 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
-},{"./components/Image":9,"./components/Text":10,"./components/View":11,"./diff/diff":12,"./diff/ensureTreeCorrectness":13,"./layout/AXIS":18,"./layout/AXIS2":19,"./layout/LayoutEngine":20,"./layout/requestStyleRecalculation":21,"./renderers/DOM/ViewPortHelper":22,"./renderers/GL/render":27}],18:[function(require,module,exports){
+},{"./components/Image":9,"./components/Text":10,"./components/View":11,"./diff/diff":12,"./diff/ensureTreeCorrectness":13,"./layout/AXIS":17,"./layout/AXIS2":18,"./layout/LayoutEngine":19,"./layout/requestStyleRecalculation":20,"./renderers/DOM/ViewPortHelper":21,"./renderers/GL/render":26}],17:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1414,7 +1177,7 @@ var AXIS = {
 };
 
 module.exports = AXIS;
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 'use strict';
 
 var AXIS = {
@@ -1434,7 +1197,7 @@ var AXIS = {
 
 module.exports = AXIS;
 
-},{}],20:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../__DEV__');
@@ -1903,7 +1666,7 @@ module.exports = {
   //layoutAbsoluteNode: layoutAbsoluteNode
 };
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../components/ComponentConstants":8,"../renderers/DOM/ViewPortHelper":22,"../utils/toFloat32":33,"./AXIS":18,"./AXIS2":19}],21:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../components/ComponentConstants":8,"../renderers/DOM/ViewPortHelper":21,"../utils/toFloat32":31,"./AXIS":17,"./AXIS2":18}],20:[function(require,module,exports){
 'use strict';
 
 var __DEV__   = require('../__DEV__');
@@ -1961,7 +1724,7 @@ function requestStyleRecalculation(node, oldNode) {
 
 module.exports = requestStyleRecalculation;
 
-},{"../UNDEFINED":3,"../__DEV__":4}],22:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4}],21:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -2009,7 +1772,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],23:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 'use strict';
 
 var Shaders = {
@@ -2036,7 +1799,7 @@ var Shaders = {
 };
 
 module.exports = Shaders;
-},{}],24:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 'use strict';
 
 /**
@@ -2061,7 +1824,7 @@ module.exports = VertexInfo;
 
 
 
-},{}],25:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 'use strict';
 
 var VertexInfo = require('./VertexInfo');
@@ -2073,7 +1836,7 @@ function ensureViewIntegrity(element, index, verticesArray, colorsArray) {
 
 module.exports = ensureViewIntegrity;
 
-},{"./VertexInfo":24}],26:[function(require,module,exports){
+},{"./VertexInfo":23}],25:[function(require,module,exports){
 'use strict';
 
 var CL = require('../../components/ComponentConstants');
@@ -2106,7 +1869,7 @@ function isViewVisible(element) {
 
 module.exports = isViewVisible;
 
-},{"../../components/ComponentConstants":8,"../DOM/ViewPortHelper":22}],27:[function(require,module,exports){
+},{"../../components/ComponentConstants":8,"../DOM/ViewPortHelper":21}],26:[function(require,module,exports){
 'use strict';
 
 var gl;
@@ -2519,7 +2282,7 @@ var skip = false;
 
 module.exports = render;
 
-},{"./Shaders":23,"./VertexInfo":24,"./isViewVisible":26,"./renderText":28,"./renderView":29,"./temp-utils":30,"promise":37}],28:[function(require,module,exports){
+},{"./Shaders":22,"./VertexInfo":23,"./isViewVisible":25,"./renderText":27,"./renderView":28,"./temp-utils":29,"promise":35}],27:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2649,7 +2412,7 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],29:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../../__DEV__');
@@ -2851,7 +2614,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
 
 module.exports = renderView;
 
-},{"../../__DEV__":4,"../DOM/ViewPortHelper":22,"./VertexInfo":24,"./ensureViewIntegrity":25,"./isViewVisible":26}],30:[function(require,module,exports){
+},{"../../__DEV__":4,"../DOM/ViewPortHelper":21,"./VertexInfo":23,"./ensureViewIntegrity":24,"./isViewVisible":25}],29:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -3163,7 +2926,7 @@ module.exports = renderView;
 }());
 
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 var toFloat32 = require('../utils/toFloat32');
@@ -3180,29 +2943,12 @@ function merge(parent, child) {
 
 module.exports = merge;
 
-},{"../utils/toFloat32":33}],32:[function(require,module,exports){
-'use strict';
-
-var keys = Object.keys;
-
-function shallowClone(node) {
-  var newNode = {};
-  var parameters = keys(node);
-  for (var i = 0, l = parameters.length; i < l; i++) {
-    var parameter = parameters[i];
-    newNode[parameter] = node[parameter];
-  }
-  return newNode;
-}
-
-module.exports = shallowClone;
-
-},{}],33:[function(require,module,exports){
+},{"../utils/toFloat32":31}],31:[function(require,module,exports){
 var helperArray = new Float32Array(1);
 
 module.exports = function(nr) {helperArray[0] = +nr; return helperArray[0];};
 
-},{}],34:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -3270,7 +3016,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":35}],35:[function(require,module,exports){
+},{"events":33}],33:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3573,7 +3319,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],36:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3665,12 +3411,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],37:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":42}],38:[function(require,module,exports){
+},{"./lib":40}],36:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3856,7 +3602,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":46}],39:[function(require,module,exports){
+},{"asap/raw":44}],37:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3871,7 +3617,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":38}],40:[function(require,module,exports){
+},{"./core.js":36}],38:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3980,7 +3726,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":38}],41:[function(require,module,exports){
+},{"./core.js":36}],39:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3998,7 +3744,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":38}],42:[function(require,module,exports){
+},{"./core.js":36}],40:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -4007,7 +3753,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":38,"./done.js":39,"./es6-extensions.js":40,"./finally.js":41,"./node-extensions.js":43}],43:[function(require,module,exports){
+},{"./core.js":36,"./done.js":37,"./es6-extensions.js":38,"./finally.js":39,"./node-extensions.js":41}],41:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -4080,7 +3826,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":38,"asap":44}],44:[function(require,module,exports){
+},{"./core.js":36,"asap":42}],42:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -4148,7 +3894,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":45}],45:[function(require,module,exports){
+},{"./raw":43}],43:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -4372,7 +4118,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],46:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4477,4 +4223,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":36,"domain":34}]},{},[2]);
+},{"_process":34,"domain":32}]},{},[2]);
