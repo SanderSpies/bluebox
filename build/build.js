@@ -198,7 +198,7 @@ module.exports = View({}, {backgroundColor: 'red'}, [
     )
   ])
 ]);
-},{"../../lib/animation/Animator":5,"./../../lib/components/C":7,"./../../lib/index":16}],2:[function(require,module,exports){
+},{"../../lib/animation/Animator":5,"./../../lib/components/C":7,"./../../lib/index":17}],2:[function(require,module,exports){
 var Bluebox = require('./../../lib/index');
 
 var doms = [require('./CategoriesView')]; //, require('./testdom2'), require('./testdom3')];
@@ -212,12 +212,10 @@ function continuousRendering() {
 requestAnimationFrame(continuousRendering);
 
 
-},{"./../../lib/index":16,"./CategoriesView":1}],3:[function(require,module,exports){
-var toFloat32 = require('./utils/toFloat32');
-
-module.exports = toFloat32(7000);
-},{"./utils/toFloat32":31}],4:[function(require,module,exports){
-module.exports = false; //process.env.NODE_ENV !== 'production';
+},{"./../../lib/index":17,"./CategoriesView":1}],3:[function(require,module,exports){
+module.exports = 7000.0;
+},{}],4:[function(require,module,exports){
+module.exports = true; //process.env.NODE_ENV !== 'production';
 
 },{}],5:[function(require,module,exports){
 'use strict';
@@ -233,9 +231,36 @@ var ensureTreeCorrectness = require('../diff/ensureTreeCorrectness');
 var isInTree = require('../diff/isInTree');
 
 var easings = require('./_easings');
+var componentsPool = [];
+var ix = 0;
+function recycle(node) {
+  var recycledNode;
+
+  if (node.oldRef && node.oldRef.oldRef) {
+    recycledNode = node.oldRef.oldRef;
+    var parameters = keys(node);
+    for (var i = 0, l = parameters.length; i < l; i++) {
+      var parameter = parameters[i];
+      recycledNode[parameter] = node[parameter];
+    }
+    node.oldRef.oldRef = null;
+  }
+  else if (componentsPool.length) {
+    recycledNode = componentsPool.shift();
+    var parameters = keys(node);
+    for (var i = 0, l = parameters.length; i < l; i++) {
+      var parameter = parameters[i];
+      recycledNode[parameter] = node[parameter];
+    }
+  }
+  else {
+    recycledNode = shallowClone(node);
+  }
+  return recycledNode;
+}
 
 function cloneWithEmptyChildren(node) {
-  var newNode = shallowClone(node);
+  var newNode = recycle(node);
   newNode.children = [];
   return newNode;
 }
@@ -255,22 +280,24 @@ function cloneWithChildren(node) {
 }
 
 function cloneWithClonedStyle(node) {
-  var newNode = shallowClone(node);
+  var newNode = recycle(node);
   newNode.style = shallowClone(newNode.style);
   return newNode;
 }
 
 var recalculationQueue = [];
 
-function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
+function reconstructTreeForAnimation(node, skipAddToQueue) {
   var currentNode = node;
   var children = currentNode.children;
-  if (children) {
+  if (children && children.length) {
     var newNode = cloneWithChildren(currentNode);
-
     var newNodeChildren = newNode.children;
     for (var i = 0, l = newNodeChildren.length; i < l; i++) {
       var newChild = newNodeChildren[i];
+      if(children[i].oldRef){
+        //releaseComponent(children[i].oldRef);
+      }
       if (newChild.isAnimating) {
         var newRef = newChild.newRef;
         newNodeChildren[i] = reconstructTreeForAnimation(newRef, true, true);
@@ -283,6 +310,7 @@ function reconstructTreeForAnimation(node, skipAddToQueue, onlyCloneChildren) {
       }
       else if (newChild.isChildAnimating) {
         newNodeChildren[i] = reconstructTreeForAnimation(newChild, skipAddToQueue || false);
+
       }
       currentNode.children[i].oldParent = currentNode;
       newNodeChildren[i].parent = newNode;
@@ -302,17 +330,22 @@ function dereferenceObjects(node) {
         dereferenceObjects(child);
         child.parent = null;
         child.oldParent = null;
-        child.oldRef = null;
+        //if (child.oldRef) {
+        //  releaseComponent(child.oldRef);
+        //}
+        //child.oldRef = null;
       }
       else if (child.isAnimating && child.oldRef) {
         child.parent = null;
         child.oldParent = null;
-        child.oldRef = null;
+        //if (child.oldRef) {
+        //  releaseComponent(child.oldRef);
+        //}
+        //child.oldRef = null;
       }
       child.oldParent = null;
     }
   }
-  node.oldRef = null;
   node.oldParent = null;
 }
 
@@ -382,7 +415,7 @@ function onAnimate() {
   if (__DEV__) {
     ensureTreeCorrectness(rootNode);
   }
-
+  ix = 0;
   var newRootNode = reconstructTreeForAnimation(rootNode, false);
 
   if (__DEV__) {
@@ -402,8 +435,6 @@ function onAnimate() {
   }
 
   Bluebox.relayout(newRootNode, recalculationQueue);
-
-  //compareOldAndNew(rootNode, newRootNode);
 
   // ensures no memory leaks
   dereferenceObjects(rootNode);
@@ -533,7 +564,7 @@ var Animator = {
 
 module.exports = Animator;
 
-},{"../__DEV__":4,"../diff/ensureTreeCorrectness":12,"../diff/isInTree":13,"../index":16,"../renderers/DOM/ViewPortHelper":20,"../utils/shallowClone":30,"./_easings":6}],6:[function(require,module,exports){
+},{"../__DEV__":4,"../diff/ensureTreeCorrectness":13,"../diff/isInTree":14,"../index":17,"../renderers/DOM/ViewPortHelper":22,"../utils/shallowClone":32,"./_easings":6}],6:[function(require,module,exports){
 var easings = {
 
   linear: function(t, b, _c, d) {
@@ -641,22 +672,23 @@ function convertToClipSpace(style) {
 function Component(type, props, style, children) {
   var component = {
     customType: null,
-    layout: {left: toFloat32(0), width: undefined, right: toFloat32(0), top: toFloat32(0), height: undefined, bottom: toFloat32(0), lineIndex: 0},
+   // layout: {left: 0, width: undefined, right: 0, top: 0, height: undefined, bottom: 0, lineIndex: 0},
+    layout: new Float32Array(7), /*left, width, right, top, height, bottom, lineIndex*/
     style: merge({
       backgroundColor: '',
       color: '',
       margin: '',
-      marginLeft: toFloat32(0),
-      marginRight: toFloat32(0),
-      marginTop: toFloat32(0),
-      marginBottom: toFloat32(0),
-      minHeight: toFloat32(0),
-      minWidth: toFloat32(0),
+      marginLeft: 0,
+      marginRight: 0,
+      marginTop: 0,
+      marginBottom: 0,
+      minHeight: 0,
+      minWidth: 0,
       padding: '',
-      paddingLeft: toFloat32(0),
-      paddingRight: toFloat32(0),
-      paddingTop: toFloat32(0),
-      paddingBottom: toFloat32(0),
+      paddingLeft: 0,
+      paddingRight: 0,
+      paddingTop: 0,
+      paddingBottom: 0,
       opacity: 1,
       overflow: 'inherit',
       width: UNDEFINED,
@@ -694,7 +726,7 @@ function Component(type, props, style, children) {
   };
   if (__DEV__) {
     seal(component);
-    seal(component.layout);
+    //seal(component.layout);
     seal(component.style);
   }
   var depth = 0;
@@ -721,7 +753,22 @@ function Component(type, props, style, children) {
 
 module.exports = Component;
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/merge":29,"../utils/toFloat32":31}],8:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":22,"../utils/merge":31,"../utils/toFloat32":33}],8:[function(require,module,exports){
+'use strict';
+
+var ComponentConstants = {
+  LEFT: 0,
+  WIDTH: 1,
+  RIGHT: 2,
+  TOP: 3,
+  HEIGHT: 4,
+  BOTTOM: 5,
+  LINE_INDEX: 6
+};
+
+module.exports = ComponentConstants;
+
+},{}],9:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -734,7 +781,7 @@ var Image = Bluebox.create('image', function render(props, style, children) {
 
 module.exports = Image;
 
-},{"./../../lib/index":16,"./C":7}],9:[function(require,module,exports){
+},{"./../../lib/index":17,"./C":7}],10:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -747,7 +794,7 @@ var Text = Bluebox.create('text', function(props, style, children) {
 
 module.exports = Text;
 
-},{"./../../lib/index":16,"./C":7}],10:[function(require,module,exports){
+},{"./../../lib/index":17,"./C":7}],11:[function(require,module,exports){
 'use strict';
 
 var Bluebox = require('./../../lib/index');
@@ -759,7 +806,7 @@ var View = Bluebox.create('view', function render(props, style, children) {
 
 module.exports = View;
 
-},{"./../../lib/index":16,"./C":7}],11:[function(require,module,exports){
+},{"./../../lib/index":17,"./C":7}],12:[function(require,module,exports){
 /**
  * @flow
  */
@@ -929,7 +976,7 @@ function diff(newNode, oldNode, parent, oldParent) {
 
 module.exports = diff;
 
-},{"../events/EventHandling":14}],12:[function(require,module,exports){
+},{"../events/EventHandling":15}],13:[function(require,module,exports){
 'use strict';
 
 function ensureTreeCorrectness(node) {
@@ -952,7 +999,7 @@ function ensureTreeCorrectness(node) {
 }
 
 module.exports = ensureTreeCorrectness;
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 function isInTree(rootNode, item) {
@@ -973,7 +1020,7 @@ function isInTree(rootNode, item) {
 
 module.exports = isInTree;
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 'use strict';
 
 var handleEvents = require('../events/handleEvents');
@@ -1020,7 +1067,7 @@ module.exports = {
   setEventListeners: setEventListeners
 };
 
-},{"../events/handleEvents":15}],15:[function(require,module,exports){
+},{"../events/handleEvents":16}],16:[function(require,module,exports){
 'use strict';
 
 // TODO: make it all virtual
@@ -1138,7 +1185,7 @@ module.exports = {
   handleEvent: handleEvent,
   updateComponents: updateComponents
 };
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var diff            = require('./diff/diff');
@@ -1153,6 +1200,7 @@ var oldDOMElement       = null;
 var viewPortDimensions  = null;
 var registeredComponentTypes = {};
 var AXIS = require('./layout/AXIS');
+var AXIS2 = require('./layout/AXIS2');
 var keys = Object.keys;
 
 function registerComponentType(type, structure) {
@@ -1277,7 +1325,7 @@ var Bluebox = {
       hasChanged = true;
     }
    // if (newComponentTree.layout.width === undefined) {
-      newComponentTree = LayoutEngine.layoutRelativeNode(newComponentTree, null, null, AXIS.column, AXIS.row, false);
+      newComponentTree = LayoutEngine.layoutRelativeNode(newComponentTree, null, null, AXIS.column, AXIS.row, AXIS2.column, AXIS2.row, false);
    // }
 
     console.log(newComponentTree);
@@ -1287,7 +1335,7 @@ var Bluebox = {
       viewPortDimensions = ViewPortHelper.getDimensions();
     }
 
-    render(domElement, newComponentTree, null, 0, viewPortDimensions);
+    render(domElement, newComponentTree, null, 0, viewPortDimensions, false, false);
 
     oldComponentTree = newComponentTree;
     return newComponentTree;
@@ -1311,6 +1359,8 @@ var Bluebox = {
       var changedLayoutNode = optimizedQueue[i];
       var mainAxis = changedLayoutNode.parent ? AXIS[changedLayoutNode.parent.style.flexDirection] : AXIS.column;
       var crossAxis = mainAxis === AXIS.column ? AXIS.row : AXIS.column;
+      var mainAxis2 = changedLayoutNode.parent ? AXIS2[changedLayoutNode.parent.style.flexDirection] : AXIS2.column;
+      var crossAxis2 = mainAxis === AXIS.column ? AXIS2.row : AXIS2.column;
       var parent = changedLayoutNode.parent;
       var previousSibling = null;
       if (parent) {
@@ -1321,11 +1371,11 @@ var Bluebox = {
         }
 
       }
-      LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, false, false);
+      LayoutEngine.layoutRelativeNode(changedLayoutNode, changedLayoutNode.oldRef, previousSibling, mainAxis, crossAxis, mainAxis2, crossAxis2, false, false);
     }
     //LayoutEngine.layoutRelativeNode(componentTree, null, null, AXIS.column, AXIS.row, false);
-    //var flattened = flatMap(componentTree);
-    render(domElement, componentTree, oldComponentTree, 0, viewPortDimensions, 0, viewPortDimensions.width, 0, viewPortDimensions.height);
+    //revar flattened = flatMap(componentTree);
+    render(domElement, componentTree, oldComponentTree, 0, viewPortDimensions, false, false);
 
     oldComponentTree = componentTree;
 
@@ -1341,7 +1391,7 @@ Bluebox.Components.Text = require('./components/Text');
 Bluebox.Components.Image = require('./components/Image');
 Bluebox.Animations.Transition = function(){};
 Bluebox.Animations.Spring = function(){};
-},{"./components/Image":8,"./components/Text":9,"./components/View":10,"./diff/diff":11,"./diff/ensureTreeCorrectness":12,"./layout/AXIS":17,"./layout/LayoutEngine":18,"./layout/requestStyleRecalculation":19,"./renderers/DOM/ViewPortHelper":20,"./renderers/GL/render":25}],17:[function(require,module,exports){
+},{"./components/Image":9,"./components/Text":10,"./components/View":11,"./diff/diff":12,"./diff/ensureTreeCorrectness":13,"./layout/AXIS":18,"./layout/AXIS2":19,"./layout/LayoutEngine":20,"./layout/requestStyleRecalculation":21,"./renderers/DOM/ViewPortHelper":22,"./renderers/GL/render":27}],18:[function(require,module,exports){
 var AXIS = {
   row: {
     START: 'left',
@@ -1364,7 +1414,27 @@ var AXIS = {
 };
 
 module.exports = AXIS;
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
+'use strict';
+
+var AXIS = {
+
+    row: {
+      START: 0,
+      END: 2,
+      DIMENSION: 1
+    },
+    column: {
+      START: 3,
+      END: 5,
+      DIMENSION: 4
+    }
+
+};
+
+module.exports = AXIS;
+
+},{}],20:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../__DEV__');
@@ -1382,11 +1452,12 @@ var RIGHT = 'right';
 var BOTTOM = 'bottom';
 var CENTER = 'center';
 var AXIS = require('./AXIS');
+var AXIS2 = require('./AXIS2');
 var WRAP = 'wrap';
 var UNDEFINED = require('../UNDEFINED');
 var ViewPortHelper = require('../renderers/DOM/ViewPortHelper');
+var CL = require('../components/ComponentConstants');
 var viewPortDimensions = ViewPortHelper.getDimensions();
-
 var toFloat32 = require('../utils/toFloat32');
 var clipSpaceX = toFloat32(1 / viewPortDimensions.width * 2);
 var clipSpaceY = toFloat32(1 / viewPortDimensions.height * 2);
@@ -1395,7 +1466,7 @@ var clientWidth = toFloat32(document.body.clientWidth) * clipSpaceX;
 var clientHeight = toFloat32(document.body.clientHeight)  * clipSpaceY;
 
 
-function justifyContentFn(child, previousChild, mainAxis, justifyContentX, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
+function justifyContentFn(child, previousChild, mainAxis, mainAxis2, justifyContentX, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
   var justifyContent = justifyContentX;
   if (justifyContent === CENTER) {
     justifyContent = FLEX_END;
@@ -1407,98 +1478,98 @@ function justifyContentFn(child, previousChild, mainAxis, justifyContentX, remai
   }
 
   if (justifyContent === FLEX_END) {
-    childLayout[mainAxis.START] += remainingSpaceMainAxis;
-    childLayout[mainAxis.END] += remainingSpaceMainAxis;
+    childLayout[mainAxis2.START] += remainingSpaceMainAxis;
+    childLayout[mainAxis2.END] += remainingSpaceMainAxis;
 
   }
   else if (justifyContent === SPACE_AROUND) {
     if (!previousChild) {
-      childLayout[mainAxis.START] += remainingSpaceMainAxis + childStyle[mainAxis.MARGIN_LEADING];
+      childLayout[mainAxis2.START] += remainingSpaceMainAxis + childStyle[mainAxis.MARGIN_LEADING];
     }
     else {
-      childLayout[mainAxis.START] = previousChild.layout[mainAxis.END] + childStyle[mainAxis.MARGIN_LEADING] + remainingSpaceMainAxis * toFloat32(2);
+      childLayout[mainAxis2.START] = previousChild.layout[mainAxis2.END] + childStyle[mainAxis.MARGIN_LEADING] + remainingSpaceMainAxis * 2;
     }
-    childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
+    childLayout[mainAxis2.END] = childLayout[mainAxis2.START] + childLayout[mainAxis2.DIMENSION];
 
   }
   else if (justifyContent === SPACE_BETWEEN && previousChild) {
-    childLayout[mainAxis.START] = previousChild.layout[mainAxis.END] + remainingSpaceMainAxis + previousChild.style[mainAxis.MARGIN_TRAILING] + childStyle[mainAxis.MARGIN_LEADING];
-    childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
+    childLayout[mainAxis2.START] = previousChild.layout[mainAxis2.END] + remainingSpaceMainAxis + previousChild.style[mainAxis.MARGIN_TRAILING] + childStyle[mainAxis.MARGIN_LEADING];
+    childLayout[mainAxis2.END] = childLayout[mainAxis2.START] + childLayout[mainAxis2.DIMENSION];
   }
   else if (justifyContent === STRETCH) {
-    if (childLayout[mainAxis.DIMENSION] === 0) {
-      childLayout[mainAxis.START] = 0;
-      childLayout[mainAxis.DIMENSION] = mainAxis === AXIS.row ? parentWidth : parentHeight;
-      childLayout[mainAxis.END] = childLayout[mainAxis.DIMENSION];
+    if (childLayout[mainAxis2.DIMENSION] === 0) {
+      childLayout[mainAxis2.START] = 0;
+      childLayout[mainAxis2.DIMENSION] = mainAxis === AXIS.row ? parentWidth : parentHeight;
+      childLayout[mainAxis2.END] = childLayout[mainAxis2.DIMENSION];
 
     }
 
   }
 }
 
-function absolutePosition(node, previousSibling, mainAxis, crossAxis) {
+function absolutePosition(node, previousSibling, mainAxis, crossAxis, mainAxis2, crossAxis2) {
   var parent = node.parent;
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
   var parentLayout = parent.layout;
 
-  nodeLayout[mainAxis.START] = parentLayout[mainAxis.START];
-  nodeLayout[crossAxis.START] = parentLayout[crossAxis.START];
+  nodeLayout[mainAxis2.START] = parentLayout[mainAxis2.START];
+  nodeLayout[crossAxis2.START] = parentLayout[crossAxis2.START];
   if (nodeStyle[mainAxis.START] !== UNDEFINED) {
-    nodeLayout[mainAxis.START] += nodeStyle[mainAxis.START];
-    nodeLayout[mainAxis.END] += nodeStyle[mainAxis.START];
+    nodeLayout[mainAxis2.START] += nodeStyle[mainAxis.START];
+    nodeLayout[mainAxis2.END] += nodeStyle[mainAxis.START];
 
   }
   else if (nodeStyle[mainAxis.END] !== UNDEFINED && nodeStyle[mainAxis.DIMENSION] !== UNDEFINED) {
-    nodeLayout[mainAxis.START] = parentLayout[mainAxis.END] - nodeStyle[mainAxis.DIMENSION] - nodeStyle[mainAxis.END];
+    nodeLayout[mainAxis2.START] = parentLayout[mainAxis2.END] - nodeStyle[mainAxis.DIMENSION] - nodeStyle[mainAxis.END];
   }
   else if (previousSibling) {
-    nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
+    nodeLayout[mainAxis2.START] = previousSibling.layout[mainAxis2.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
   }
 
   if (nodeStyle[crossAxis.START] !== UNDEFINED) {
-    nodeLayout[crossAxis.START] += nodeStyle[crossAxis.START];
-    nodeLayout[crossAxis.END] += nodeStyle[crossAxis.START];
+    nodeLayout[crossAxis2.START] += nodeStyle[crossAxis.START];
+    nodeLayout[crossAxis2.END] += nodeStyle[crossAxis.START];
 
   }
   else if (nodeStyle[crossAxis.END] !== UNDEFINED && nodeStyle[crossAxis.DIMENSION] !== UNDEFINED) {
-    nodeLayout[crossAxis.START] = parentLayout[crossAxis.END] - nodeStyle[crossAxis.DIMENSION] - nodeStyle[crossAxis.END];
+    nodeLayout[crossAxis2.START] = parentLayout[crossAxis2.END] - nodeStyle[crossAxis.DIMENSION] - nodeStyle[crossAxis.END];
   }
   else {
-    nodeLayout[crossAxis.START] = parent ? parentLayout[crossAxis.START] : toFloat32(0);
+    nodeLayout[crossAxis2.START] = parent ? parentLayout[crossAxis2.START] : 0;
   }
 
   if (nodeStyle[mainAxis.END] !== UNDEFINED) {
-    nodeLayout[mainAxis.END] = parentLayout[mainAxis.END] - nodeStyle[mainAxis.END];
-    nodeLayout[mainAxis.DIMENSION] = nodeLayout[mainAxis.END] - nodeLayout[mainAxis.START];
+    nodeLayout[mainAxis2.END] = parentLayout[mainAxis2.END] - nodeStyle[mainAxis.END];
+    nodeLayout[mainAxis2.DIMENSION] = nodeLayout[mainAxis2.END] - nodeLayout[mainAxis2.START];
   }
   if (nodeStyle[crossAxis.END] !== UNDEFINED) {
-    nodeLayout[crossAxis.END] = parentLayout[crossAxis.END] - nodeStyle[crossAxis.END];
-    nodeLayout[crossAxis.DIMENSION] = nodeLayout[crossAxis.END] - nodeLayout[crossAxis.START];
+    nodeLayout[crossAxis2.END] = parentLayout[crossAxis2.END] - nodeStyle[crossAxis.END];
+    nodeLayout[crossAxis2.DIMENSION] = nodeLayout[crossAxis2.END] - nodeLayout[crossAxis2.START];
   }
 
-  if (!nodeLayout.height && nodeStyle.height !== UNDEFINED) {
-    nodeLayout.height = nodeStyle.height;
+  if (!nodeLayout[CL.HEIGHT] && nodeStyle.height !== UNDEFINED) {
+    nodeLayout[CL.HEIGHT] = nodeStyle.height;
   }
-  if (!nodeLayout.width && nodeStyle.width !== UNDEFINED) {
-    nodeLayout.width = nodeStyle.width;
-  }
-
-  if (nodeLayout.height < (nodeLayout.bottom - nodeLayout.top)) {
-    nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
+  if (!nodeLayout[CL.WIDTH] && nodeStyle.width !== UNDEFINED) {
+    nodeLayout[CL.WIDTH] = nodeStyle.width;
   }
 
-  if (nodeLayout.width < (nodeLayout.right - nodeLayout.left)) {
-    nodeLayout.right = nodeLayout.left + nodeLayout.width;
+  if (nodeLayout[CL.WIDTH] < (nodeLayout[CL.BOTTOM] - nodeLayout[CL.TOP])) {
+    nodeLayout[CL.BOTTOM] = nodeLayout[CL.TOP] + nodeLayout[CL.HEIGHT];
+  }
+
+  if (nodeLayout[CL.WIDTH] < (nodeLayout[CL.RIGHT] - nodeLayout[CL.LEFT])) {
+    nodeLayout[CL.RIGHT] = nodeLayout[CL.LEFT] + nodeLayout[CL.WIDTH];
   }
 
 }
 
-function alignItemsFn(child, previousChild, mainAxis, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
-  justifyContentFn(child, previousChild, mainAxis, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute);
+function alignItemsFn(child, previousChild, mainAxis, mainAxis2, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute) {
+  justifyContentFn(child, previousChild, mainAxis, mainAxis2, alignItems, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute);
 }
 
-function correctChildren(node, oldNode, top, left, mainAxis, crossAxis) {
+function correctChildren(node, oldNode, top, left, mainAxis, crossAxis, mainAxis2, crossAxis2) {
   var previousChild = null;
   for (var i = 0, l = node.children.length; i < l; i++) {
     var child = node.children[i];
@@ -1507,14 +1578,14 @@ function correctChildren(node, oldNode, top, left, mainAxis, crossAxis) {
     if (child.children) {
       var isAbsolutePosition = childStyle.position === ABSOLUTE;
       if (isAbsolutePosition) {
-        absolutePosition(child, previousChild, mainAxis, crossAxis);
+        absolutePosition(child, previousChild, mainAxis, crossAxis, mainAxis2, crossAxis2);
       }
       else {
-        childLayout.left += left;
-        childLayout.right += left;
-        childLayout.top += top;
-        childLayout.bottom += top;
-        correctChildren(child, oldNode, top, left, mainAxis, crossAxis);
+        childLayout[CL.LEFT] += left;
+        childLayout[CL.RIGHT] += left;
+        childLayout[CL.TOP] += top;
+        childLayout[CL.BOTTOM] += top;
+        correctChildren(child, oldNode, top, left, mainAxis, crossAxis, mainAxis2, crossAxis2);
       }
       previousChild = child;
     }
@@ -1526,17 +1597,17 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
   var childStyle = child.style;
   if (mainAxis === ROW) {
     if (previousChild) {
-      childLayout.left = previousChild.layout.right;
+      childLayout[CL.LEFT] = previousChild.layout[CL.RIGHT];
     }
-    childLayout.width = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.width !== UNDEFINED ? childStyle.width : 0);
-    childLayout.right = childLayout.left + childLayout.width;
+    childLayout[CL.WIDTH] = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.width !== UNDEFINED ? childStyle.width : 0);
+    childLayout[CL.RIGHT] = childLayout[CL.LEFT] + childLayout[CL.WIDTH];
   }
   else {
     if (previousChild) {
-      childLayout.top = previousChild.layout.bottom;
+      childLayout[CL.TOP] = previousChild.layout[CL.BOTTOM];
     }
-    childLayout.height = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.height !== UNDEFINED ? childStyle.height : 0);
-    childLayout.bottom = childLayout.top + childLayout.height;
+    childLayout[CL.HEIGHT] = childStyle.flexGrow / totalFlexGrow * remainingSpaceMainAxis + (childStyle.height !== UNDEFINED ? childStyle.height : 0);
+    childLayout[CL.BOTTOM] = childLayout[CL.TOP] + childLayout[CL.HEIGHT];
   }
 }
 
@@ -1544,14 +1615,13 @@ function flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, m
 //                   ideally we skip it when possible
 //                   - add hasParentDimensionsChanged argument
 function hasPositionChanged(node, oldNode) {
-  return node.style.left !== oldNode.style.left ||
-    node.style.right !== oldNode.style.right ||
-    node.style.top !== oldNode.style.top ||
-    node.style.bottom !== oldNode.style.bottom;
+  return !(node.style.left === oldNode.style.left &&
+    node.style.right === oldNode.style.right &&
+    node.style.top === oldNode.style.top);
 }
 
 
-function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldProcessAbsolute, hasParentDimensionsChanged, offsetX, offsetY) {
+function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, parentMainAxis2, parentCrossAxis2, shouldProcessAbsolute, hasParentDimensionsChanged, offsetX, offsetY) {
 
   var parent = node.parent;
   var nodeStyle = node.style;
@@ -1572,8 +1642,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
   }
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : clientWidth;
-  var parentHeight = parentLayout ? parentLayout.height : clientHeight;
+  var parentWidth = parentLayout ? parentLayout[CL.WIDTH] : clientWidth;
+  var parentHeight = parentLayout ? parentLayout[CL.HEIGHT] : clientHeight;
   var nodeLayout = node.layout;
   var nodeChildren = node.children;
   if (nodeChildren.length && typeof nodeChildren[0] !== 'string') {
@@ -1581,6 +1651,9 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     var newCrossAxisDirection = newMainAxisDirection === COLUMN ? ROW : COLUMN;
     var mainAxis = AXIS[newMainAxisDirection];
     var crossAxis = AXIS[newCrossAxisDirection];
+    var mainAxis2 = AXIS2[newMainAxisDirection];
+    var crossAxis2 = AXIS2[newCrossAxisDirection];
+
     var maxSize = 0;
     var previousChild = null;
     var totalFlexGrow = 0;
@@ -1607,49 +1680,49 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       childStyle = child.style;
       childLayout = child.layout;
 
-      layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged);
+      layoutRelativeNode(child, oldChild, previousChild, mainAxis, crossAxis, mainAxis2, crossAxis2, shouldProcessAbsolute, hasParentDimensionsChanged);
 
       var skipPrevious = false;
 
       if (childStyle.position !== ABSOLUTE) {
 
         if (i === 0) {
-          childLayout[parentMainAxis.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
-          childLayout[parentMainAxis.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
+          childLayout[parentMainAxis2.START] += nodeStyle[parentMainAxis.PADDING_LEADING];
+          childLayout[parentMainAxis2.END] += nodeStyle[parentMainAxis.PADDING_TRAILING];
         }
-        childLayout[parentCrossAxis.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
-        childLayout[parentCrossAxis.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
-        childLayout[parentCrossAxis.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
+        childLayout[parentCrossAxis2.START] += nodeStyle[parentCrossAxis.PADDING_LEADING];
+        childLayout[parentCrossAxis2.DIMENSION] -= nodeStyle[parentCrossAxis.PADDING_LEADING] + nodeStyle[parentCrossAxis.PADDING_TRAILING];
+        childLayout[parentCrossAxis2.END] -= nodeStyle[parentCrossAxis.PADDING_TRAILING];
 
         var newSize = childStyle[mainAxis.DIMENSION] !== UNDEFINED ? (childStyle[mainAxis.DIMENSION] + childStyle[crossAxis.MARGIN_LEADING] + childStyle[crossAxis.MARGIN_TRAILING]) || 0 : 0;
 
         if (isFlexWrap) {
 
-          if ((totalChildrenSize + newSize) > nodeLayout[mainAxis.DIMENSION]) {
-            lineLengths.push(toFloat32(totalChildrenSize));
-            crossLineLengths.push(toFloat32(maxCrossDimension));
-            lineNrOfChildren.push(toFloat32(currNrOfChildren));
+          if ((totalChildrenSize + newSize) > nodeLayout[mainAxis2.DIMENSION]) {
+            lineLengths.push(totalChildrenSize);
+            crossLineLengths.push(maxCrossDimension);
+            lineNrOfChildren.push(currNrOfChildren);
             lineIndex++;
             currNrOfChildren = 0;
             additional += maxCrossDimension;
             maxCrossDimension = 0;
 
-            childLayout[mainAxis.START] = nodeLayout[mainAxis.START] + childStyle[mainAxis.MARGIN_LEADING];
-            childLayout[mainAxis.END] = childLayout[mainAxis.START] + childLayout[mainAxis.DIMENSION];
+            childLayout[mainAxis2.START] = nodeLayout[mainAxis2.START] + childStyle[mainAxis.MARGIN_LEADING];
+            childLayout[mainAxis2.END] = childLayout[mainAxis2.START] + childLayout[mainAxis2.DIMENSION];
 
             totalChildrenSize = 0;
 
           }
-          childLayout.lineIndex = lineIndex;
+          childLayout[CL.LINE_INDEX] = lineIndex;
         }
         currNrOfChildren++;
         totalChildrenSize += newSize;
 
-        childLayout[crossAxis.START] += additional;
-        childLayout[crossAxis.END] += additional;
+        childLayout[crossAxis2.START] += additional;
+        childLayout[crossAxis2.END] += additional;
 
-        if (childLayout[parentMainAxis.END] > maxSize) {
-          maxSize = childLayout[parentMainAxis.END] + childStyle[parentMainAxis.MARGIN_TRAILING];
+        if (childLayout[parentMainAxis2.END] > maxSize) {
+          maxSize = childLayout[parentMainAxis2.END] + childStyle[parentMainAxis.MARGIN_TRAILING];
         }
 
         totalFlexGrow += childStyle.flexGrow;
@@ -1661,8 +1734,8 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
           previousChild = child;
         }
 
-        if ((childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING]) > maxCrossDimension) {
-          maxCrossDimension = childLayout[crossAxis.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING];
+        if ((childLayout[crossAxis2.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING]) > maxCrossDimension) {
+          maxCrossDimension = childLayout[crossAxis2.DIMENSION] + childStyle[crossAxis.MARGIN_TRAILING] + childStyle[crossAxis.MARGIN_LEADING];
         }
       }
 
@@ -1673,13 +1746,13 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     crossLineLengths.push(maxCrossDimension);
     lineNrOfChildren.push(currNrOfChildren);
 
-    if (node !== oldNode && nodeLayout[parentMainAxis.DIMENSION] === 0) {
-      nodeLayout[parentMainAxis.END] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING];
-      nodeLayout[parentMainAxis.DIMENSION] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING] - nodeLayout[parentMainAxis.START];
+    if (node !== oldNode && nodeLayout[parentMainAxis2.DIMENSION] === 0) {
+      nodeLayout[parentMainAxis2.END] = maxSize + nodeStyle[parentMainAxis.PADDING_TRAILING];
+      nodeLayout[parentMainAxis2.DIMENSION] = nodeLayout[parentMainAxis2.END] - nodeLayout[parentMainAxis2.START];
     }
 
-    var newParentHeight = nodeLayout.height;
-    var newParentWidth = nodeLayout.width;
+    var newParentHeight = nodeLayout[CL.HEIGHT];
+    var newParentWidth = nodeLayout[CL.WIDTH];
 
     var mainDimensionSize = mainAxis === AXIS.row ? newParentWidth : newParentHeight;
     var crossDimensionSize = mainAxis === AXIS.row ? newParentHeight : newParentWidth;
@@ -1698,19 +1771,19 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
       childStyle = child.style;
       childLayout = child.layout;
       oldChild = oldNode ? oldNode.children[i] : null;
-      if (currentLineIndex !== childLayout.lineIndex) {
-        currentLineIndex = childLayout.lineIndex;
+      if (currentLineIndex !== childLayout[CL.LINE_INDEX]) {
+        currentLineIndex = childLayout[CL.LINE_INDEX];
         remainingSpaceMainAxis = mainDimensionSize - lineLengths[currentLineIndex];
         if (!totalFlexGrow) {
           if (justifyContent === CENTER) {
-            remainingSpaceMainAxis /= toFloat32(2);
+            remainingSpaceMainAxis /= 2;
           }
           else if (justifyContent === SPACE_BETWEEN) {
-            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] - toFloat32(1));
+            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] - 1);
             previousChild = null;
           }
           else if (justifyContent === SPACE_AROUND) {
-            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] * toFloat32(2));
+            remainingSpaceMainAxis /= (lineNrOfChildren[currentLineIndex] * 2);
             previousChild = null;
           }
         }
@@ -1720,21 +1793,21 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
 
       var remainingSpaceCrossAxisSelf = crossDimensionSize - additional;
 
-      var initialTop = childLayout.top;
-      var initialLeft = childLayout.left;
+      var initialTop = childLayout[CL.TOP];
+      var initialLeft = childLayout[CL.LEFT];
 
       if (totalFlexGrow) {
         flexSize(child, previousChild, totalFlexGrow, remainingSpaceMainAxis, newMainAxisDirection);
       }
       else {
-        justifyContentFn(child, previousChild, mainAxis, justifyContent, remainingSpaceMainAxis, undefined, undefined, isPositionAbsolute);
+        justifyContentFn(child, previousChild, mainAxis, mainAxis2, justifyContent, remainingSpaceMainAxis, parentHeight, parentWidth, isPositionAbsolute);
       }
 
       if (isPositionAbsolute) {
-        absolutePosition(child, previousChild, mainAxis, crossAxis);
+        absolutePosition(child, previousChild, mainAxis, crossAxis, mainAxis2, crossAxis2);
       }
       var alignSelf = (!isFlexWrap ? childStyle.alignSelf : alignItems) || alignItems;
-      var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
+      var addSpace = crossLineLengths[currentLineIndex] - childLayout[crossAxis2.DIMENSION] - childStyle[crossAxis.MARGIN_TRAILING] - childStyle[crossAxis.MARGIN_LEADING];
       if (addSpace) {
         remainingSpaceCrossAxisSelf += addSpace;
       }
@@ -1744,17 +1817,17 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
 
       // TODO: fix flexWrap line heights
       //if (lineLengths.length > 1) {
-      //  var foo = node.layout[xNewCrossAxisDirection.START] + (crossDimensionSize / (lineLengths.length - 1) * currentLineIndex);
+      //  var foo = node.layout2[xNewCrossAxisDirection.START] + (crossDimensionSize / (lineLengths.length - 1) * currentLineIndex);
       //
       //  childLayout[xNewCrossAxisDirection.START] = foo - childLayout[xNewCrossAxisDirection.DIMENSION] - childStyle[xNewCrossAxisDirection.MARGIN_TRAILING] - childStyle[xNewCrossAxisDirection.MARGIN_LEADING] - addSpace;
       //  childLayout[xNewCrossAxisDirection.END] = foo - addSpace;
       //}
-      alignItemsFn(child, previousChild, crossAxis, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
+      alignItemsFn(child, previousChild, crossAxis, crossAxis2, alignSelf, remainingSpaceCrossAxisSelf, parentHeight, parentWidth, isPositionAbsolute);
       if (isPositionAbsolute) {
-        processChildren(child, oldChild, mainAxis, crossAxis, isPositionAbsolute, hasParentDimensionsChanged, offsetX, offsetY);
+        processChildren(child, oldChild, mainAxis, crossAxis, mainAxis2, crossAxis2, isPositionAbsolute, hasParentDimensionsChanged, offsetX, offsetY);
       }
-      else if ((childLayout.top - initialTop) !== 0 || (childLayout.left - initialLeft) !== 0) {
-        correctChildren(child, oldChild, childLayout.top - initialTop, childLayout.left - initialLeft, mainAxis, crossAxis);
+      else if ((childLayout[CL.TOP] - initialTop) !== 0 || (childLayout[CL.LEFT] - initialLeft) !== 0) {
+        correctChildren(child, oldChild, childLayout[CL.TOP] - initialTop, childLayout[CL.LEFT] - initialLeft, mainAxis, crossAxis, mainAxis2, crossAxis2);
       }
       if (!isPositionAbsolute) {
         previousChild = child;
@@ -1762,23 +1835,23 @@ function processChildren(node, oldNode, parentMainAxis, parentCrossAxis, shouldP
     }
 
     if (hasParentLocationChanged) {
-      //console.info(offsetY, offsetX);
-      //debugger;
       correctChildren(node, oldNode, offsetY, offsetX, parentMainAxis, parentCrossAxis);
     }
+
   }
+
 }
 
 
-function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, shouldProcessAbsolute, hasParentDimensionsChanged) {
+function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis, mainAxis2, crossAxis2, shouldProcessAbsolute, hasParentDimensionsChanged) {
   var nodeLayout = node.layout;
   var nodeStyle = node.style;
 
   var oldNodeTop = 0;
   var oldNodeLeft = 0;
   if (oldNode) {
-    oldNodeTop = oldNode.layout.top;
-    oldNodeLeft = oldNode.layout.left;
+    oldNodeTop = oldNode.layout[CL.TOP];
+    oldNodeLeft = oldNode.layout[CL.LEFT];
   }
 
   var parent = node.parent;
@@ -1791,33 +1864,31 @@ function layoutRelativeNode(node, oldNode, previousSibling, mainAxis, crossAxis,
   }
 
   var parentLayout = parent ? parent.layout : null;
-  var parentWidth = parentLayout ? parentLayout.width : clientWidth;
+  var parentWidth = parentLayout ? parentLayout[CL.WIDTH] : clientWidth;
 
   if (previousSibling && nodeStyle.position !== ABSOLUTE) {
-    nodeLayout[mainAxis.START] = previousSibling.layout[mainAxis.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
-    nodeLayout[crossAxis.START] = parentLayout[crossAxis.START];
+    nodeLayout[mainAxis2.START] = previousSibling.layout[mainAxis2.END] + previousSibling.style[mainAxis.MARGIN_TRAILING];
+    nodeLayout[crossAxis2.START] = parentLayout[crossAxis2.START];
 
   }
   else {
-    nodeLayout.left = parent ? parentLayout.left : toFloat32(0);
-    nodeLayout.top = parent ? parentLayout.top : toFloat32(0);
+    nodeLayout[CL.LEFT] = parent ? parentLayout[CL.LEFT] : 0;
+    nodeLayout[CL.TOP] = parent ? parentLayout[CL.TOP] : 0;
   }
 
-  nodeLayout.left += nodeStyle.marginLeft;
-  nodeLayout.top += nodeStyle.marginTop;
+  nodeLayout[CL.LEFT] += nodeStyle.marginLeft;
+  nodeLayout[CL.TOP] += nodeStyle.marginTop;
 
-  nodeLayout.width = (nodeStyle.width !== UNDEFINED ? nodeStyle.width : 0) || (!nodeStyle.flexGrow ? parentWidth : 0) || 0;
-  nodeLayout.height = (nodeStyle.height !== UNDEFINED ? nodeStyle.height : 0);
+  nodeLayout[CL.WIDTH] = (nodeStyle.width !== UNDEFINED ? nodeStyle.width : 0) || (!nodeStyle.flexGrow ? parentWidth : 0) || 0;
+  nodeLayout[CL.HEIGHT] = (nodeStyle.height !== UNDEFINED ? nodeStyle.height : 0);
 
-  nodeLayout.bottom = nodeLayout.top + nodeLayout.height;
-  nodeLayout.right = nodeLayout.left + nodeLayout.width;
+  nodeLayout[CL.BOTTOM] = nodeLayout[CL.TOP] + nodeLayout[CL.HEIGHT];
+  nodeLayout[CL.RIGHT] = nodeLayout[CL.LEFT] + nodeLayout[CL.WIDTH];
 
 
   if (nodeStyle.position !== ABSOLUTE) {
-    processChildren(node, oldNode, mainAxis, crossAxis, false, hasParentDimensionsChanged, oldNodeLeft - node.layout.left, oldNodeTop - node.layout.top);
+    processChildren(node, oldNode, mainAxis, crossAxis, mainAxis2, crossAxis2, false, hasParentDimensionsChanged, oldNodeLeft - node.layout[CL.LEFT], oldNodeTop - node.layout[CL.TOP]);
   }
-
-
 
   return node;
 }
@@ -1832,7 +1903,7 @@ module.exports = {
   //layoutAbsoluteNode: layoutAbsoluteNode
 };
 
-},{"../UNDEFINED":3,"../__DEV__":4,"../renderers/DOM/ViewPortHelper":20,"../utils/toFloat32":31,"./AXIS":17}],19:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4,"../components/ComponentConstants":8,"../renderers/DOM/ViewPortHelper":22,"../utils/toFloat32":33,"./AXIS":18,"./AXIS2":19}],21:[function(require,module,exports){
 'use strict';
 
 var __DEV__   = require('../__DEV__');
@@ -1890,7 +1961,7 @@ function requestStyleRecalculation(node, oldNode) {
 
 module.exports = requestStyleRecalculation;
 
-},{"../UNDEFINED":3,"../__DEV__":4}],20:[function(require,module,exports){
+},{"../UNDEFINED":3,"../__DEV__":4}],22:[function(require,module,exports){
 'use strict';
 
 var dimensions = {
@@ -1938,7 +2009,7 @@ document.addEventListener('scroll', ViewPortHelper._onScroll);
 
 module.exports = ViewPortHelper;
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 'use strict';
 
 var Shaders = {
@@ -1965,7 +2036,7 @@ var Shaders = {
 };
 
 module.exports = Shaders;
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1990,7 +2061,7 @@ module.exports = VertexInfo;
 
 
 
-},{}],23:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 'use strict';
 
 var VertexInfo = require('./VertexInfo');
@@ -2002,8 +2073,10 @@ function ensureViewIntegrity(element, index, verticesArray, colorsArray) {
 
 module.exports = ensureViewIntegrity;
 
-},{"./VertexInfo":22}],24:[function(require,module,exports){
+},{"./VertexInfo":24}],26:[function(require,module,exports){
 'use strict';
+
+var CL = require('../../components/ComponentConstants');
 
 var ViewPortHelper  = require('../DOM/ViewPortHelper');
 var viewPortDimensions = ViewPortHelper.getDimensions();
@@ -2020,12 +2093,12 @@ var height = viewPortDimensions.height * clipSpaceY;
 function isViewVisible(element) {
   var result = !!(element.style && (element.style.backgroundColor ||
     element.style.border)) &&
-    ((element.layout.left >= left && element.layout.left <= (left + width)) ||
-    (element.layout.right >= left && element.layout.right <= (left + width)) ||
-    (element.layout.left < left && element.layout.right > (left + width))) &&
-      ((element.layout.top >= top && element.layout.top <= (top + height)) ||
-      (element.layout.bottom >= top && element.layout.bottom <= (top + height)) ||
-      (element.layout.top < top && element.layout.bottom > (top + height)));
+    ((element.layout[CL.LEFT] >= left && element.layout[CL.LEFT] <= (left + width)) ||
+    (element.layout[CL.RIGHT] >= left && element.layout[CL.RIGHT] <= (left + width)) ||
+    (element.layout[CL.LEFT] < left && element.layout[CL.RIGHT] > (left + width))) &&
+      ((element.layout[CL.TOP] >= top && element.layout[CL.TOP] <= (top + height)) ||
+      (element.layout[CL.BOTTOM] >= top && element.layout[CL.BOTTOM] <= (top + height)) ||
+      (element.layout[CL.TOP] < top && element.layout[CL.BOTTOM] > (top + height)));
 
 
     return result;
@@ -2033,7 +2106,7 @@ function isViewVisible(element) {
 
 module.exports = isViewVisible;
 
-},{"../DOM/ViewPortHelper":20}],25:[function(require,module,exports){
+},{"../../components/ComponentConstants":8,"../DOM/ViewPortHelper":22}],27:[function(require,module,exports){
 'use strict';
 
 var gl;
@@ -2236,31 +2309,27 @@ function getNoVisibleDOMNodes(element, viewPortDimensions) {
   return nrOfVisibleDOMNodes;
 }
 
-function flatten(component) {
-  var workArray = [];
-
-}
+var isBlending = false;
 
 function render(domElement,
   newElement,
   oldElement,
   childIndex,
   viewPortDimensions,
-  parentLeft,
-  parentWidth,
-  parentTop,
-  parentHeight,
+  isParentTransparent,
+  isOverflow,
   inheritedOpacity,
   inheritedZoom,
   inheritedFontSize,
   inheritedColor,
-  inheritedFilter) {
+  inheritedFilter
+  ) {
 
   if (!gl) {
     topDOMElement = domElement;
-    gl = WebGLDebugUtils.makeDebugContext(domElement.getContext('webgl', {depth: true, alpha: true, antialias: true}));
+    gl = domElement.getContext('webgl', {depth: true, alpha: true, antialias: true});
     if (gl == null) {
-      gl = WebGLDebugUtils.makeDebugContext(domElement.getContext('experimental-webgl', {depth: true, alpha: true, antialias: true}));
+      gl = domElement.getContext('experimental-webgl', {depth: true, alpha: true, antialias: true});
     }
 
     vertexShader = createShaderFromScriptElement(gl, "2d-vertex-shader");
@@ -2268,7 +2337,7 @@ function render(domElement,
     fragmentShader = createShaderFromScriptElement(gl, "2d-fragment-shader");
     imageShader = createShaderFromScriptElement(gl, "2d-image-shader");
 
-    dynamicViewProgram = createProgram(gl, [vertexShader, fragmentShader], ['a_position', 'a_color'], [0, 1]);
+    dynamicViewProgram = createProgram(gl, [vertexShader, fragmentShader], ['a_color', 'a_position'], [0, 1]);
     staticViewProgram = createProgram(gl, [vertexShader, fragmentShader]);
     imageProgram = createProgram(gl, [vertexShader2, imageShader]);
 
@@ -2320,10 +2389,11 @@ function render(domElement,
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.STENCIL_TEST);
     gl.enable(gl.DEPTH_TEST);
+
     gl.depthFunc(gl.LESS);
-    gl.disable(gl.BLEND);
-    //gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    //gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     //
     //gl.useProgram(viewProgram);
     //gl.vertexAttribPointer(view_a_position, 3, gl.UNSIGNED_SHORT, false, VertexInfo.STRIDE, 0);
@@ -2348,7 +2418,7 @@ function render(domElement,
    }
 
     dynamicVertexPosition = 0;
-
+    //gl.depthMask(false);
 
   }
 
@@ -2363,6 +2433,16 @@ function render(domElement,
 
   //console.info(newElement.type);
   if (newElement.type === 'view') {
+
+    //if (!isParentTransparent && newElement.style.opacity !== 1 && !isBlending) {
+    //  gl.enable(gl.BLEND);
+    //  isBlending = true;
+    //  isParentTransparent = true;
+    //  //isTransparent = true;
+    //} else if (!isParentTransparent && isBlending){
+    //  gl.disable(gl.BLEND);
+    //  isBlending = false;
+    //}
 
     dynamicVertexPosition += renderView(vertices, dynamicIndices, dynamicVertexPosition, colorsArray, newElement, oldElement, childIndex, inheritedOpacity || 1.0, skip);
 
@@ -2388,13 +2468,10 @@ function render(domElement,
     if (children) {
       for (var i = 0, l = children.length; i < l; i++) {
         var child = children[i];
-        if (newElement.style.overflow === 'hidden') {
-          parentWidth = newElement.layout.width;
-          parentLeft = newElement.layout.left;
-          parentHeight = newElement.layout.height;
-          parentTop = newElement.layout.top;
-        }
-        render(domElement, child, oldChildren ? oldChildren[i] : null, i, viewPortDimensions, parentLeft, parentWidth, parentTop, parentHeight, inheritedOpacity,
+
+        render(domElement, child, oldChildren ? oldChildren[i] : null, i, viewPortDimensions, isParentTransparent,
+          newElement.style.overflow === 'hidden',
+          inheritedOpacity,
           inheritedZoom,
           inheritedFontSize,
           inheritedColor,
@@ -2418,7 +2495,10 @@ function render(domElement,
 
   }
   if (!newElement.parent) {
-
+    if (skip) {
+      //gl.depthMask(true);
+      gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
+    }
 
     if (!skip) {
       gl.bufferData(gl.ARRAY_BUFFER, dynamicArrayBuffer, gl.DYNAMIC_DRAW);
@@ -2427,17 +2507,19 @@ function render(domElement,
     else {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, dynamicArrayBuffer);
     }
+    if (!skip) {
+      //gl.depthMask(true);
+      gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
 
-    gl.drawElements(gl.TRIANGLES, dynamicIndices.length, gl.UNSIGNED_SHORT, 0);
-
-    skip = true;
+      skip = true;
+    }
   }
 }
 var skip = false;
 
 module.exports = render;
 
-},{"./Shaders":21,"./VertexInfo":22,"./isViewVisible":24,"./renderText":26,"./renderView":27,"./temp-utils":28,"promise":35}],26:[function(require,module,exports){
+},{"./Shaders":23,"./VertexInfo":24,"./isViewVisible":26,"./renderText":28,"./renderView":29,"./temp-utils":30,"promise":37}],28:[function(require,module,exports){
 /**
  * Text caching:
  * - create canvas for each new text elements for performance
@@ -2567,7 +2649,7 @@ var TextRenderer = {
 
 module.exports = renderText;
 
-},{}],27:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 
 var __DEV__ = require('../../__DEV__');
@@ -2671,10 +2753,10 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       var elementLayout = element.layout;
 
       // TODO: move to compile time to remove stress from runtime CPU
-      var left   = elementLayout.left;
-      var right  = elementLayout.right;
-      var top    = elementLayout.top;
-      var bottom = elementLayout.bottom;
+      var left   = elementLayout[0];
+      var right  = elementLayout[2];
+      var top    = elementLayout[3];
+      var bottom = elementLayout[5];
       if (left < viewPortLeft) {
         left = viewPortLeft;
       }
@@ -2736,14 +2818,30 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
       }
       
       vertexPos = index * 4;
-      var indexPos = indexArray.length - 6 - index * 6;
-      
-      indexArray[indexPos + 0] = vertexPos + 0;
-      indexArray[indexPos + 1] = vertexPos + 1;
-      indexArray[indexPos + 2] = vertexPos + 2;
-      indexArray[indexPos + 3] = vertexPos + 2;
-      indexArray[indexPos + 4] = vertexPos + 1;
-      indexArray[indexPos + 5] = vertexPos + 3;
+
+
+      // all opaque values should go from front to back
+      var indexPos;
+      indexPos = indexArray.length - 6 - index * 6;
+
+      // TODO: all transparent values should go after the opaque values
+
+
+
+      indexArray.set([vertexPos + 0,
+                      vertexPos + 1,
+                      vertexPos + 2,
+                      vertexPos + 2,
+                      vertexPos + 1,
+                      vertexPos + 3], indexPos);
+      //indexArray[indexPos + 0] = vertexPos + 0;
+      //indexArray[indexPos + 1] = vertexPos + 1;
+      //indexArray[indexPos + 2] = vertexPos + 2;
+      //indexArray[indexPos + 3] = vertexPos + 2;
+      //indexArray[indexPos + 4] = vertexPos + 1;
+      //indexArray[indexPos + 5] = vertexPos + 3;
+
+
 
     }
     return 1;
@@ -2753,7 +2851,7 @@ function renderView(verticesArray, indexArray, index, colorsArray, element, oldE
 
 module.exports = renderView;
 
-},{"../../__DEV__":4,"../DOM/ViewPortHelper":20,"./VertexInfo":22,"./ensureViewIntegrity":23,"./isViewVisible":24}],28:[function(require,module,exports){
+},{"../../__DEV__":4,"../DOM/ViewPortHelper":22,"./VertexInfo":24,"./ensureViewIntegrity":25,"./isViewVisible":26}],30:[function(require,module,exports){
 // Licensed under a BSD license. See ../license.html for license
 
 // These funcitions are meant solely to help unclutter the tutorials.
@@ -3065,7 +3163,7 @@ module.exports = renderView;
 }());
 
 
-},{}],29:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 'use strict';
 
 var toFloat32 = require('../utils/toFloat32');
@@ -3082,7 +3180,7 @@ function merge(parent, child) {
 
 module.exports = merge;
 
-},{"../utils/toFloat32":31}],30:[function(require,module,exports){
+},{"../utils/toFloat32":33}],32:[function(require,module,exports){
 'use strict';
 
 var keys = Object.keys;
@@ -3099,12 +3197,12 @@ function shallowClone(node) {
 
 module.exports = shallowClone;
 
-},{}],31:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 var helperArray = new Float32Array(1);
 
 module.exports = function(nr) {helperArray[0] = +nr; return helperArray[0];};
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -3172,7 +3270,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":33}],33:[function(require,module,exports){
+},{"events":35}],35:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3475,7 +3573,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],34:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3567,12 +3665,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],35:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib')
 
-},{"./lib":40}],36:[function(require,module,exports){
+},{"./lib":42}],38:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -3758,7 +3856,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":44}],37:[function(require,module,exports){
+},{"asap/raw":46}],39:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3773,7 +3871,7 @@ Promise.prototype.done = function (onFulfilled, onRejected) {
   });
 };
 
-},{"./core.js":36}],38:[function(require,module,exports){
+},{"./core.js":38}],40:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -3882,7 +3980,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":36}],39:[function(require,module,exports){
+},{"./core.js":38}],41:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./core.js');
@@ -3900,7 +3998,7 @@ Promise.prototype['finally'] = function (f) {
   });
 };
 
-},{"./core.js":36}],40:[function(require,module,exports){
+},{"./core.js":38}],42:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./core.js');
@@ -3909,7 +4007,7 @@ require('./finally.js');
 require('./es6-extensions.js');
 require('./node-extensions.js');
 
-},{"./core.js":36,"./done.js":37,"./es6-extensions.js":38,"./finally.js":39,"./node-extensions.js":41}],41:[function(require,module,exports){
+},{"./core.js":38,"./done.js":39,"./es6-extensions.js":40,"./finally.js":41,"./node-extensions.js":43}],43:[function(require,module,exports){
 'use strict';
 
 // This file contains then/promise specific extensions that are only useful
@@ -3982,7 +4080,7 @@ Promise.prototype.nodeify = function (callback, ctx) {
   });
 }
 
-},{"./core.js":36,"asap":42}],42:[function(require,module,exports){
+},{"./core.js":38,"asap":44}],44:[function(require,module,exports){
 "use strict";
 
 // rawAsap provides everything we need except exception management.
@@ -4050,7 +4148,7 @@ RawTask.prototype.call = function () {
     }
 };
 
-},{"./raw":43}],43:[function(require,module,exports){
+},{"./raw":45}],45:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -4274,7 +4372,7 @@ rawAsap.makeRequestCallFromTimer = makeRequestCallFromTimer;
 // https://github.com/tildeio/rsvp.js/blob/cddf7232546a9cf858524b75cde6f9edf72620a7/lib/rsvp/asap.js
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],44:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -4379,4 +4477,4 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":34,"domain":32}]},{},[2]);
+},{"_process":36,"domain":34}]},{},[2]);
